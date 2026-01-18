@@ -6,7 +6,7 @@
 # It expects terraform_inventory.json to be present (generated via:
 # terragrunt output -json ansible_inventory > inventory/terraform_inventory.json)
 
-- name: Load Terraform infrastructure inventory
+- name: Load Terraform Infrastructure Inventory
   hosts: localhost
   gather_facts: false
 

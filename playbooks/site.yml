@@ -1,7 +1,8 @@
 ---
 # Import Terraform infrastructure data before running application playbooks
 # This populates the inventory dynamically from terraform_inventory.json
-- import_playbook: ../inventory/load_terraform.yml
+- name: Import Terraform infrastructure inventory  # noqa: name[play]
+  import_playbook: ../inventory/load_terraform.yml
 
 # Configure application stacks based on Terraform infrastructure
 - name: Configure Cribl Edge nodes
@@ -24,10 +25,3 @@
 
   roles:
     - haproxy_syslog
-
-- name: Configure Splunk Docker host
-  hosts: splunk_vms
-  become: true
-
-  roles:
-    - splunk_docker

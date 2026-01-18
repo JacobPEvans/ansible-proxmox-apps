@@ -4,8 +4,8 @@
     name: "{{ cribl_edge_package_name }}"
     state: present
     update_cache: true
-  register: install_result
-  changed_when: "'0 upgraded' not in install_result.stdout"
+  register: cribl_edge_install_result
+  changed_when: "'0 upgraded' not in cribl_edge_install_result.stdout"
 
 - name: Ensure persistent queue directory exists
   ansible.builtin.file:
@@ -22,7 +22,8 @@
     line: "  queueDir: {{ cribl_edge_queue_dir }}"
     backup: true
     create: true
-  notify: restart cribl edge
+    mode: '0644'
+  notify: Restart cribl edge
 
 - name: Configure Splunk HEC output
   ansible.builtin.template:
@@ -45,6 +46,6 @@
 - name: Verify Cribl Edge is running
   ansible.builtin.systemd:
     name: "{{ cribl_edge_service_name }}"
-  register: cribl_status
+  register: cribl_edge_status
   changed_when: false
-  failed_when: cribl_status.status.ActiveState != 'active'
+  failed_when: cribl_edge_status.status.ActiveState != 'active'

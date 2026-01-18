@@ -4,8 +4,8 @@
     name: "{{ haproxy_syslog_package_name }}"
     state: present
     update_cache: true
-  register: install_result
-  changed_when: "'0 upgraded' not in install_result.stdout"
+  register: haproxy_syslog_install_result
+  changed_when: "'0 upgraded' not in haproxy_syslog_install_result.stdout"
 
 - name: Backup original HAProxy configuration
   ansible.builtin.copy:
@@ -13,6 +13,7 @@
     dest: "{{ haproxy_syslog_config_file }}.backup"
     remote_src: true
     backup: true
+    mode: '0644'
   changed_when: false
 
 - name: Deploy HAProxy syslog configuration
@@ -24,7 +25,7 @@
     mode: '0644'
     backup: true
     validate: haproxy -f %s -c
-  notify: reload haproxy
+  notify: Reload haproxy
 
 - name: Start HAProxy service
   ansible.builtin.systemd:
@@ -36,9 +37,9 @@
 - name: Verify HAProxy is running
   ansible.builtin.systemd:
     name: "{{ haproxy_syslog_service_name }}"
-  register: haproxy_status
+  register: haproxy_syslog_status
   changed_when: false
-  failed_when: haproxy_status.status.ActiveState != 'active'
+  failed_when: haproxy_syslog_status.status.ActiveState != 'active'
 
 - name: Verify HAProxy is listening on syslog ports
   ansible.builtin.wait_for:
