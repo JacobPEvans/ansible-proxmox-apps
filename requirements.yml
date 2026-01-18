@@ -1,4 +1,6 @@
 ---
+# Ansible collections required for this repository
+# Note: ansible.builtin is not listed as it's included with ansible-core
 collections:
   - name: ansible.posix
     version: ">=1.3.0"

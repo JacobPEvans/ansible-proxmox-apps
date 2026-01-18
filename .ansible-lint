@@ -1,10 +1,10 @@
 ---
+# ansible-lint configuration - uses profile-based system
+# Available profiles: min, basic, moderate, safety, shared, production
+# See: https://docs.ansible.com/projects/lint/profiles/
 profile: production
 
 exclude_paths:
   - .git
   - .venv
   - venv
-
-warn_list:
-  - yaml[line-length]

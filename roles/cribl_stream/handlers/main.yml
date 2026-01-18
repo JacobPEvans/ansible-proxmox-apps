@@ -1,7 +1,6 @@
 ---
-- name: Restart Cribl Stream
+- name: Restart cribl stream
   ansible.builtin.systemd:
     name: "{{ cribl_stream_service_name }}"
     state: restarted
     daemon_reload: true
-  listen: restart cribl stream

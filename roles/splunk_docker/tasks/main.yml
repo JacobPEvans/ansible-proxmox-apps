@@ -28,7 +28,10 @@
 
 - name: Add Docker repository
   ansible.builtin.apt_repository:
-    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian {{ splunk_docker_debian_codename.stdout }} stable"
+    repo: >-
+      deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc]
+      https://download.docker.com/linux/debian
+      {{ splunk_docker_debian_codename.stdout }} stable
     state: present
     filename: docker
 

@@ -23,7 +23,7 @@
     backup: true
     create: true
     mode: '0644'
-  notify: restart cribl stream
+  notify: Restart cribl stream
 
 - name: Configure Stream mode
   ansible.builtin.lineinfile:
@@ -33,7 +33,7 @@
     backup: true
     create: true
     mode: '0644'
-  notify: restart cribl stream
+  notify: Restart cribl stream
 
 - name: Start Cribl Stream service
   ansible.builtin.systemd:

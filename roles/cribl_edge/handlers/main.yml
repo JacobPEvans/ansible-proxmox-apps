@@ -1,7 +1,6 @@
 ---
-- name: Restart Cribl Edge
-  community.docker.docker_compose_v2:
-    project_src: "{{ cribl_edge_config_dir }}"
-    state: present
-    recreate: always
-  listen: restart cribl edge
+- name: Restart cribl edge
+  ansible.builtin.systemd:
+    name: "{{ cribl_edge_service_name }}"
+    state: restarted
+    daemon_reload: true
