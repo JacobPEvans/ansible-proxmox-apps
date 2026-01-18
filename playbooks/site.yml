@@ -5,6 +5,17 @@
   import_playbook: ../inventory/load_terraform.yml
 
 # Configure application stacks based on Terraform infrastructure
+
+# Full Logging Pipeline: UniFi → HAProxy → Cribl Edge → Splunk
+# Run order matters: Splunk first, then Cribl, then HAProxy
+
+- name: Deploy Splunk Docker
+  hosts: splunk_vms
+  become: true
+
+  roles:
+    - splunk_docker
+
 - name: Configure Cribl Edge nodes
   hosts: lxc_containers
   become: true

@@ -1,0 +1,28 @@
+---
+# Splunk Docker Deployment Playbook
+# Installs Docker and deploys Splunk Enterprise container
+
+- name: Deploy Splunk Docker
+  hosts: splunk_group
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Validate required secrets are set
+      ansible.builtin.assert:
+        that:
+          - lookup('env', 'SPLUNK_PASSWORD') | length > 0
+          - lookup('env', 'SPLUNK_HEC_TOKEN') | length > 0
+        fail_msg: "SPLUNK_PASSWORD and SPLUNK_HEC_TOKEN must be set via Doppler"
+        success_msg: "Required secrets are configured"
+
+  roles:
+    - splunk_docker
+
+  post_tasks:
+    - name: Display Splunk access information
+      ansible.builtin.debug:
+        msg:
+          - "Splunk Web UI: https://{{ ansible_host }}:{{ splunk_docker_web_port }}"
+          - "Splunk HEC: https://{{ ansible_host }}:{{ splunk_docker_hec_port }}"
+          - "Remember to install development license manually"

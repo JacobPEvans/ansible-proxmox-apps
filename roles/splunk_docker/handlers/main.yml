@@ -1,0 +1,13 @@
+---
+- name: Restart Splunk container
+  community.docker.docker_compose_v2:
+    project_src: "{{ splunk_docker_config_dir }}"
+    state: present
+    recreate: always
+  listen: restart splunk container
+
+- name: Apply firewall rules
+  ansible.builtin.command:
+    cmd: /opt/splunk-config/firewall.sh
+  changed_when: true
+  listen: apply firewall rules
