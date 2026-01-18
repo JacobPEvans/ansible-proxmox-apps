@@ -36,15 +36,15 @@ No hardcoded values are stored in git.
 ### Required Environment Variables
 
 IP addresses are **NEVER** hardcoded or stored in Doppler. They are derived from:
-`PROXMOX_NETWORK.{vmid}` (e.g., `10.0.1.180` for VM ID 180)
+First 3 octets of `PROXMOX_VE_GATEWAY` + `{vmid}`
+(e.g., `PROXMOX_VE_GATEWAY=10.0.1.1` + `vmid=180` → `10.0.1.180`)
 
 | Variable | Purpose |
 | --- | --- |
 | `PROXMOX_VE_HOSTNAME` | Proxmox VE hostname |
 | `PROXMOX_SSH_KEY_PATH` | Path to SSH key for Proxmox |
-| `PROXMOX_NETWORK` | Network prefix (e.g., `10.0.1`) |
+| `PROXMOX_VE_GATEWAY` | Network gateway IP (used to derive host IPs) |
 | `PROXMOX_DOMAIN` | Internal DNS domain |
-| `PROXMOX_VE_GATEWAY` | Network gateway IP |
 | `SPLUNK_HEC_TOKEN` | Splunk HTTP Event Collector token (secret) |
 
 ### Container Connection
