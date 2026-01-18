@@ -1,21 +1,33 @@
 ---
+# Import Terraform infrastructure data before running application playbooks
+# This populates the inventory dynamically from terraform_inventory.json
+- import_playbook: ../inventory/load_terraform.yml
+
+# Configure application stacks based on Terraform infrastructure
 - name: Configure Cribl Edge nodes
-  hosts: cribl_edge
+  hosts: lxc_containers
   become: true
 
   roles:
     - cribl_edge
 
 - name: Configure Cribl Stream
-  hosts: cribl_stream_group
+  hosts: vms
   become: true
 
   roles:
     - cribl_stream
 
 - name: Configure HAProxy load balancer
-  hosts: haproxy_group
+  hosts: lxc_containers
   become: true
 
   roles:
     - haproxy_syslog
+
+- name: Configure Splunk Docker host
+  hosts: splunk_vms
+  become: true
+
+  roles:
+    - splunk_docker

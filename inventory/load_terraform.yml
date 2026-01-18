@@ -1,0 +1,59 @@
+---
+# Pre-playbook that loads Terraform infrastructure data dynamically
+# This playbook runs first to populate the Ansible inventory from Terraform outputs,
+# eliminating hardcoded VM IDs and IPs from Ansible configuration.
+#
+# It expects terraform_inventory.json to be present (generated via:
+# terragrunt output -json ansible_inventory > inventory/terraform_inventory.json)
+
+- name: Load Terraform infrastructure inventory
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Load Terraform inventory JSON
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/terraform_inventory.json"
+        name: terraform_data
+
+    - name: Add LXC containers to inventory (proxmox_pct_remote connection)
+      ansible.builtin.add_host:
+        name: "{{ item.key }}"
+        groups:
+          - lxc_containers
+          - all
+        ansible_pct_vmid: "{{ item.value.vmid }}"
+        ansible_host: "{{ item.value.ip | regex_replace('/[0-9]+$', '') }}"  # Strip /mask from IP
+        ansible_connection: "{{ item.value.ansible_connection }}"
+        hostname: "{{ item.value.hostname }}"
+        ansible_pct_node: "{{ item.value.node }}"
+        tags: "{{ item.value.tags | default([]) }}"
+        pool_id: "{{ item.value.pool_id | default(null) }}"
+      loop: "{{ terraform_data.ansible_inventory.containers | dict2items }}"
+      when: terraform_data.ansible_inventory.containers | length > 0
+
+    - name: Add VMs to inventory (SSH connection)
+      ansible.builtin.add_host:
+        name: "{{ item.key }}"
+        groups:
+          - vms
+          - all
+        ansible_host: "{{ item.value.ip }}"
+        ansible_connection: "{{ item.value.ansible_connection }}"
+        hostname: "{{ item.value.hostname }}"
+        tags: "{{ item.value.tags | default([]) }}"
+        pool_id: "{{ item.value.pool_id | default(null) }}"
+      loop: "{{ terraform_data.ansible_inventory.vms | dict2items }}"
+      when: terraform_data.ansible_inventory.vms | length > 0
+
+    - name: Add Splunk VM to inventory (SSH connection)
+      ansible.builtin.add_host:
+        name: splunk
+        groups:
+          - splunk_vms
+          - all
+        ansible_host: "{{ terraform_data.ansible_inventory.splunk_vm.splunk.ip }}"
+        ansible_connection: "{{ terraform_data.ansible_inventory.splunk_vm.splunk.ansible_connection }}"
+        hostname: "{{ terraform_data.ansible_inventory.splunk_vm.splunk.hostname }}"
+        vmid: "{{ terraform_data.ansible_inventory.splunk_vm.splunk.vmid }}"
+      when: terraform_data.ansible_inventory.splunk_vm | length > 0
