@@ -35,16 +35,17 @@ No hardcoded values are stored in git.
 
 ### Required Environment Variables
 
+IP addresses are **NEVER** hardcoded or stored in Doppler. They are derived from:
+`PROXMOX_NETWORK.{vmid}` (e.g., `10.0.1.180` for VM ID 180)
+
 | Variable | Purpose |
 | --- | --- |
 | `PROXMOX_VE_HOSTNAME` | Proxmox VE hostname |
 | `PROXMOX_SSH_KEY_PATH` | Path to SSH key for Proxmox |
-| `CRIBL_EDGE_1_VMID` | LXC container ID for Cribl Edge 1 |
-| `CRIBL_EDGE_2_VMID` | LXC container ID for Cribl Edge 2 |
-| `CRIBL_STREAM_VMID` | LXC container ID for Cribl Stream |
-| `HAPROXY_VMID` | LXC container ID for HAProxy |
-| `SPLUNK_VM` | IP address of Splunk VM |
-| `INTERNAL_DOMAIN` | Internal DNS domain |
+| `PROXMOX_NETWORK` | Network prefix (e.g., `10.0.1`) |
+| `PROXMOX_DOMAIN` | Internal DNS domain |
+| `PROXMOX_VE_GATEWAY` | Network gateway IP |
+| `SPLUNK_HEC_TOKEN` | Splunk HTTP Event Collector token (secret) |
 
 ### Container Connection
 

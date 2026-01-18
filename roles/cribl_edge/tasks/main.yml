@@ -59,6 +59,7 @@
     group: "{{ cribl_edge_group }}"
     mode: '0644'
   notify: restart cribl edge
+  when: cribl_edge_hec_token != ''
 
 - name: Deploy UniFi pipeline configuration
   ansible.builtin.template:

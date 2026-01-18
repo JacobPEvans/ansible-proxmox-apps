@@ -2,5 +2,6 @@
 - name: Restart Cribl Edge
   community.docker.docker_compose_v2:
     project_src: "{{ cribl_edge_config_dir }}"
-    state: restarted
+    state: present
+    recreate: always
   listen: restart cribl edge
