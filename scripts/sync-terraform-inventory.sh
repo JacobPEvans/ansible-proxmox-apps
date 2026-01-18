@@ -4,8 +4,13 @@
 # This script exports the Terraform-defined infrastructure (VMs, containers, IPs)
 # to a JSON file that Ansible can dynamically load via load_terraform.yml
 #
+# Required environment variables (used by Ansible playbooks consuming this inventory):
+#   PROXMOX_VE_HOSTNAME  - Proxmox VE host that Ansible will connect to
+#   PROXMOX_SSH_KEY_PATH - Path to the SSH private key used for Proxmox access
+#
 # Usage:
 #   ./scripts/sync-terraform-inventory.sh
+#   TERRAFORM_DIR=/custom/path ./scripts/sync-terraform-inventory.sh
 #
 # This should be run after 'terragrunt apply' in terraform-proxmox to ensure
 # Ansible has the latest infrastructure configuration.
@@ -24,8 +29,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Navigate to project root (parent of scripts directory)
 PROJECT_ROOT="$(dirname "${SCRIPT_DIR}")"
 
-# Path to Terraform infrastructure
-TERRAFORM_DIR="${HOME}/git/terraform-proxmox/main"
+# Path to Terraform infrastructure (configurable via environment variable)
+TERRAFORM_DIR="${TERRAFORM_DIR:-${HOME}/git/terraform-proxmox/main}"
 
 # Path to Ansible inventory file
 INVENTORY_FILE="${PROJECT_ROOT}/inventory/terraform_inventory.json"
@@ -54,7 +59,7 @@ if cd "${TERRAFORM_DIR}" && terragrunt output -json ansible_inventory > "${INVEN
   echo -e "\n${YELLOW}Infrastructure Summary:${NC}"
 
   # Use Python to parse and display the JSON in a readable format
-  python3 << 'PYTHON_EOF'
+  python3 << 'PYTHON_EOF' "${INVENTORY_FILE}"
 import json
 import sys
 
@@ -63,21 +68,24 @@ try:
         inventory = json.load(f)
 
         # Count resources
-        containers = inventory.get('containers', {})
-        vms = inventory.get('vms', {})
-        splunk = inventory.get('splunk_vm', {})
+        containers = inventory.get('ansible_inventory', {}).get('containers', {})
+        vms = inventory.get('ansible_inventory', {}).get('vms', {})
+        splunk = inventory.get('ansible_inventory', {}).get('splunk_vm', {})
 
         print(f"  Containers: {len(containers)}")
-        for name in containers:
-            print(f"    - {name}: {containers[name].get('ip', 'N/A')}")
+        for name, details in containers.items():
+            if isinstance(details, dict):
+                print(f"    - {name}: {details.get('ip', 'N/A')}")
 
         print(f"  VMs: {len(vms)}")
-        for name in vms:
-            print(f"    - {name}: {vms[name].get('ip', 'N/A')}")
+        for name, details in vms.items():
+            if isinstance(details, dict):
+                print(f"    - {name}: {details.get('ip', 'N/A')}")
 
-        if splunk.get('splunk'):
+        splunk_vm_details = splunk.get('splunk')
+        if isinstance(splunk_vm_details, dict):
             print(f"  Splunk VM:")
-            print(f"    - {splunk['splunk'].get('hostname', 'splunk')}: {splunk['splunk'].get('ip', 'N/A')}")
+            print(f"    - {splunk_vm_details.get('hostname', 'splunk')}: {splunk_vm_details.get('ip', 'N/A')}")
 
 except Exception as e:
     print(f"  (Could not parse inventory: {e})", file=sys.stderr)

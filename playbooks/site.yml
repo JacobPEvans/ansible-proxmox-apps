@@ -9,30 +9,47 @@
 # Full Logging Pipeline: UniFi → HAProxy → Cribl Edge → Splunk
 # Run order matters: Splunk first, then Cribl, then HAProxy
 
-- name: Deploy Splunk Docker
-  hosts: splunk_vms
-  become: true
-
-  roles:
-    - splunk_docker
-
 - name: Configure Cribl Edge nodes
   hosts: lxc_containers
   become: true
+  tags:
+    - cribl_edge
+
+  pre_tasks:
+    - name: Check if host should run cribl_edge role
+      ansible.builtin.set_fact:
+        run_cribl_edge: "{{ 'cribl_edge' in (tags | default([])) }}"
 
   roles:
-    - cribl_edge
+    - role: cribl_edge
+      when: run_cribl_edge | default(false)
 
 - name: Configure Cribl Stream
   hosts: vms
   become: true
+  tags:
+    - cribl_stream
+
+  pre_tasks:
+    - name: Check if host should run cribl_stream role
+      ansible.builtin.set_fact:
+        run_cribl_stream: "{{ 'cribl_stream' in (tags | default([])) }}"
 
   roles:
-    - cribl_stream
+    - role: cribl_stream
+      when: run_cribl_stream | default(false)
 
 - name: Configure HAProxy load balancer
   hosts: lxc_containers
   become: true
+  tags:
+    - haproxy
+
+  pre_tasks:
+    - name: Check if host should run haproxy_syslog role
+      ansible.builtin.set_fact:
+        run_haproxy: "{{ 'haproxy' in (tags | default([])) }}"
 
   roles:
-    - haproxy_syslog
+    - role: haproxy_syslog
+      when: run_haproxy | default(false)

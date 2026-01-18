@@ -13,7 +13,7 @@
   tasks:
     - name: Load Terraform inventory JSON
       ansible.builtin.include_vars:
-        file: "{{ playbook_dir }}/terraform_inventory.json"
+        file: "{{ playbook_dir }}/../inventory/terraform_inventory.json"
         name: terraform_data
 
     - name: Add LXC containers to inventory (proxmox_pct_remote connection)
@@ -23,14 +23,16 @@
           - lxc_containers
           - all
         ansible_pct_vmid: "{{ item.value.vmid }}"
-        ansible_host: "{{ item.value.ip | regex_replace('/[0-9]+$', '') }}"  # Strip /mask from IP
+        ansible_host: "{{ item.value.ip | ansible.netcommon.ipaddr('address') }}"  # Safely strip CIDR mask
         ansible_connection: "{{ item.value.ansible_connection }}"
         hostname: "{{ item.value.hostname }}"
         ansible_pct_node: "{{ item.value.node }}"
         tags: "{{ item.value.tags | default([]) }}"
         pool_id: "{{ item.value.pool_id | default(null) }}"
       loop: "{{ terraform_data.ansible_inventory.containers | dict2items }}"
-      when: terraform_data.ansible_inventory.containers | length > 0
+      when:
+        - terraform_data.ansible_inventory.containers is defined
+        - terraform_data.ansible_inventory.containers | length > 0
 
     - name: Add VMs to inventory (SSH connection)
       ansible.builtin.add_host:
@@ -44,7 +46,9 @@
         tags: "{{ item.value.tags | default([]) }}"
         pool_id: "{{ item.value.pool_id | default(null) }}"
       loop: "{{ terraform_data.ansible_inventory.vms | dict2items }}"
-      when: terraform_data.ansible_inventory.vms | length > 0
+      when:
+        - terraform_data.ansible_inventory.vms is defined
+        - terraform_data.ansible_inventory.vms | length > 0
 
     - name: Add Splunk VM to inventory (SSH connection)
       ansible.builtin.add_host:
@@ -56,4 +60,4 @@
         ansible_connection: "{{ terraform_data.ansible_inventory.splunk_vm.splunk.ansible_connection }}"
         hostname: "{{ terraform_data.ansible_inventory.splunk_vm.splunk.hostname }}"
         vmid: "{{ terraform_data.ansible_inventory.splunk_vm.splunk.vmid }}"
-      when: terraform_data.ansible_inventory.splunk_vm | length > 0
+      when: terraform_data.ansible_inventory.splunk_vm.splunk is defined
