@@ -1,4 +1,14 @@
 ---
+# Full Logging Pipeline: UniFi → HAProxy → Cribl Edge → Splunk
+# Run order matters: Splunk first, then Cribl, then HAProxy
+
+- name: Deploy Splunk Docker
+  hosts: splunk_group
+  become: true
+
+  roles:
+    - splunk_docker
+
 - name: Configure Cribl Edge nodes
   hosts: cribl_edge
   become: true

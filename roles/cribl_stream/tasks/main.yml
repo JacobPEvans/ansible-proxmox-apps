@@ -4,8 +4,8 @@
     name: "{{ cribl_stream_package_name }}"
     state: present
     update_cache: true
-  register: install_result
-  changed_when: "'0 upgraded' not in install_result.stdout"
+  register: cribl_stream_install_result
+  changed_when: "'0 upgraded' not in cribl_stream_install_result.stdout"
 
 - name: Ensure persistent queue directory exists
   ansible.builtin.file:
@@ -22,6 +22,7 @@
     line: "  queueDir: {{ cribl_stream_queue_dir }}"
     backup: true
     create: true
+    mode: '0644'
   notify: restart cribl stream
 
 - name: Configure Stream mode
@@ -31,6 +32,7 @@
     line: "  mode: {{ cribl_stream_mode }}"
     backup: true
     create: true
+    mode: '0644'
   notify: restart cribl stream
 
 - name: Start Cribl Stream service
@@ -43,6 +45,6 @@
 - name: Verify Cribl Stream is running
   ansible.builtin.systemd:
     name: "{{ cribl_stream_service_name }}"
-  register: stream_status
+  register: cribl_stream_status
   changed_when: false
-  failed_when: stream_status.status.ActiveState != 'active'
+  failed_when: cribl_stream_status.status.ActiveState != 'active'

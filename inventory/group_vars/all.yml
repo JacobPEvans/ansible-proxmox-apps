@@ -4,6 +4,3 @@
 # System
 ansible_become: true
 ansible_become_method: sudo
-
-# Ansible behavior
-gather_facts: true

@@ -1,16 +1,10 @@
 ---
-extends: default
+profile: production
 
 exclude_paths:
   - .git
   - .venv
   - venv
 
-rules:
-  line-length:
-    max: 100
-    level: warning
-  truthy:
-    allowed-values: ['true', 'false', 'yes', 'no']
-  indentation:
-    spaces: 2
+warn_list:
+  - yaml[line-length]

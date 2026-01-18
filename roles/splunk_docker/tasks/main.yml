@@ -1,0 +1,114 @@
+---
+# Install Docker prerequisites
+- name: Install Docker prerequisites
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+    state: present
+    update_cache: true
+
+- name: Create Docker keyring directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
+- name: Download Docker GPG key
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/debian/gpg
+    dest: /etc/apt/keyrings/docker.asc
+    mode: '0644'
+
+- name: Get Debian codename
+  ansible.builtin.command: lsb_release -cs
+  register: splunk_docker_debian_codename
+  changed_when: false
+
+- name: Add Docker repository
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian {{ splunk_docker_debian_codename.stdout }} stable"
+    state: present
+    filename: docker
+
+- name: Install Docker packages
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+    update_cache: true
+
+- name: Ensure Docker service is running
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Create Splunk data directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ splunk_docker_user }}"
+    group: "{{ splunk_docker_group }}"
+    mode: '0755'
+  loop:
+    - "{{ splunk_docker_data_dir }}"
+    - "{{ splunk_docker_var_dir }}"
+    - "{{ splunk_docker_etc_dir }}"
+    - "{{ splunk_docker_config_dir }}"
+
+- name: Deploy docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ splunk_docker_config_dir }}/docker-compose.yml"
+    owner: "{{ splunk_docker_user }}"
+    group: "{{ splunk_docker_group }}"
+    mode: '0600'
+  no_log: true
+  notify: restart splunk container
+
+- name: Deploy indexes.conf
+  ansible.builtin.template:
+    src: indexes.conf.j2
+    dest: "{{ splunk_docker_config_dir }}/indexes.conf"
+    owner: "{{ splunk_docker_user }}"
+    group: "{{ splunk_docker_group }}"
+    mode: '0644'
+  notify: restart splunk container
+
+- name: Pull Splunk Docker image
+  community.docker.docker_image:
+    name: "{{ splunk_docker_image }}"
+    source: pull
+    state: present
+
+- name: Start Splunk container with docker-compose
+  community.docker.docker_compose_v2:
+    project_src: "{{ splunk_docker_config_dir }}"
+    state: present
+  register: splunk_docker_compose_result
+
+- name: Wait for Splunk to be ready
+  ansible.builtin.uri:
+    url: "https://127.0.0.1:{{ splunk_docker_web_port }}/services/server/health/splunkd/details"
+    validate_certs: false
+    status_code: 200
+  register: splunk_docker_health
+  until: splunk_docker_health.status == 200
+  retries: 30
+  delay: 10
+
+- name: Deploy firewall rules
+  ansible.builtin.template:
+    src: firewall.sh.j2
+    dest: /opt/splunk-config/firewall.sh
+    owner: root
+    group: root
+    mode: '0755'
+  when: splunk_docker_firewall_enabled
+  notify: apply firewall rules
