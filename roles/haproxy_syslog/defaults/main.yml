@@ -18,13 +18,15 @@ haproxy_syslog_listen_ports:
   - 1517
   - 1518
 
-# Backend configuration
+# Backend configuration - uses hostnames from inventory
 haproxy_syslog_backends:
-  - name: cribl-edge-1
-    ip: "{{ hostvars['cribl_edge_1'].ansible_host | default('192.168.1.100') }}"
+  - name: cribl-edge-01
+    host: "{{ hostvars['cribl_edge_01'].hostname }}.{{ internal_domain }}"
+    ip: "{{ hostvars['cribl_edge_01'].ansible_host }}"
     port: 1514
-  - name: cribl-edge-2
-    ip: "{{ hostvars['cribl_edge_2'].ansible_host | default('192.168.1.101') }}"
+  - name: cribl-edge-02
+    host: "{{ hostvars['cribl_edge_02'].hostname }}.{{ internal_domain }}"
+    ip: "{{ hostvars['cribl_edge_02'].ansible_host }}"
     port: 1514
 
 # Health check configuration

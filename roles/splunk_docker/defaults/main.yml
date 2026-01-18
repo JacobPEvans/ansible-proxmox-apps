@@ -1,0 +1,40 @@
+---
+# Splunk Docker role defaults
+
+# Docker configuration
+splunk_docker_package_name: docker.io
+splunk_docker_compose_package: docker-compose-plugin
+
+# Splunk container configuration
+splunk_docker_image: splunk/splunk:latest
+splunk_docker_hostname: splunk
+splunk_docker_container_name: splunk
+
+# Splunk credentials (from Doppler)
+splunk_docker_password: "{{ lookup('env', 'SPLUNK_PASSWORD', default='') }}"
+splunk_docker_hec_token: "{{ lookup('env', 'SPLUNK_HEC_TOKEN', default='') }}"
+
+# Splunk ports
+splunk_docker_web_port: 8000
+splunk_docker_hec_port: 8088
+
+# Splunk data directories
+splunk_docker_data_dir: /opt/splunk
+splunk_docker_var_dir: "{{ splunk_docker_data_dir }}/var"
+splunk_docker_etc_dir: "{{ splunk_docker_data_dir }}/etc"
+
+# Splunk configuration directory (for compose and configs)
+splunk_docker_config_dir: /opt/splunk-config
+
+# Indexes to create
+splunk_docker_indexes:
+  - name: unifi
+    max_size_mb: 100000
+    frozen_time_secs: 7776000
+
+# Firewall configuration
+splunk_docker_firewall_enabled: true
+
+# Service user
+splunk_docker_user: root
+splunk_docker_group: root

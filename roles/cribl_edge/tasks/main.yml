@@ -1,33 +1,49 @@
 ---
-- name: Install Cribl Edge package
+# Cribl Edge Docker deployment tasks
+
+- name: Install Docker packages
   ansible.builtin.apt:
-    name: "{{ cribl_edge_package_name }}"
+    name:
+      - docker.io
+      - docker-compose-plugin
     state: present
     update_cache: true
-  register: install_result
-  changed_when: "'0 upgraded' not in install_result.stdout"
 
-- name: Ensure persistent queue directory exists
+- name: Ensure Docker service is running
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Create Cribl Edge directories
   ansible.builtin.file:
-    path: "{{ cribl_edge_queue_dir }}"
+    path: "{{ item }}"
+    state: directory
     owner: "{{ cribl_edge_user }}"
     group: "{{ cribl_edge_group }}"
     mode: '0755'
-    state: directory
+  loop:
+    - "{{ cribl_edge_data_dir }}"
+    - "{{ cribl_edge_config_dir }}"
+    - "{{ cribl_edge_queue_dir }}"
+    - "{{ cribl_edge_config_dir }}/local"
+    - "{{ cribl_edge_config_dir }}/local/cribl"
+    - "{{ cribl_edge_config_dir }}/local/cribl/pipelines"
+    - "{{ cribl_edge_config_dir }}/local/cribl/pipelines/unifi"
 
-- name: Configure persistent queue location
-  ansible.builtin.lineinfile:
-    path: /etc/cribl/default/outputs.yml
-    regexp: "^\\s*queueDir:"
-    line: "  queueDir: {{ cribl_edge_queue_dir }}"
-    backup: true
-    create: true
+- name: Deploy docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ cribl_edge_config_dir }}/docker-compose.yml"
+    owner: "{{ cribl_edge_user }}"
+    group: "{{ cribl_edge_group }}"
+    mode: '0600'
   notify: restart cribl edge
 
-- name: Configure Splunk HEC output
+- name: Deploy Cribl outputs configuration
   ansible.builtin.template:
-    src: cribl_hec_output.j2
-    dest: /etc/cribl/default/hec_output.yml
+    src: outputs.yml.j2
+    dest: "{{ cribl_edge_config_dir }}/local/cribl/outputs.yml"
     owner: "{{ cribl_edge_user }}"
     group: "{{ cribl_edge_group }}"
     mode: '0600'
@@ -35,16 +51,46 @@
   notify: restart cribl edge
   when: cribl_edge_hec_token != ''
 
-- name: Start Cribl Edge service
-  ansible.builtin.systemd:
-    name: "{{ cribl_edge_service_name }}"
-    state: "{{ cribl_edge_service_state }}"
-    enabled: "{{ cribl_edge_service_enabled }}"
-    daemon_reload: true
+- name: Deploy Cribl inputs configuration
+  ansible.builtin.template:
+    src: inputs.yml.j2
+    dest: "{{ cribl_edge_config_dir }}/local/cribl/inputs.yml"
+    owner: "{{ cribl_edge_user }}"
+    group: "{{ cribl_edge_group }}"
+    mode: '0644'
+  notify: restart cribl edge
 
-- name: Verify Cribl Edge is running
-  ansible.builtin.systemd:
-    name: "{{ cribl_edge_service_name }}"
-  register: cribl_status
-  changed_when: false
-  failed_when: cribl_status.status.ActiveState != 'active'
+- name: Deploy UniFi pipeline configuration
+  ansible.builtin.template:
+    src: pipelines/unifi/conf.yml.j2
+    dest: "{{ cribl_edge_config_dir }}/local/cribl/pipelines/unifi/conf.yml"
+    owner: "{{ cribl_edge_user }}"
+    group: "{{ cribl_edge_group }}"
+    mode: '0644'
+  notify: restart cribl edge
+
+- name: Pull Cribl Edge Docker image
+  community.docker.docker_image:
+    name: "{{ cribl_edge_docker_image }}"
+    source: pull
+    state: present
+
+- name: Start Cribl Edge container with docker-compose
+  community.docker.docker_compose_v2:
+    project_src: "{{ cribl_edge_config_dir }}"
+    state: present
+  register: cribl_edge_compose_result
+
+- name: Wait for Cribl Edge to be ready
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:9000/api/v1/health"
+    status_code: 200
+  register: cribl_edge_health
+  until: cribl_edge_health.status == 200
+  retries: 12
+  delay: 5
+  ignore_errors: true
+
+- name: Display Cribl Edge status
+  ansible.builtin.debug:
+    msg: "Cribl Edge is {{ 'running' if cribl_edge_health.status == 200 else 'starting (may need more time)' }}"

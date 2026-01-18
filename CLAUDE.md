@@ -30,22 +30,38 @@ infrastructure).
 
 ## Inventory Structure
 
-Inventory is built from environment variables (Doppler secrets):
+Inventory is built entirely from environment variables (Doppler secrets).
+No hardcoded values are stored in git.
 
-```yaml
-CRIBL_EDGE_1: 192.168.1.100
-CRIBL_EDGE_2: 192.168.1.101
-CRIBL_STREAM: 192.168.1.102
-HAPROXY: 192.168.1.103
-SPLUNK_VM: 192.168.1.104
-```
+### Required Environment Variables
 
-Groups are dynamically created:
+| Variable | Purpose |
+| --- | --- |
+| `PROXMOX_VE_HOSTNAME` | Proxmox VE hostname |
+| `PROXMOX_SSH_KEY_PATH` | Path to SSH key for Proxmox |
+| `CRIBL_EDGE_1_VMID` | LXC container ID for Cribl Edge 1 |
+| `CRIBL_EDGE_2_VMID` | LXC container ID for Cribl Edge 2 |
+| `CRIBL_STREAM_VMID` | LXC container ID for Cribl Stream |
+| `HAPROXY_VMID` | LXC container ID for HAProxy |
+| `SPLUNK_VM` | IP address of Splunk VM |
+| `INTERNAL_DOMAIN` | Internal DNS domain |
 
+### Container Connection
+
+LXC containers use `community.general.proxmox_pct_remote` connection plugin:
+
+- Connects via SSH to Proxmox host
+- Uses `pct exec` to run commands in containers
+- No SSH required on containers themselves
+- Requires community.general >= 10.3.0
+
+### Groups
+
+- `lxc_containers`: All LXC containers (uses pct_remote connection)
 - `cribl_edge`: Nodes 1 and 2 (syslog ingestion)
-- `cribl_stream`: Central processing node
-- `haproxy`: Load balancer frontend
-- `splunk`: Destination Splunk instance
+- `cribl_stream_group`: Central processing node
+- `haproxy_group`: Load balancer frontend
+- `splunk_group`: Destination Splunk instance
 
 ## Network Architecture
 
