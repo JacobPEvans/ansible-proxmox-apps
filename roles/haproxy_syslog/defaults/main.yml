@@ -1,0 +1,44 @@
+---
+# HAProxy Syslog Load Balancer role defaults
+
+# Package management
+haproxy_syslog_package_name: haproxy
+haproxy_syslog_version: latest
+
+# Service configuration
+haproxy_syslog_service_name: haproxy
+haproxy_syslog_service_state: started
+haproxy_syslog_service_enabled: true
+
+# Frontend configuration
+haproxy_syslog_listen_ports:
+  - 1514
+  - 1515
+  - 1516
+  - 1517
+  - 1518
+
+# Backend configuration
+haproxy_syslog_backends:
+  - name: cribl-edge-1
+    ip: "{{ hostvars['cribl_edge_1'].ansible_host | default('192.168.1.100') }}"
+    port: 1514
+  - name: cribl-edge-2
+    ip: "{{ hostvars['cribl_edge_2'].ansible_host | default('192.168.1.101') }}"
+    port: 1514
+
+# Health check configuration
+haproxy_syslog_health_check_interval: 5000
+haproxy_syslog_health_check_timeout: 5000
+
+# Statistics dashboard
+haproxy_syslog_stats_enabled: true
+haproxy_syslog_stats_port: 8404
+haproxy_syslog_stats_user: admin
+haproxy_syslog_stats_password: admin
+
+# Load balancing algorithm
+haproxy_syslog_algorithm: roundrobin
+
+# Configuration file
+haproxy_syslog_config_file: /etc/haproxy/haproxy.cfg

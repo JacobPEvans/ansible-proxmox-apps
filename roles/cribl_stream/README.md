@@ -1,0 +1,59 @@
+# cribl_stream
+
+Deploy Cribl Stream as central processing node.
+
+## Purpose
+
+Installs and configures Cribl Stream as a processing node in the log pipeline.
+Receives events from Cribl Edge nodes, applies transformations, and forwards
+to outputs. Persists data to 100GB mounted queue disk at `/opt/cribl/data`.
+
+## Requirements
+
+- Debian-based OS
+- 100GB persistent disk mounted at `/opt/cribl/data`
+- Network connectivity to Cribl Edge nodes
+- Sufficient CPU and memory for log processing
+
+## Role Variables
+
+All variables in `defaults/main.yml` are user-configurable.
+
+### Key Variables
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `cribl_stream_service_state` | started | Service state |
+| `cribl_stream_service_enabled` | true | Enable on boot |
+| `cribl_stream_mode` | worker | Role in cluster |
+
+## Examples
+
+### Basic Deployment
+
+```yaml
+- name: Deploy Cribl Stream
+  hosts: cribl_stream_group
+  roles:
+    - cribl_stream
+```
+
+## Post-Installation Configuration
+
+Configure data pipeline via Cribl Web UI after Ansible deployment:
+
+1. Access Stream UI (`http://cribl-stream:9000`)
+2. Configure data sources (inputs from Edge nodes)
+3. Define transformation pipelines
+4. Configure outputs (Splunk, etc.)
+
+## Tasks
+
+- Install Cribl Stream package
+- Ensure service is running
+- Configure persistent queue location
+- Set up processing node mode
+
+## Handlers
+
+- `restart cribl stream`: Restart the Cribl Stream service

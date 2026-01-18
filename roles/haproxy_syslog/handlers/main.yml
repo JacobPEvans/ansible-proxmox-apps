@@ -1,0 +1,5 @@
+---
+- name: reload haproxy
+  ansible.builtin.systemd:
+    name: "{{ haproxy_syslog_service_name }}"
+    state: reloaded

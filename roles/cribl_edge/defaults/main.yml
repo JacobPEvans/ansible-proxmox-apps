@@ -1,0 +1,32 @@
+---
+# Cribl Edge role defaults
+
+# Package management
+cribl_edge_package_name: cribl
+cribl_edge_version: latest
+
+# Service configuration
+cribl_edge_service_name: cribl
+cribl_edge_service_state: started
+cribl_edge_service_enabled: true
+
+# Network configuration
+cribl_edge_listen_ports:
+  - 1514
+  - 1515
+  - 1516
+  - 1517
+  - 1518
+
+# Data directory (persistent queue)
+cribl_edge_data_dir: /opt/cribl/data
+cribl_edge_queue_dir: "{{ cribl_edge_data_dir }}/queue"
+
+# Splunk HEC configuration
+cribl_edge_hec_url: https://splunk-vm:8088
+cribl_edge_hec_token: "{{ lookup('env', 'CRIBL_EDGE_HEC_TOKEN', default='') }}"
+cribl_edge_hec_tls_verify: true
+
+# Service user
+cribl_edge_user: cribl
+cribl_edge_group: cribl

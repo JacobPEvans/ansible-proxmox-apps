@@ -1,0 +1,6 @@
+---
+- name: restart cribl edge
+  ansible.builtin.systemd:
+    name: "{{ cribl_edge_service_name }}"
+    state: restarted
+    daemon_reload: true

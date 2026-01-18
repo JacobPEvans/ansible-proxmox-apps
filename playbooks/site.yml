@@ -1,0 +1,21 @@
+---
+- name: Configure Cribl Edge nodes
+  hosts: cribl_edge
+  become: true
+
+  roles:
+    - cribl_edge
+
+- name: Configure Cribl Stream
+  hosts: cribl_stream_group
+  become: true
+
+  roles:
+    - cribl_stream
+
+- name: Configure HAProxy load balancer
+  hosts: haproxy_group
+  become: true
+
+  roles:
+    - haproxy_syslog

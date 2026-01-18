@@ -1,0 +1,22 @@
+---
+# Cribl Stream role defaults
+
+# Package management
+cribl_stream_package_name: cribl-stream
+cribl_stream_version: latest
+
+# Service configuration
+cribl_stream_service_name: cribl
+cribl_stream_service_state: started
+cribl_stream_service_enabled: true
+
+# Cluster mode
+cribl_stream_mode: worker
+
+# Data directory (persistent queue)
+cribl_stream_data_dir: /opt/cribl/data
+cribl_stream_queue_dir: "{{ cribl_stream_data_dir }}/queue"
+
+# Service user
+cribl_stream_user: cribl
+cribl_stream_group: cribl

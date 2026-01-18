@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+.venv
+
+# Ansible
+*.retry
+.ansible_cache/
+/roles/requirements/
+
+# Environment files (secrets)
+.env
+.env.local
+.env.*.local
+*.secrets.yml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+/tmp/
+*.tmp
+*.bak
+
+# Cache
+/fact_cache/
+.pytest_cache/
