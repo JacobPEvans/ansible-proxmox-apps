@@ -56,11 +56,8 @@ splunk_docker_user: root
 splunk_docker_group: root
 
 # Technology Add-ons (TAs) to install
-# TAs must be placed in roles/splunk_docker/files/ as .tgz or .spl files
-# Or specify URL for download (requires internet on control node)
+# TAs must be placed in roles/splunk_docker/files/ as .tar, .tgz, or .spl files
 splunk_docker_addons:
-  - name: TA-ubiquiti
-    filename: TA-ubiquiti.tgz
-    # URL can be Splunkbase download link (requires auth) or direct URL
-    # url: https://splunkbase.splunk.com/app/4107/release/1.0.0/download/
-    description: Splunk Add-on for Ubiquiti Networks (UniFi)
+  - name: TA-unifi-cloud
+    filename: TA-unifi-cloud-1.0.2+00b9ecb.tar
+    description: UniFi Cloud Add-on for Splunk (syslog parsing and field extraction)
