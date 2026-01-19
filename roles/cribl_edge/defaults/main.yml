@@ -56,3 +56,9 @@ cribl_edge_hec_tls_verify: true  # Default to secure; override in dev envs only
 # Service user
 cribl_edge_user: root
 cribl_edge_group: root
+
+# Cribl Edge package installation variables
+cribl_edge_package_name: cribl  # Debian package name
+cribl_edge_service_name: cribl   # Systemd service name
+cribl_edge_service_state: started  # Desired service state
+cribl_edge_service_enabled: true   # Enable on boot

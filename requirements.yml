@@ -8,5 +8,8 @@ collections:
   - name: community.general
     version: ">=10.3.0"  # Required for proxmox_pct_remote connection plugin
 
+  - name: community.proxmox
+    version: ">=1.4.0"  # Better proxmox_pct_remote implementation
+
   - name: community.docker
     version: ">=3.0.0"

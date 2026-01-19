@@ -1,0 +1,57 @@
+---
+# HAProxy Syslog Load Balancer role defaults
+
+# Package management
+haproxy_package_name: haproxy
+haproxy_rsyslog_package_name: rsyslog
+
+# Service configuration
+haproxy_service_name: haproxy
+haproxy_service_state: started
+haproxy_service_enabled: true
+
+# Frontend configuration - TCP ports for HAProxy
+haproxy_listen_ports:
+  - 1514
+  - 1515
+  - 1516
+  - 1517
+  - 1518
+
+# UDP forwarding configuration
+# HAProxy doesn't support UDP natively, so rsyslog receives UDP and forwards via TCP
+haproxy_udp_enabled: true
+haproxy_udp_ports:
+  - 1514
+  - 1515
+  - 1516
+  - 1517
+  - 1518
+
+# Backend configuration - uses hostnames from inventory
+haproxy_backends:
+  - name: cribl-edge-01
+    host: "{{ hostvars['cribl_edge_01'].hostname }}.{{ internal_domain }}"
+    ip: "{{ hostvars['cribl_edge_01'].ansible_host }}"
+    port: 1514
+  - name: cribl-edge-02
+    host: "{{ hostvars['cribl_edge_02'].hostname }}.{{ internal_domain }}"
+    ip: "{{ hostvars['cribl_edge_02'].ansible_host }}"
+    port: 1514
+
+# Health check configuration
+haproxy_health_check_interval: 5000
+haproxy_health_check_timeout: 5000
+
+# Statistics dashboard
+haproxy_stats_enabled: true
+haproxy_stats_port: 8404
+haproxy_stats_user: admin
+haproxy_stats_password: admin
+
+# Load balancing algorithm
+haproxy_algorithm: roundrobin
+
+# Configuration files
+haproxy_config_file: /etc/haproxy/haproxy.cfg
+haproxy_rsyslog_config_file: /etc/rsyslog.d/50-udp-forward.conf

@@ -115,3 +115,50 @@
     mode: '0755'
   when: splunk_docker_firewall_enabled
   notify: apply firewall rules
+
+# Install Technology Add-ons (TAs)
+- name: Create Splunk apps directory
+  ansible.builtin.file:
+    path: "{{ splunk_docker_etc_dir }}/apps"
+    state: directory
+    owner: "{{ splunk_docker_user }}"
+    group: "{{ splunk_docker_group }}"
+    mode: '0755'
+
+- name: Check for local TA files
+  delegate_to: localhost
+  ansible.builtin.stat:
+    path: "{{ role_path }}/files/{{ item.filename }}"
+  loop: "{{ splunk_docker_addons }}"
+  register: splunk_docker_ta_files
+  become: false
+
+- name: Copy TA files to Splunk VM
+  ansible.builtin.copy:
+    src: "{{ item.item.filename }}"
+    dest: "/tmp/{{ item.item.filename }}"
+    mode: '0644'
+  loop: "{{ splunk_docker_ta_files.results }}"
+  when: item.stat.exists
+  loop_control:
+    label: "{{ item.item.name }}"
+
+- name: Extract TAs to Splunk apps directory
+  ansible.builtin.unarchive:
+    src: "/tmp/{{ item.item.filename }}"
+    dest: "{{ splunk_docker_etc_dir }}/apps/"
+    remote_src: true
+  loop: "{{ splunk_docker_ta_files.results }}"
+  when: item.stat.exists
+  loop_control:
+    label: "{{ item.item.name }}"
+  notify: restart splunk container
+
+- name: Clean up TA temp files
+  ansible.builtin.file:
+    path: "/tmp/{{ item.item.filename }}"
+    state: absent
+  loop: "{{ splunk_docker_ta_files.results }}"
+  when: item.stat.exists
+  loop_control:
+    label: "{{ item.item.name }}"
