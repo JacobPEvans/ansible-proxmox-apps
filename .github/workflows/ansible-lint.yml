@@ -6,19 +6,19 @@ on:
     branches:
       - main
     paths:
-      - '**.yml'
-      - '**.yaml'
-      - 'roles/**'
-      - 'playbooks/**'
+      - 'playbooks/**/*.yml'
+      - 'playbooks/**/*.yaml'
+      - 'roles/**/*.yml'
+      - 'roles/**/*.yaml'
       - '.ansible-lint'
   pull_request:
     branches:
       - main
     paths:
-      - '**.yml'
-      - '**.yaml'
-      - 'roles/**'
-      - 'playbooks/**'
+      - 'playbooks/**/*.yml'
+      - 'playbooks/**/*.yaml'
+      - 'roles/**/*.yml'
+      - 'roles/**/*.yaml'
       - '.ansible-lint'
 
 jobs:
@@ -72,6 +72,8 @@ jobs:
 
       - name: Syntax check playbooks
         run: |
-          ansible-playbook playbooks/site.yml --syntax-check
+          for playbook in playbooks/*.yml; do
+            ansible-playbook "$playbook" --syntax-check
+          done
         env:
           ANSIBLE_HOST_KEY_CHECKING: 'false'
