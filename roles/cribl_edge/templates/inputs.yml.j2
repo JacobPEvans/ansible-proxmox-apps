@@ -17,15 +17,15 @@ inputs:
 {% else %}
     tls:
       disabled: true
-{% endif %}
     maxActiveCxn: 100
+{% endif %}
     enableProxyHeader: false
     captureHeaders: false
     activityLogSampleRate: 100
     enableMultiline: false
     metadata:
       - name: source_type
-        value: "{{ listener.name }}"
+        value: "{{ listener.name | regex_replace('_udp$', '') }}"
     pqEnabled: true
 
 {% endfor %}

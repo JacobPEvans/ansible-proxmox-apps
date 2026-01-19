@@ -9,7 +9,7 @@ cribl_edge_container_name: cribl-edge
 cribl_edge_mode: edge  # edge or worker
 
 # Network configuration - syslog listeners (per port assignment)
-# 1514: UniFi, 1515: Palo Alto, 1516: Cisco, 1517: Linux, 1518: Windows
+# 1514: UniFi, 1515: Palo Alto, 1516: Cisco ASA, 1517: Linux, 1518: Windows
 cribl_edge_syslog_ports:
   - port: 1514
     name: unifi
@@ -18,10 +18,10 @@ cribl_edge_syslog_ports:
     name: unifi_udp
     protocol: udp
   - port: 1515
-    name: paloalto
+    name: palo_alto
     protocol: tcp
   - port: 1515
-    name: paloalto_udp
+    name: palo_alto_udp
     protocol: udp
   - port: 1516
     name: cisco

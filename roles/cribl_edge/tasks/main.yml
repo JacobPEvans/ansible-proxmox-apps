@@ -36,6 +36,15 @@
   notify: restart cribl edge
   when: cribl_edge_hec_token != ''
 
+- name: Deploy syslog inputs configuration
+  ansible.builtin.template:
+    src: inputs.yml.j2
+    dest: /etc/cribl/default/inputs.yml
+    owner: "{{ cribl_edge_user }}"
+    group: "{{ cribl_edge_group }}"
+    mode: '0644'
+  notify: restart cribl edge
+
 - name: Start Cribl Edge service
   ansible.builtin.systemd:
     name: "{{ cribl_edge_service_name }}"
