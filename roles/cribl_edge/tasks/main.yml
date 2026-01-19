@@ -1,4 +1,16 @@
 ---
+- name: Ensure /tmp/.ansible-tmp directory exists
+  ansible.builtin.file:
+    path: /tmp/.ansible-tmp
+    state: directory
+    mode: '1777'
+
+- name: Ensure /var/tmp/.ansible directory exists
+  ansible.builtin.file:
+    path: /var/tmp/.ansible
+    state: directory
+    mode: '1777'
+
 - name: Install Cribl Edge package
   ansible.builtin.apt:
     name: "{{ cribl_edge_package_name }}"
@@ -27,13 +39,13 @@
 
 - name: Configure Splunk HEC output
   ansible.builtin.template:
-    src: cribl_hec_output.j2
-    dest: /etc/cribl/default/hec_output.yml
+    src: outputs.yml.j2
+    dest: /etc/cribl/default/outputs.yml
     owner: "{{ cribl_edge_user }}"
     group: "{{ cribl_edge_group }}"
     mode: '0600'
   no_log: true
-  notify: restart cribl edge
+  notify: Restart cribl edge
   when: cribl_edge_hec_token != ''
 
 - name: Deploy syslog inputs configuration
@@ -43,7 +55,7 @@
     owner: "{{ cribl_edge_user }}"
     group: "{{ cribl_edge_group }}"
     mode: '0644'
-  notify: restart cribl edge
+  notify: Restart cribl edge
 
 - name: Start Cribl Edge service
   ansible.builtin.systemd:

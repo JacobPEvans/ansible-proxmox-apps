@@ -115,3 +115,23 @@
     mode: '0755'
   when: splunk_docker_firewall_enabled
   notify: apply firewall rules
+
+# Install Technology Add-ons (TAs)
+- name: Create Splunk apps directory
+  ansible.builtin.file:
+    path: "{{ splunk_docker_etc_dir }}/apps"
+    state: directory
+    owner: "{{ splunk_docker_user }}"
+    group: "{{ splunk_docker_group }}"
+    mode: '0755'
+
+- name: Extract and deploy TAs to Splunk apps directory
+  ansible.builtin.unarchive:
+    src: "{{ role_path }}/files/{{ item.filename }}"
+    dest: "{{ splunk_docker_etc_dir }}/apps/"
+    owner: "{{ splunk_docker_user }}"
+    group: "{{ splunk_docker_group }}"
+  loop: "{{ splunk_docker_addons }}"
+  loop_control:
+    label: "{{ item.name }}"
+  notify: restart splunk container

@@ -1,0 +1,85 @@
+---
+- name: Install HAProxy package
+  ansible.builtin.apt:
+    name: "{{ haproxy_package_name }}"
+    state: present
+    update_cache: true
+
+- name: Install rsyslog for UDP forwarding
+  ansible.builtin.apt:
+    name: "{{ haproxy_rsyslog_package_name }}"
+    state: present
+  when: haproxy_udp_enabled | default(true)
+
+- name: Backup original HAProxy configuration
+  ansible.builtin.copy:
+    src: "{{ haproxy_config_file }}"
+    dest: "{{ haproxy_config_file }}.backup"
+    remote_src: true
+    backup: true
+    mode: '0644'
+  changed_when: false
+
+- name: Deploy HAProxy configuration
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: "{{ haproxy_config_file }}"
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+    validate: haproxy -f %s -c
+  notify: Reload haproxy
+
+- name: Deploy rsyslog UDP forwarding configuration
+  ansible.builtin.template:
+    src: rsyslog-udp-forward.conf.j2
+    dest: "{{ haproxy_rsyslog_config_file }}"
+    owner: root
+    group: root
+    mode: '0644'
+  when: haproxy_udp_enabled | default(true)
+  notify: Restart rsyslog
+
+- name: Start HAProxy service
+  ansible.builtin.systemd:
+    name: "{{ haproxy_service_name }}"
+    state: "{{ haproxy_service_state }}"
+    enabled: "{{ haproxy_service_enabled }}"
+    daemon_reload: true
+
+- name: Start rsyslog service
+  ansible.builtin.systemd:
+    name: rsyslog
+    state: started
+    enabled: true
+  when: haproxy_udp_enabled | default(true)
+
+- name: Verify HAProxy is running
+  ansible.builtin.systemd:
+    name: "{{ haproxy_service_name }}"
+  register: haproxy_status
+  changed_when: false
+  failed_when: haproxy_status.status.ActiveState != 'active'
+
+- name: Verify HAProxy is listening on TCP syslog ports
+  ansible.builtin.wait_for:
+    port: "{{ item }}"
+    host: 127.0.0.1
+    timeout: 10
+  loop: "{{ haproxy_listen_ports }}"
+  changed_when: false
+
+- name: Verify rsyslog is listening on UDP syslog ports
+  ansible.builtin.shell: |
+    set -o pipefail
+    ss -tulpn | grep -E "^udp.*:{{ item }}\s" || exit 1
+  loop: "{{ haproxy_udp_ports }}"
+  when: haproxy_udp_enabled | default(true)
+  changed_when: false
+  retries: 3
+  delay: 2
+  register: haproxy_udp_port_check
+  until: haproxy_udp_port_check.rc == 0
+  args:
+    executable: /bin/bash

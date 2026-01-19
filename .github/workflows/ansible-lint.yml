@@ -21,6 +21,10 @@ on:
       - 'roles/**/*.yaml'
       - '.ansible-lint'
 
+# Minimum required permissions for security (least privilege)
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Ansible Lint
@@ -46,7 +50,7 @@ jobs:
 
       - name: Run ansible-lint
         run: |
-          ansible-lint --format=github
+          ansible-lint
 
   syntax-check:
     name: Syntax Check

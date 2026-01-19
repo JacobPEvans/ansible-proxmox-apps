@@ -1,11 +1,14 @@
 ---
-- name: Install Cribl Stream package
+# Stream collector role - receives syslog and forwards to Splunk HEC
+# Uses rsyslog with custom HEC forwarder script for index routing
+
+- name: Install required packages
   ansible.builtin.apt:
-    name: "{{ cribl_stream_package_name }}"
+    name:
+      - rsyslog
+      - curl
     state: present
     update_cache: true
-  register: cribl_stream_install_result
-  changed_when: "'0 upgraded' not in cribl_stream_install_result.stdout"
 
 - name: Ensure persistent queue directory exists
   ansible.builtin.file:
@@ -15,36 +18,47 @@
     mode: '0755'
     state: directory
 
-- name: Configure persistent queue location
-  ansible.builtin.lineinfile:
-    path: /etc/cribl-stream/default/outputs.yml
-    regexp: "^\\s*queueDir:"
-    line: "  queueDir: {{ cribl_stream_queue_dir }}"
-    backup: true
-    create: true
-    mode: '0644'
-  notify: Restart cribl stream
+- name: Deploy Splunk HEC forwarder script
+  ansible.builtin.template:
+    src: splunk-hec-forwarder.sh.j2
+    dest: /usr/local/bin/splunk-hec-forwarder.sh
+    owner: root
+    group: root
+    mode: '0755'
+  notify: Restart rsyslog
+  # Note: Template contains sensitive HEC token, but failures should be visible for debugging
 
-- name: Configure Stream mode
-  ansible.builtin.lineinfile:
-    path: /etc/cribl-stream/default/system.yml
-    regexp: "^\\s*mode:"
-    line: "  mode: {{ cribl_stream_mode }}"
-    backup: true
-    create: true
+- name: Deploy rsyslog syslog-to-HEC configuration
+  ansible.builtin.template:
+    src: rsyslog-syslog-hec.conf.j2
+    dest: /etc/rsyslog.d/60-syslog-hec.conf
+    owner: root
+    group: root
     mode: '0644'
-  notify: Restart cribl stream
+  notify: Restart rsyslog
 
-- name: Start Cribl Stream service
+- name: Start rsyslog service
   ansible.builtin.systemd:
-    name: "{{ cribl_stream_service_name }}"
-    state: "{{ cribl_stream_service_state }}"
-    enabled: "{{ cribl_stream_service_enabled }}"
+    name: rsyslog
+    state: started
+    enabled: true
     daemon_reload: true
 
-- name: Verify Cribl Stream is running
+- name: Verify rsyslog is running
   ansible.builtin.systemd:
-    name: "{{ cribl_stream_service_name }}"
-  register: cribl_stream_status
+    name: rsyslog
+  register: cribl_stream_rsyslog_status
   changed_when: false
-  failed_when: cribl_stream_status.status.ActiveState != 'active'
+  failed_when: cribl_stream_rsyslog_status.status.ActiveState != 'active'
+
+- name: Verify rsyslog has TCP/UDP syslog port listening
+  ansible.builtin.shell: |
+    set -o pipefail
+    ss -tulpn | grep -E ":({{ cribl_stream_syslog_port }})\s" || exit 1
+  changed_when: false
+  retries: 3
+  delay: 2
+  register: cribl_stream_port_check
+  until: cribl_stream_port_check.rc == 0
+  args:
+    executable: /bin/bash

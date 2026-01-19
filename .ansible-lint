@@ -8,3 +8,7 @@ exclude_paths:
   - .git
   - .venv
   - venv
+
+# File type overrides - tell linter the correct type for files in non-standard locations
+kinds:
+  - playbook: inventory/load_terraform.yml
