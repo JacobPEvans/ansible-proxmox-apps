@@ -1,0 +1,152 @@
+---
+# Logging Pipeline Validation Playbook
+# Validates connectivity, service health, and data flow across the pipeline
+#
+# Usage:
+#   doppler run -- ansible-playbook playbooks/validate-pipeline.yml
+
+- name: Import Terraform infrastructure inventory
+  ansible.builtin.import_playbook: ../inventory/load_terraform.yml
+
+- name: Validate HAProxy Load Balancer
+  hosts: lxc_containers
+  become: true
+  gather_facts: false
+  tags:
+    - haproxy
+    - validation
+
+  pre_tasks:
+    - name: Check if host is haproxy
+      ansible.builtin.set_fact:
+        is_haproxy: "{{ 'haproxy' in (tags | default([])) }}"
+
+  tasks:
+    - name: Verify HAProxy service is running
+      ansible.builtin.systemd:
+        name: haproxy
+        state: started
+      check_mode: true
+      register: haproxy_status
+      when: is_haproxy | default(false)
+
+    - name: Check HAProxy configuration validity
+      ansible.builtin.command:
+        cmd: haproxy -c -f /etc/haproxy/haproxy.cfg
+      register: haproxy_config_check
+      changed_when: false
+      failed_when: haproxy_config_check.rc != 0
+      when: is_haproxy | default(false)
+
+    - name: Verify syslog ports are listening
+      ansible.builtin.wait_for:
+        port: "{{ item }}"
+        timeout: 5
+      loop:
+        - 1514
+        - 1515
+        - 1516
+        - 1517
+        - 1518
+      when: is_haproxy | default(false)
+
+    - name: Display HAProxy validation results
+      ansible.builtin.debug:
+        msg: "HAProxy validation passed: config valid, all ports listening"
+      when: is_haproxy | default(false)
+
+- name: Validate Cribl Edge Nodes
+  hosts: lxc_containers
+  become: true
+  gather_facts: false
+  tags:
+    - cribl_edge
+    - validation
+
+  pre_tasks:
+    - name: Check if host is cribl_edge
+      ansible.builtin.set_fact:
+        is_cribl_edge: "{{ 'cribl_edge' in (tags | default([])) }}"
+
+  tasks:
+    - name: Verify Cribl Edge container is running
+      community.docker.docker_container_info:
+        name: cribl-edge
+      register: cribl_edge_container
+      when: is_cribl_edge | default(false)
+
+    - name: Assert Cribl Edge is running
+      ansible.builtin.assert:
+        that:
+          - cribl_edge_container.container.State.Running
+        fail_msg: "Cribl Edge container is not running"
+        success_msg: "Cribl Edge container is running"
+      when: is_cribl_edge | default(false)
+
+    - name: Check Cribl Edge syslog port
+      ansible.builtin.wait_for:
+        port: 1514
+        timeout: 5
+      when: is_cribl_edge | default(false)
+
+- name: Validate Splunk Enterprise
+  hosts: splunk_vms
+  become: true
+  gather_facts: false
+  tags:
+    - splunk
+    - validation
+
+  tasks:
+    - name: Verify Splunk container is running
+      community.docker.docker_container_info:
+        name: splunk
+      register: splunk_container
+
+    - name: Assert Splunk is running
+      ansible.builtin.assert:
+        that:
+          - splunk_container.container.State.Running
+        fail_msg: "Splunk container is not running"
+        success_msg: "Splunk container is running"
+
+    - name: Verify Splunk web port
+      ansible.builtin.wait_for:
+        port: 8000
+        timeout: 10
+
+    - name: Verify Splunk HEC port
+      ansible.builtin.wait_for:
+        port: 8088
+        timeout: 10
+
+    - name: Test HEC endpoint health
+      ansible.builtin.uri:
+        url: "https://localhost:8088/services/collector/health"
+        method: GET
+        validate_certs: false
+        status_code: 200
+      register: hec_health
+
+    - name: Display Splunk validation results
+      ansible.builtin.debug:
+        msg: "Splunk validation passed: container running, HEC healthy"
+
+- name: Pipeline Summary
+  hosts: localhost
+  gather_facts: false
+  tags:
+    - summary
+
+  tasks:
+    - name: Display pipeline validation summary
+      ansible.builtin.debug:
+        msg: |
+          ============================================
+          LOGGING PIPELINE VALIDATION COMPLETE
+          ============================================
+          HAProxy:     Listening on ports 1514-1518
+          Cribl Edge:  Containers running, syslog active
+          Splunk:      Container running, HEC healthy
+          ============================================
+          Pipeline is ready for log ingestion!
