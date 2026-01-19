@@ -48,5 +48,5 @@ backend syslog_backend
   balance {{ haproxy_algorithm }}
   option tcp-check
 {% for backend in haproxy_backends %}
-  server {{ backend.name }} {{ backend.ip }}:{{ backend.port }} check inter {{ haproxy_health_check_interval }}
+  server {{ backend.name }} {{ backend.ip }}:{{ backend.port }} check inter {{ haproxy_health_check_interval }} timeout {{ haproxy_health_check_timeout }}
 {% endfor %}

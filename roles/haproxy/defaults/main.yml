@@ -47,7 +47,9 @@ haproxy_health_check_timeout: 5000
 haproxy_stats_enabled: true
 haproxy_stats_port: 8404
 haproxy_stats_user: admin
-haproxy_stats_password: admin
+# NOTE: Use a strong password from Doppler secrets in production
+# This default is intentionally weak - override with vault lookup
+haproxy_stats_password: "{{ lookup('env', 'HAPROXY_STATS_PASSWORD') | default('CHANGEME') }}"
 
 # Load balancing algorithm
 haproxy_algorithm: roundrobin

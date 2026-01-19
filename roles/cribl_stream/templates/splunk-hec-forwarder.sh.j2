@@ -25,23 +25,34 @@ get_routing() {
 while IFS= read -r line; do
     [ -z "$line" ] && continue
 
-    # Extract hostname from syslog message
-    # Format is typically: timestamp hostname program: message
-    hostname=$(echo "$line" | awk '{print $4}')
+    # Extract hostname from line provided by rsyslog template
+    # Format: HOSTNAME msg_content
+    # The HOSTNAME field is reliably extracted by rsyslog regardless of syslog format
+    hostname=$(echo "$line" | awk '{print $1; exit}')
 
-    # If hostname is empty or looks like a timestamp, try different position
-    if [[ -z "$hostname" ]] || [[ "$hostname" =~ ^[0-9] ]]; then
-        hostname=$(echo "$line" | awk '{print $3}')
-    fi
+    # Extract the message content (everything after hostname and space)
+    msg_content=$(echo "$line" | cut -d' ' -f2-)
 
     routing=$(get_routing "$hostname")
     index=$(echo "$routing" | cut -d'|' -f1)
     sourcetype=$(echo "$routing" | cut -d'|' -f2)
 
-    escaped=$(echo "$line" | sed 's/\\/\\\\/g; s/"/\\"/g')
+    # Use jq for safe JSON escaping to handle all special characters (newlines, tabs, etc.)
+    # Send the full message content as the event (minus redundant hostname prefix)
+    payload=$(jq -c -n \
+        --arg event "$msg_content" \
+        --arg sourcetype "$sourcetype" \
+        --arg index "$index" \
+        --arg host "$hostname" \
+        '{event: $event, sourcetype: $sourcetype, index: $index, host: $host}')
 
-    curl -sk "$HEC_URL" \
+    # Run curl in foreground and check exit code
+    # If curl fails (network error, HEC down, etc.), exit with error so rsyslog can retry
+    if ! curl -skf "$HEC_URL" \
         -H "Authorization: Splunk $HEC_TOKEN" \
-        -d "{\"event\": \"$escaped\", \"sourcetype\": \"$sourcetype\", \"index\": \"$index\", \"host\": \"$hostname\"}" \
-        &>/dev/null &
+        -d "$payload" \
+        -o /dev/null; then
+        echo "ERROR: Failed to forward log event to HEC ($(date))" >&2
+        exit 1
+    fi
 done

@@ -6,6 +6,15 @@ module(load="imudp")
 module(load="imtcp")
 module(load="omprog")
 
+# Define custom template for reliable hostname extraction
+# This template extracts HOSTNAME field which is reliably parsed by rsyslog
+# regardless of RFC 3164 vs RFC 5424 format variations
+template(
+    name="hec_forwarder_msg"
+    type="string"
+    string="%HOSTNAME% %msg%"
+)
+
 # Listen for syslog on configured port
 {% for protocol in cribl_stream_syslog_protocols %}
 {% if protocol == 'udp' %}
@@ -16,8 +25,9 @@ input(type="imtcp" port="{{ cribl_stream_syslog_port }}")
 {% endfor %}
 
 # Forward all syslog to Splunk HEC via omprog
+# Uses custom template to provide reliable hostname extraction
 *.* action(
     type="omprog"
     binary="/usr/local/bin/splunk-hec-forwarder.sh"
-    template="RSYSLOG_TraditionalFileFormat"
+    template="hec_forwarder_msg"
 )

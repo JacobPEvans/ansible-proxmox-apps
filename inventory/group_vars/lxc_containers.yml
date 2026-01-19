@@ -3,9 +3,11 @@
 # These settings apply to all LXC containers managed via proxmox_pct_remote
 
 # proxmox_pct_remote connection plugin settings
-ansible_pct_host: pve.jacobpevans.com
+ansible_pct_host: "{{ lookup('env', 'PROXMOX_VE_HOSTNAME') }}"
 ansible_pct_user: root
-ansible_pct_private_key_file: /Users/jevans/.ssh/id_rsa_pve
+ansible_pct_private_key_file: >
+  {{ lookup('env', 'PROXMOX_SSH_KEY_PATH')
+  | mandatory('PROXMOX_SSH_KEY_PATH environment variable is required') }}
 
 # Container OS settings
 ansible_user: root

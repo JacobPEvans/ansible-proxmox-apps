@@ -1,11 +1,15 @@
 ---
 - name: Ensure /tmp/.ansible-tmp directory exists
-  ansible.builtin.raw: mkdir -p /tmp/.ansible-tmp && chmod 1777 /tmp/.ansible-tmp
-  changed_when: false
+  ansible.builtin.file:
+    path: /tmp/.ansible-tmp
+    state: directory
+    mode: '1777'
 
 - name: Ensure /var/tmp/.ansible directory exists
-  ansible.builtin.raw: mkdir -p /var/tmp/.ansible && chmod 1777 /var/tmp/.ansible
-  changed_when: false
+  ansible.builtin.file:
+    path: /var/tmp/.ansible
+    state: directory
+    mode: '1777'
 
 - name: Install Cribl Edge package
   ansible.builtin.apt:
