@@ -25,8 +25,8 @@
     owner: root
     group: root
     mode: '0755'
-  no_log: true
   notify: Restart rsyslog
+  # Note: Template contains sensitive HEC token, but failures should be visible for debugging
 
 - name: Deploy rsyslog syslog-to-HEC configuration
   ansible.builtin.template:
@@ -51,9 +51,14 @@
   changed_when: false
   failed_when: cribl_stream_rsyslog_status.status.ActiveState != 'active'
 
-- name: Verify syslog port is listening
-  ansible.builtin.wait_for:
-    port: "{{ cribl_stream_syslog_port }}"
-    host: 0.0.0.0
-    timeout: 10
+- name: Verify rsyslog has TCP/UDP syslog port listening
+  ansible.builtin.shell: |
+    set -o pipefail
+    ss -tulpn | grep -E ":({{ cribl_stream_syslog_port }})\s" || exit 1
   changed_when: false
+  retries: 3
+  delay: 2
+  register: cribl_stream_port_check
+  until: cribl_stream_port_check.rc == 0
+  args:
+    executable: /bin/bash

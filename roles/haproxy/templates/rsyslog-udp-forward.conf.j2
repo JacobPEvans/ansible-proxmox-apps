@@ -22,7 +22,7 @@ ruleset(name="forward_to_cribl") {
         action.resumeRetryCount="-1"
         action.resumeInterval="10"
         queue.type="LinkedList"
-        queue.filename="cribl_{{ backend.name | replace('-', '_') }}"
+        queue.filename="/var/spool/rsyslog/cribl_{{ backend.name | replace('-', '_') }}.queue"
         queue.saveonshutdown="on"
     )
 {% else %}
@@ -35,7 +35,7 @@ ruleset(name="forward_to_cribl") {
         action.resumeInterval="10"
         action.execOnlyWhenPreviousIsSuspended="on"
         queue.type="LinkedList"
-        queue.filename="cribl_{{ backend.name | replace('-', '_') }}"
+        queue.filename="/var/spool/rsyslog/cribl_{{ backend.name | replace('-', '_') }}.queue"
         queue.saveonshutdown="on"
     )
 {% endif %}

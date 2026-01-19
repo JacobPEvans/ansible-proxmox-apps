@@ -71,11 +71,15 @@
   changed_when: false
 
 - name: Verify rsyslog is listening on UDP syslog ports
-  ansible.builtin.wait_for:
-    port: "{{ item }}"
-    host: 0.0.0.0
-    timeout: 10
-    state: started
+  ansible.builtin.shell: |
+    set -o pipefail
+    ss -tulpn | grep -E "^udp.*:{{ item }}\s" || exit 1
   loop: "{{ haproxy_udp_ports }}"
   when: haproxy_udp_enabled | default(true)
   changed_when: false
+  retries: 3
+  delay: 2
+  register: haproxy_udp_port_check
+  until: haproxy_udp_port_check.rc == 0
+  args:
+    executable: /bin/bash
