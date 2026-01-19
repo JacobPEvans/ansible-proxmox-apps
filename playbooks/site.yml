@@ -16,14 +16,8 @@
   tags:
     - splunk_docker
 
-  pre_tasks:
-    - name: Check if host should run splunk_docker role
-      ansible.builtin.set_fact:
-        run_splunk_docker: "{{ 'splunk_docker' in (tags | default([])) }}"
-
   roles:
     - role: splunk_docker
-      when: run_splunk_docker | default(false)
 
 - name: Configure Cribl Edge nodes
   hosts: cribl_edge
@@ -36,19 +30,14 @@
     - role: cribl_edge
 
 - name: Configure Cribl Stream
-  hosts: vms
+  hosts: cribl_stream_group
   become: true
+  gather_facts: false
   tags:
     - cribl_stream
 
-  pre_tasks:
-    - name: Check if host should run cribl_stream role
-      ansible.builtin.set_fact:
-        run_cribl_stream: "{{ 'cribl_stream' in (tags | default([])) }}"
-
   roles:
     - role: cribl_stream
-      when: run_cribl_stream | default(false)
 
 - name: Configure HAProxy load balancer
   hosts: haproxy_group

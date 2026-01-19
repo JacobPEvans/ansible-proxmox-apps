@@ -31,7 +31,7 @@
         ansible_pct_private_key_file: "{{ lookup('env', 'PROXMOX_SSH_KEY_PATH') }}"
         hostname: "{{ item.value.hostname }}"
         ansible_pct_node: "{{ item.value.node }}"
-        tags: "{{ item.value.tags | default([]) }}"
+        host_tags: "{{ item.value.tags | default([]) }}"
       loop: "{{ terraform_data.ansible_inventory.containers | dict2items }}"
       when:
         - terraform_data.ansible_inventory.containers is defined
@@ -47,7 +47,7 @@
         ansible_connection: "{{ item.value.ansible_connection }}"
         ansible_user: debian
         hostname: "{{ item.value.hostname }}"
-        tags: "{{ item.value.tags | default([]) }}"
+        host_tags: "{{ item.value.tags | default([]) }}"
       loop: "{{ terraform_data.ansible_inventory.vms | dict2items }}"
       when:
         - terraform_data.ansible_inventory.vms is defined
