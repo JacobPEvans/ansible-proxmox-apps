@@ -9,6 +9,7 @@
 - name: Load Terraform Infrastructure Inventory
   hosts: localhost
   gather_facts: false
+  tags: always
 
   tasks:
     - name: Load Terraform inventory JSON
