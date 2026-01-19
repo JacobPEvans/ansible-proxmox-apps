@@ -20,3 +20,25 @@ cribl_stream_queue_dir: "{{ cribl_stream_data_dir }}/queue"
 # Service user
 cribl_stream_user: cribl
 cribl_stream_group: cribl
+
+# Splunk HEC output configuration
+cribl_stream_splunk_host: "{{ hostvars['splunk'].ansible_host | default('10.0.1.200') }}"
+cribl_stream_splunk_hec_port: 8088
+cribl_stream_splunk_hec_token: "{{ lookup('env', 'SPLUNK_HEC_TOKEN', default='') }}"
+cribl_stream_splunk_hec_tls: true
+cribl_stream_splunk_hec_tls_verify: false  # Self-signed cert in lab
+
+# Index routing configuration
+cribl_stream_index_routing:
+  - source_pattern: "unifi*"
+    index: unifi
+  - source_pattern: "paloalto*"
+    index: firewall
+  - source_pattern: "cisco*"
+    index: firewall
+  - source_pattern: "linux*"
+    index: os
+  - source_pattern: "windows*"
+    index: os
+  - source_pattern: "*"
+    index: network
