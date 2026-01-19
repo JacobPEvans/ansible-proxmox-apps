@@ -72,8 +72,11 @@ jobs:
 
       - name: Syntax check playbooks
         run: |
-          for playbook in playbooks/*.yml; do
-            ansible-playbook "$playbook" --syntax-check
+          for playbook in playbooks/**/*.{yml,yaml}; do
+            if [ -f "$playbook" ]; then
+              echo "Checking syntax: $playbook"
+              ansible-playbook "$playbook" --syntax-check
+            fi
           done
         env:
           ANSIBLE_HOST_KEY_CHECKING: 'false'
