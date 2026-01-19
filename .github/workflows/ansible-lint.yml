@@ -46,7 +46,7 @@ jobs:
 
       - name: Run ansible-lint
         run: |
-          ansible-lint --format=github
+          ansible-lint
 
   syntax-check:
     name: Syntax Check
