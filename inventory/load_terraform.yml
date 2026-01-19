@@ -24,7 +24,7 @@
           - lxc_containers
           - all
         ansible_pct_vmid: "{{ item.value.vmid }}"
-        ansible_host: "{{ item.value.ip | ansible.netcommon.ipaddr('address') }}"
+        ansible_host: "{{ item.value.ip }}"
         ansible_connection: "{{ item.value.ansible_connection }}"
         ansible_pct_host: "{{ lookup('env', 'PROXMOX_VE_HOSTNAME') }}"
         ansible_pct_user: root
