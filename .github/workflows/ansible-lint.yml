@@ -21,6 +21,10 @@ on:
       - 'roles/**/*.yaml'
       - '.ansible-lint'
 
+# Minimum required permissions for security (least privilege)
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Ansible Lint
