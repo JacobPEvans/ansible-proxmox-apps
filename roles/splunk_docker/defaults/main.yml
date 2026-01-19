@@ -26,20 +26,27 @@ splunk_docker_etc_dir: "{{ splunk_docker_data_dir }}/etc"
 # Splunk configuration directory (for compose and configs)
 splunk_docker_config_dir: /opt/splunk-config
 
-# Indexes to create (365-day retention = 31536000 seconds)
+# Index retention defaults
+# 100GB in MB: 100 * 1024 = 102400MB
+# 365 days in seconds: 365 * 24 * 60 * 60 = 31536000 seconds
+splunk_docker_index_default_max_size_mb: 102400
+splunk_docker_index_default_frozen_time_secs: 31536000
+
+# Indexes to create
 splunk_docker_indexes:
   - name: unifi
-    max_size_mb: 102400
-    frozen_time_secs: 31536000
+    max_size_mb: "{{ splunk_docker_index_default_max_size_mb }}"
+    frozen_time_secs: "{{ splunk_docker_index_default_frozen_time_secs }}"
   - name: os
-    max_size_mb: 102400
-    frozen_time_secs: 31536000
+    max_size_mb: "{{ splunk_docker_index_default_max_size_mb }}"
+    frozen_time_secs: "{{ splunk_docker_index_default_frozen_time_secs }}"
   - name: firewall
-    max_size_mb: 102400
-    frozen_time_secs: 31536000
+    max_size_mb: "{{ splunk_docker_index_default_max_size_mb }}"
+    frozen_time_secs: "{{ splunk_docker_index_default_frozen_time_secs }}"
   - name: network
-    max_size_mb: 102400
-    frozen_time_secs: 31536000
+    max_size_mb: "{{ splunk_docker_index_default_max_size_mb }}"
+    frozen_time_secs: "{{ splunk_docker_index_default_frozen_time_secs }}"
+
 
 # Firewall configuration
 splunk_docker_firewall_enabled: true
