@@ -12,4 +12,4 @@ collections:
     version: ">=1.4.0"  # Better proxmox_pct_remote implementation
 
   - name: community.docker
-    version: ">=3.0.0"
+    version: ">=3.6.0"  # docker_compose_v2 module added in 3.6.0

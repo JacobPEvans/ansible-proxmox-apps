@@ -98,8 +98,7 @@
 
 - name: Wait for Splunk to be ready
   ansible.builtin.uri:
-    url: "https://127.0.0.1:{{ splunk_docker_web_port }}/services/server/health/splunkd/details"
-    validate_certs: false
+    url: "http://127.0.0.1:{{ splunk_docker_web_port }}/services/server/health/splunkd/details"
     status_code: 200
   register: splunk_docker_health
   until: splunk_docker_health.status == 200
