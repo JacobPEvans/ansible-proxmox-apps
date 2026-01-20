@@ -57,7 +57,7 @@
       ansible.builtin.add_host:
         name: splunk
         groups:
-          - splunk_vms
+          - splunk_group
           - all
         ansible_host: "{{ terraform_data.ansible_inventory.splunk_vm.splunk.ip }}"
         ansible_connection: "{{ terraform_data.ansible_inventory.splunk_vm.splunk.ansible_connection }}"
