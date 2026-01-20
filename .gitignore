@@ -13,6 +13,7 @@ env/
 *.retry
 .ansible_cache/
 /roles/requirements/
+inventory/terraform_inventory.json
 
 # Environment files (secrets)
 .env
