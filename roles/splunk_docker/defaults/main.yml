@@ -58,7 +58,11 @@ splunk_docker_group: root
 # Technology Add-ons (TAs) to install
 # TAs must be placed in roles/splunk_docker/files/ as .tar, .tgz, or .spl files
 splunk_docker_unifi_ta_version: 1.0.2+00b9ecb
+splunk_docker_duck_yeah_version: 234
 splunk_docker_addons:
   - name: TA-unifi-cloud
     filename: "TA-unifi-cloud-{{ splunk_docker_unifi_ta_version }}.tar"
     description: UniFi Cloud Add-on for Splunk (syslog parsing and field extraction)
+  - name: Duck Yeah
+    filename: "duck-yeah_{{ splunk_docker_duck_yeah_version }}.tgz"
+    description: Duck Yeah - Splunk app for packaging and app management
