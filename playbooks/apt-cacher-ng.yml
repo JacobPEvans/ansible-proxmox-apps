@@ -1,0 +1,24 @@
+---
+# Apt-Cacher-NG Deployment Playbook
+# Installs and configures apt-cacher-ng caching proxy
+
+- name: Deploy Apt-Cacher-NG
+  hosts: apt_cacher_group
+  become: true
+  gather_facts: true
+
+  roles:
+    - apt_cacher_ng
+
+  post_tasks:
+    - name: Display client configuration instructions
+      ansible.builtin.debug:
+        msg:
+          - "Apt-Cacher-NG deployed successfully!"
+          - ""
+          - "To configure clients to use this proxy, run on each client:"
+          - ""
+          - "  echo 'Acquire::http::Proxy \"http://{{ ansible_host }}:3142\";' \\"
+          - "    | sudo tee /etc/apt/apt.conf.d/00proxy"
+          - ""
+          - "Admin interface: http://{{ ansible_host }}:3142/acng-report.html"

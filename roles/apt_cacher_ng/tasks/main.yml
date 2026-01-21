@@ -1,0 +1,84 @@
+---
+# Apt-Cacher-NG installation and configuration
+
+- name: Install apt-cacher-ng package
+  ansible.builtin.apt:
+    name: apt-cacher-ng
+    state: present
+    update_cache: true
+
+- name: Ensure cache directory exists
+  ansible.builtin.file:
+    path: "{{ apt_cacher_ng_cache_dir }}"
+    state: directory
+    owner: apt-cacher-ng
+    group: apt-cacher-ng
+    mode: '0755'
+
+- name: Ensure log directory exists
+  ansible.builtin.file:
+    path: "{{ apt_cacher_ng_log_dir }}"
+    state: directory
+    owner: apt-cacher-ng
+    group: apt-cacher-ng
+    mode: '0755'
+
+- name: Deploy apt-cacher-ng configuration
+  ansible.builtin.template:
+    src: acng.conf.j2
+    dest: /etc/apt-cacher-ng/acng.conf
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  notify: Restart apt-cacher-ng
+
+- name: Deploy security configuration
+  ansible.builtin.template:
+    src: security.conf.j2
+    dest: /etc/apt-cacher-ng/security.conf
+    owner: root
+    group: root
+    mode: '0600'
+  notify: Restart apt-cacher-ng
+
+- name: Deploy backends configuration for Debian
+  ansible.builtin.template:
+    src: backends_debian.j2
+    dest: /etc/apt-cacher-ng/backends_debian
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart apt-cacher-ng
+
+- name: Enable apt-cacher-ng service
+  ansible.builtin.systemd:
+    name: apt-cacher-ng
+    state: started
+    enabled: true
+
+- name: Configure UFW firewall rule for apt-cacher-ng
+  community.general.ufw:
+    rule: allow
+    port: "{{ apt_cacher_ng_port }}"
+    proto: tcp
+    comment: "Apt-Cacher-NG proxy"
+  when: apt_cacher_ng_firewall_enabled
+
+- name: Wait for apt-cacher-ng to be ready
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ apt_cacher_ng_port }}/{{ apt_cacher_ng_report_page }}"
+    status_code: 200
+  register: apt_cacher_ng_health
+  until: apt_cacher_ng_health.status == 200
+  retries: 10
+  delay: 3
+  changed_when: false
+
+- name: Display apt-cacher-ng access information
+  ansible.builtin.debug:
+    msg:
+      - "Apt-Cacher-NG is running on port {{ apt_cacher_ng_port }}"
+      - "Admin interface: http://{{ ansible_host }}:{{ apt_cacher_ng_port }}/{{ apt_cacher_ng_report_page }}"
+      - "To configure clients, add to /etc/apt/apt.conf.d/00proxy:"
+      - "  Acquire::http::Proxy \"http://{{ ansible_host }}:{{ apt_cacher_ng_port }}\";"

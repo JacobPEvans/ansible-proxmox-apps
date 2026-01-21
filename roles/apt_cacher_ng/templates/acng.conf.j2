@@ -1,0 +1,62 @@
+# Apt-Cacher-NG configuration
+# Managed by Ansible - do not edit manually
+
+# Cache directory
+CacheDir: {{ apt_cacher_ng_cache_dir }}
+
+# Log directory
+LogDir: {{ apt_cacher_ng_log_dir }}
+
+# Port to listen on
+Port: {{ apt_cacher_ng_port }}
+
+# Bind address
+BindAddress: {{ apt_cacher_ng_bind_address }}
+
+# Report page
+ReportPage: {{ apt_cacher_ng_report_page }}
+
+# Expiry threshold (days)
+ExThreshold: {{ apt_cacher_ng_expiry_threshold }}
+
+# Verbose logging
+VerboseLog: {{ apt_cacher_ng_verbose_log }}
+
+# Debug logging
+Debug: {{ apt_cacher_ng_debug_log }}
+
+# Backend server mappings
+Remap-debrep: file:backends_debian /debian
+
+# Security file
+Remap-secdeb: file:backends_debian_security /debian-security
+
+# Ubuntu support (if needed)
+Remap-uburep: file:backends_ubuntu /ubuntu
+
+# HTTPS passthrough for repos that require it
+{% if apt_cacher_ng_passthrough_enabled %}
+PassThroughPattern: {{ apt_cacher_ng_passthrough_pattern }}
+{% endif %}
+
+# Docker repo passthrough (cannot be cached due to dynamic content)
+{% if apt_cacher_ng_docker_passthrough %}
+PassThroughPattern: download\.docker\.com
+{% endif %}
+
+# Support for Index files
+SupportDir: /usr/lib/apt-cacher-ng
+
+# Network timeout
+NetworkTimeout: 60
+
+# Freshness of index files (hours)
+FreshIndexMaxAge: 1
+
+# Don't cache incomplete files
+OfflineMode: false
+
+# Allow admin commands from localhost
+{% if apt_cacher_ng_admin_enabled %}
+AdminAuth: admin:{{ apt_cacher_ng_admin_password | default('changeme') }}
+{% endif %}
