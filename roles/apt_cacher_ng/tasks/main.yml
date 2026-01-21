@@ -51,6 +51,24 @@
     mode: '0644'
   notify: Restart apt-cacher-ng
 
+- name: Deploy backends configuration for Debian Security
+  ansible.builtin.template:
+    src: backends_debian_security.j2
+    dest: /etc/apt-cacher-ng/backends_debian_security
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart apt-cacher-ng
+
+- name: Deploy backends configuration for Ubuntu
+  ansible.builtin.template:
+    src: backends_ubuntu.j2
+    dest: /etc/apt-cacher-ng/backends_ubuntu
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart apt-cacher-ng
+
 - name: Enable apt-cacher-ng service
   ansible.builtin.systemd:
     name: apt-cacher-ng

@@ -4,6 +4,9 @@
 # Cache directory
 CacheDir: {{ apt_cacher_ng_cache_dir }}
 
+# Maximum cache size (filesystem cleanup threshold)
+MaxCacheSize: {{ apt_cacher_ng_cache_max_size }}
+
 # Log directory
 LogDir: {{ apt_cacher_ng_log_dir }}
 
@@ -34,7 +37,7 @@ Remap-secdeb: file:backends_debian_security /debian-security
 # Ubuntu support (if needed)
 Remap-uburep: file:backends_ubuntu /ubuntu
 
-# HTTPS passthrough for repos that require it
+# HTTPS passthrough for repos that require it (typically due to HTTPS and token-based authentication)
 {% set passthrough_patterns = [] %}
 {% if apt_cacher_ng_passthrough_enabled %}
 {% set _ = passthrough_patterns.append(apt_cacher_ng_passthrough_pattern) %}

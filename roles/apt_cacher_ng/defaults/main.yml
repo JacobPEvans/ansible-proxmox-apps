@@ -14,8 +14,10 @@ apt_cacher_ng_expiry_threshold: 4
 apt_cacher_ng_bind_address: "0.0.0.0"
 
 # Passthrough HTTPS (for repos that require it)
-apt_cacher_ng_passthrough_enabled: true
-apt_cacher_ng_passthrough_pattern: ".*"
+# Disabled by default to preserve caching benefits. Enable only for
+# repositories that cannot be cached (e.g., HTTPS with authentication).
+apt_cacher_ng_passthrough_enabled: false
+apt_cacher_ng_passthrough_pattern: "https?://(registry-1\\.docker\\.io|gcr\\.io|quay\\.io)/.*"
 
 # Admin interface
 apt_cacher_ng_admin_enabled: true
@@ -25,6 +27,11 @@ apt_cacher_ng_report_page: acng-report.html
 apt_cacher_ng_debian_mirrors:
   - http://deb.debian.org/debian
   - http://security.debian.org/debian-security
+
+# Upstream mirrors (Ubuntu defaults)
+apt_cacher_ng_ubuntu_mirrors:
+  - http://archive.ubuntu.com/ubuntu
+  - http://security.ubuntu.com/ubuntu
 
 # Docker mirror passthrough
 apt_cacher_ng_docker_passthrough: true
