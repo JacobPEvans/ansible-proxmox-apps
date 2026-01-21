@@ -3,5 +3,5 @@
 
 # Admin credentials (used for report page and maintenance)
 {% if apt_cacher_ng_admin_enabled %}
-AdminAuth: admin:{{ apt_cacher_ng_admin_password | default('changeme') }}
+AdminAuth: admin:{{ apt_cacher_ng_admin_password | mandatory }}
 {% endif %}

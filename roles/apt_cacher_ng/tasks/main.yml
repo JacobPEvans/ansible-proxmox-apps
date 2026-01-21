@@ -79,6 +79,6 @@
   ansible.builtin.debug:
     msg:
       - "Apt-Cacher-NG is running on port {{ apt_cacher_ng_port }}"
-      - "Admin interface: http://{{ ansible_host }}:{{ apt_cacher_ng_port }}/{{ apt_cacher_ng_report_page }}"
+      - "Admin interface: http://{{ inventory_hostname }}:{{ apt_cacher_ng_port }}/{{ apt_cacher_ng_report_page }}"
       - "To configure clients, add to /etc/apt/apt.conf.d/00proxy:"
-      - "  Acquire::http::Proxy \"http://{{ ansible_host }}:{{ apt_cacher_ng_port }}\";"
+      - "  Acquire::http::Proxy \"http://{{ inventory_hostname }}:{{ apt_cacher_ng_port }}\";"

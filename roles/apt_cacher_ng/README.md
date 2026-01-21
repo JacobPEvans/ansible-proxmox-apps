@@ -44,9 +44,11 @@ Or deploy via Ansible:
 - name: Configure apt proxy on clients
   ansible.builtin.copy:
     content: |
-      Acquire::http::Proxy "http://{{ apt_cacher_host }}:3142";
+      Acquire::http::Proxy "http://{{ apt_cacher_ng_host }}:3142";
     dest: /etc/apt/apt.conf.d/00proxy
     mode: '0644'
+  vars:
+    apt_cacher_ng_host: "10.0.1.106"  # Replace with your apt-cacher-ng IP
 ```
 
 ## Example Playbook

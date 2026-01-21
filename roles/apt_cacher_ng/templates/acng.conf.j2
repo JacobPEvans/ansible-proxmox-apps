@@ -35,13 +35,15 @@ Remap-secdeb: file:backends_debian_security /debian-security
 Remap-uburep: file:backends_ubuntu /ubuntu
 
 # HTTPS passthrough for repos that require it
+{% set passthrough_patterns = [] %}
 {% if apt_cacher_ng_passthrough_enabled %}
-PassThroughPattern: {{ apt_cacher_ng_passthrough_pattern }}
+{% set _ = passthrough_patterns.append(apt_cacher_ng_passthrough_pattern) %}
 {% endif %}
-
-# Docker repo passthrough (cannot be cached due to dynamic content)
 {% if apt_cacher_ng_docker_passthrough %}
-PassThroughPattern: download\.docker\.com
+{% set _ = passthrough_patterns.append('download\\.docker\\.com') %}
+{% endif %}
+{% if passthrough_patterns %}
+PassThroughPattern: {{ passthrough_patterns | join('|') }}
 {% endif %}
 
 # Support for Index files
@@ -56,7 +58,4 @@ FreshIndexMaxAge: 1
 # Don't cache incomplete files
 OfflineMode: false
 
-# Allow admin commands from localhost
-{% if apt_cacher_ng_admin_enabled %}
-AdminAuth: admin:{{ apt_cacher_ng_admin_password | default('changeme') }}
-{% endif %}
+# Admin authentication is configured in security.conf
