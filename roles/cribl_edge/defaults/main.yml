@@ -41,6 +41,9 @@ cribl_edge_syslog_ports:
   - port: 1518
     name: windows_udp
     protocol: udp
+  - port: 2055
+    name: netflow
+    protocol: udp
 
 # Data directories
 cribl_edge_data_dir: /opt/cribl/data
@@ -51,7 +54,7 @@ cribl_edge_queue_dir: "{{ cribl_edge_data_dir }}/queue"
 cribl_edge_splunk_host: "{{ hostvars['splunk'].hostname }}.{{ proxmox_domain }}"
 cribl_edge_hec_url: "https://{{ hostvars['splunk'].ansible_host }}:8088"
 cribl_edge_hec_token: "{{ lookup('env', 'SPLUNK_HEC_TOKEN', default='') }}"
-cribl_edge_hec_tls_verify: true  # Default to secure; override in dev envs only
+cribl_edge_hec_tls_verify: false  # Disabled: Splunk uses self-signed cert
 
 # Service user
 cribl_edge_user: root

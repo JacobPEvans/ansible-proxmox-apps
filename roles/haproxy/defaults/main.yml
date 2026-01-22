@@ -17,6 +17,7 @@ haproxy_listen_ports:
   - 1516
   - 1517
   - 1518
+  - 2055
 
 # UDP forwarding configuration
 # HAProxy doesn't support UDP natively, so rsyslog receives UDP and forwards via TCP
@@ -27,6 +28,7 @@ haproxy_udp_ports:
   - 1516
   - 1517
   - 1518
+  - 2055
 
 # Backend configuration - uses hostnames from inventory
 haproxy_backends:
