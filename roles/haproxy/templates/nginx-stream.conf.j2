@@ -1,0 +1,34 @@
+# Nginx Stream Module - UDP Load Balancing
+# Managed by Ansible - do not edit directly
+#
+# Purpose: Load balance UDP syslog and NetFlow traffic to Cribl Edge nodes
+# HAProxy handles TCP/HTTP, Nginx handles UDP
+
+stream {
+  log_format basic '$remote_addr [$time_local] '
+                   '$protocol $status $bytes_sent $bytes_received '
+                   '$session_time "$upstream_addr" '
+                   '"$upstream_bytes_sent" "$upstream_bytes_received" "$upstream_connect_time"';
+
+  access_log /var/log/nginx/stream-access.log basic;
+  error_log /var/log/nginx/stream-error.log;
+
+  # Upstream backend for Cribl Edge nodes
+  upstream cribl_edge_udp {
+    # Round-robin load balancing (default)
+{% for backend in haproxy_backends %}
+    server {{ backend.ip }}:{{ backend.port }};
+{% endfor %}
+  }
+
+{% for port in haproxy_nginx_udp_ports %}
+  # UDP listener for port {{ port }}
+  server {
+    listen {{ port }} udp;
+    proxy_pass cribl_edge_udp;
+    proxy_timeout 1s;
+    proxy_responses 0;  # UDP is stateless, don't wait for response
+  }
+
+{% endfor %}
+}

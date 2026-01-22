@@ -33,7 +33,7 @@ listen stats
 {% endif %}
 
 # Syslog TCP load balancing frontends
-# Note: UDP is handled by rsyslog, not HAProxy
+# Note: UDP is handled by Nginx stream module, not HAProxy
 {% for port in haproxy_listen_ports %}
 frontend syslog_{{ port }}
   bind *:{{ port }}

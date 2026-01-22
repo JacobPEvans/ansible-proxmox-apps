@@ -5,11 +5,18 @@
     state: present
     update_cache: true
 
-- name: Install rsyslog for UDP forwarding
+- name: Install Nginx package
   ansible.builtin.apt:
-    name: "{{ haproxy_rsyslog_package_name }}"
+    name: "{{ haproxy_nginx_package_name }}"
     state: present
-  when: haproxy_udp_enabled | default(true)
+
+- name: Ensure Nginx streams.d directory exists
+  ansible.builtin.file:
+    path: /etc/nginx/streams.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
 
 - name: Backup original HAProxy configuration
   ansible.builtin.copy:
@@ -20,7 +27,7 @@
     mode: '0644'
   changed_when: false
 
-- name: Deploy HAProxy configuration
+- name: Deploy HAProxy configuration (TCP/HTTP only)
   ansible.builtin.template:
     src: haproxy.cfg.j2
     dest: "{{ haproxy_config_file }}"
@@ -31,15 +38,25 @@
     validate: haproxy -f %s -c
   notify: Reload haproxy
 
-- name: Deploy rsyslog UDP forwarding configuration
+- name: Deploy Nginx main configuration
   ansible.builtin.template:
-    src: rsyslog-udp-forward.conf.j2
-    dest: "{{ haproxy_rsyslog_config_file }}"
+    src: nginx.conf.j2
+    dest: "{{ haproxy_nginx_config_file }}"
     owner: root
     group: root
     mode: '0644'
-  when: haproxy_udp_enabled | default(true)
-  notify: Restart rsyslog
+    backup: true
+    validate: nginx -t -c %s
+  notify: Reload nginx
+
+- name: Deploy Nginx stream configuration (UDP load balancing)
+  ansible.builtin.template:
+    src: nginx-stream.conf.j2
+    dest: "{{ haproxy_nginx_stream_config_file }}"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload nginx
 
 - name: Start HAProxy service
   ansible.builtin.systemd:
@@ -48,12 +65,12 @@
     enabled: "{{ haproxy_service_enabled }}"
     daemon_reload: true
 
-- name: Start rsyslog service
+- name: Start Nginx service
   ansible.builtin.systemd:
-    name: rsyslog
-    state: started
-    enabled: true
-  when: haproxy_udp_enabled | default(true)
+    name: "{{ haproxy_nginx_service_name }}"
+    state: "{{ haproxy_nginx_service_state }}"
+    enabled: "{{ haproxy_nginx_service_enabled }}"
+    daemon_reload: true
 
 - name: Verify HAProxy is running
   ansible.builtin.systemd:
@@ -62,7 +79,14 @@
   changed_when: false
   failed_when: haproxy_status.status.ActiveState != 'active'
 
-- name: Verify HAProxy is listening on TCP syslog ports
+- name: Verify Nginx is running
+  ansible.builtin.systemd:
+    name: "{{ haproxy_nginx_service_name }}"
+  register: haproxy_nginx_status
+  changed_when: false
+  failed_when: haproxy_nginx_status.status.ActiveState != 'active'
+
+- name: Verify HAProxy is listening on TCP ports
   ansible.builtin.wait_for:
     port: "{{ item }}"
     host: 127.0.0.1
@@ -70,16 +94,15 @@
   loop: "{{ haproxy_listen_ports }}"
   changed_when: false
 
-- name: Verify rsyslog is listening on UDP syslog ports
+- name: Verify Nginx is listening on UDP ports
   ansible.builtin.shell: |
     set -o pipefail
     ss -tulpn | grep -E "^udp.*:{{ item }}\s" || exit 1
-  loop: "{{ haproxy_udp_ports }}"
-  when: haproxy_udp_enabled | default(true)
+  loop: "{{ haproxy_nginx_udp_ports }}"
   changed_when: false
   retries: 3
   delay: 2
-  register: haproxy_udp_port_check
-  until: haproxy_udp_port_check.rc == 0
+  register: haproxy_nginx_udp_port_check
+  until: haproxy_nginx_udp_port_check.rc == 0
   args:
     executable: /bin/bash

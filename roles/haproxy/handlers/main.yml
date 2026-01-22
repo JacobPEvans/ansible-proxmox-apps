@@ -4,7 +4,7 @@
     name: "{{ haproxy_service_name }}"
     state: reloaded
 
-- name: Restart rsyslog
+- name: Reload nginx
   ansible.builtin.systemd:
-    name: rsyslog
-    state: restarted
+    name: "{{ haproxy_nginx_service_name }}"
+    state: reloaded
