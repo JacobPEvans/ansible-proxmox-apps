@@ -24,8 +24,7 @@ See `defaults/main.yml` for all available variables:
 | -------- | ------- | ----------- |
 | `apt_cacher_ng_port` | `3142` | Port for proxy |
 | `apt_cacher_ng_cache_dir` | `/var/cache/apt-cacher-ng` | Cache location |
-| `apt_cacher_ng_cache_max_size` | `50G` | Max cache size |
-| `apt_cacher_ng_passthrough_enabled` | `true` | HTTPS passthrough |
+| `apt_cacher_ng_passthrough_enabled` | `false` | HTTPS passthrough |
 | `apt_cacher_ng_admin_enabled` | `true` | Admin web UI |
 
 ## Client Configuration
