@@ -1,0 +1,64 @@
+# Apt-Cacher-NG configuration
+# Managed by Ansible - do not edit manually
+
+# Include security configuration (admin authentication)
+Include: /etc/apt-cacher-ng/security.conf
+
+# Cache directory
+CacheDir: {{ apt_cacher_ng_cache_dir }}
+
+# Log directory
+LogDir: {{ apt_cacher_ng_log_dir }}
+
+# Port to listen on
+Port: {{ apt_cacher_ng_port }}
+
+# Bind address
+BindAddress: {{ apt_cacher_ng_bind_address }}
+
+# Report page
+ReportPage: {{ apt_cacher_ng_report_page }}
+
+# Expiry threshold (days)
+ExThreshold: {{ apt_cacher_ng_expiry_threshold }}
+
+# Verbose logging
+VerboseLog: {{ apt_cacher_ng_verbose_log }}
+
+# Debug logging
+Debug: {{ apt_cacher_ng_debug_log }}
+
+# Backend server mappings
+Remap-debrep: file:backends_debian /debian
+
+# Security file
+Remap-secdeb: file:backends_debian_security /debian-security
+
+# Ubuntu support (if needed)
+Remap-uburep: file:backends_ubuntu /ubuntu
+
+# HTTPS passthrough for repos that require it (typically due to HTTPS and token-based authentication)
+{% set passthrough_patterns = [] %}
+{% if apt_cacher_ng_passthrough_enabled %}
+{% set _ = passthrough_patterns.append(apt_cacher_ng_passthrough_pattern) %}
+{% endif %}
+{% if apt_cacher_ng_docker_passthrough %}
+{% set _ = passthrough_patterns.append('download\\.docker\\.com') %}
+{% endif %}
+{% if passthrough_patterns %}
+PassThroughPattern: {{ passthrough_patterns | join('|') }}
+{% endif %}
+
+# Support for Index files
+SupportDir: /usr/lib/apt-cacher-ng
+
+# Network timeout
+NetworkTimeout: 60
+
+# Freshness of index files (hours)
+FreshIndexMaxAge: 1
+
+# Don't cache incomplete files
+OfflineMode: false
+
+# Admin authentication is configured in security.conf

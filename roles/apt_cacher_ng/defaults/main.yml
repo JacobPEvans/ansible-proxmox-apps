@@ -1,0 +1,43 @@
+---
+# Apt-Cacher-NG role defaults
+
+# Service configuration
+apt_cacher_ng_port: 3142
+apt_cacher_ng_cache_dir: /var/cache/apt-cacher-ng
+apt_cacher_ng_log_dir: /var/log/apt-cacher-ng
+
+# Cache settings
+apt_cacher_ng_expiry_threshold: 4
+
+# Network settings
+apt_cacher_ng_bind_address: "0.0.0.0"
+
+# Passthrough HTTPS (for repos that require it)
+# Disabled by default to preserve caching benefits. Enable only for
+# repositories that cannot be cached (e.g., HTTPS with authentication).
+apt_cacher_ng_passthrough_enabled: false
+apt_cacher_ng_passthrough_pattern: "https?://(registry-1\\.docker\\.io|gcr\\.io|quay\\.io)/.*"
+
+# Admin interface
+apt_cacher_ng_admin_enabled: true
+apt_cacher_ng_report_page: acng-report.html
+
+# Upstream mirrors (Debian defaults)
+apt_cacher_ng_debian_mirrors:
+  - http://deb.debian.org/debian
+  - http://security.debian.org/debian-security
+
+# Upstream mirrors (Ubuntu defaults)
+apt_cacher_ng_ubuntu_mirrors:
+  - http://archive.ubuntu.com/ubuntu
+  - http://security.ubuntu.com/ubuntu
+
+# Docker mirror passthrough
+apt_cacher_ng_docker_passthrough: true
+
+# Logging
+apt_cacher_ng_verbose_log: 1
+apt_cacher_ng_debug_log: 0
+
+# UFW firewall integration
+apt_cacher_ng_firewall_enabled: false

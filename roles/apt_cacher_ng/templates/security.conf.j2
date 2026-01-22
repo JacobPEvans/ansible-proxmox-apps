@@ -1,0 +1,7 @@
+# Apt-Cacher-NG Security Configuration
+# Managed by Ansible - do not edit manually
+
+# Admin credentials (used for report page and maintenance)
+{% if apt_cacher_ng_admin_enabled %}
+AdminAuth: admin:{{ apt_cacher_ng_admin_password | mandatory('apt_cacher_ng_admin_password must be set via inventory or extra-vars when admin is enabled.') }}
+{% endif %}

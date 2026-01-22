@@ -1,0 +1,5 @@
+# Ubuntu backend mirrors
+# Managed by Ansible - do not edit manually
+{% for mirror in apt_cacher_ng_ubuntu_mirrors %}
+{{ mirror }}
+{% endfor %}
