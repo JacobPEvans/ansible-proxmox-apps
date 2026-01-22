@@ -84,6 +84,8 @@
   when: apt_cacher_ng_firewall_enabled
 
 - name: Wait for apt-cacher-ng to be ready
+  # This check runs inside the container via pct_remote connection
+  # Uses 127.0.0.1 since we're executing inside the container itself
   ansible.builtin.uri:
     url: "http://127.0.0.1:{{ apt_cacher_ng_port }}/{{ apt_cacher_ng_report_page }}"
     status_code: 200

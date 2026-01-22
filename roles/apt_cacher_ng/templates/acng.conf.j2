@@ -1,11 +1,11 @@
 # Apt-Cacher-NG configuration
 # Managed by Ansible - do not edit manually
 
+# Include security configuration (admin authentication)
+Include: /etc/apt-cacher-ng/security.conf
+
 # Cache directory
 CacheDir: {{ apt_cacher_ng_cache_dir }}
-
-# Maximum cache size (filesystem cleanup threshold)
-MaxCacheSize: {{ apt_cacher_ng_cache_max_size }}
 
 # Log directory
 LogDir: {{ apt_cacher_ng_log_dir }}
