@@ -8,6 +8,7 @@ ansible_pct_user: root
 ansible_pct_private_key_file: >
   {{ lookup('env', 'PROXMOX_SSH_KEY_PATH')
   | mandatory('PROXMOX_SSH_KEY_PATH environment variable is required') }}
+ansible_pct_node: "{{ lookup('env', 'PROXMOX_VE_NODE') }}"
 
 # Container OS settings
 ansible_user: root

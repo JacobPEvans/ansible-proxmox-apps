@@ -33,7 +33,7 @@ listen stats
 {% endif %}
 
 # Syslog TCP load balancing frontends
-# Note: UDP is handled by rsyslog, not HAProxy
+# Note: UDP is handled by Nginx stream module, not HAProxy
 {% for port in haproxy_listen_ports %}
 frontend syslog_{{ port }}
   bind *:{{ port }}
@@ -47,6 +47,7 @@ backend syslog_backend
   mode tcp
   balance {{ haproxy_algorithm }}
   option tcp-check
+  timeout server {{ haproxy_health_check_timeout }}
 {% for backend in haproxy_backends %}
-  server {{ backend.name }} {{ backend.ip }}:{{ backend.port }} check inter {{ haproxy_health_check_interval }} timeout {{ haproxy_health_check_timeout }}
+  server {{ backend.name }} {{ backend.ip }}:{{ backend.port }} check inter {{ haproxy_health_check_interval }}
 {% endfor %}

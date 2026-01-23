@@ -19,17 +19,21 @@ apt_cacher_ng_passthrough_enabled: false
 apt_cacher_ng_passthrough_pattern: "https?://(registry-1\\.docker\\.io|gcr\\.io|quay\\.io)/.*"
 
 # Admin interface
-apt_cacher_ng_admin_enabled: true
+apt_cacher_ng_admin_enabled: false
 apt_cacher_ng_report_page: acng-report.html
 
 # Upstream mirrors (Debian defaults)
 apt_cacher_ng_debian_mirrors:
   - http://deb.debian.org/debian
+
+apt_cacher_ng_debian_security_mirrors:
   - http://security.debian.org/debian-security
 
 # Upstream mirrors (Ubuntu defaults)
 apt_cacher_ng_ubuntu_mirrors:
   - http://archive.ubuntu.com/ubuntu
+
+apt_cacher_ng_ubuntu_security_mirrors:
   - http://security.ubuntu.com/ubuntu
 
 # Docker mirror passthrough

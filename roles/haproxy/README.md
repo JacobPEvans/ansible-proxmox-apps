@@ -1,18 +1,32 @@
-# haproxy_syslog
+# haproxy
 
-Deploy HAProxy configured for syslog load balancing.
+Deploy HAProxy (TCP/HTTP) and Nginx Stream (UDP) for protocol-specific load balancing.
 
 ## Purpose
 
-Installs and configures HAProxy to load balance syslog traffic across Cribl
-Edge nodes. Handles both UDP and TCP on ports 1514-1518 with health checks
-and statistics dashboard.
+Installs and configures two complementary load balancers:
+
+- **HAProxy**: Load balances TCP and HTTP traffic to Cribl Edge nodes
+- **Nginx Stream Module**: Load balances UDP traffic (syslog, NetFlow) to
+  Cribl Edge nodes
+
+This architecture follows proper separation of concerns - each service
+handles the protocols it's designed for.
+
+## Architecture
+
+```text
+UDP (syslog/NetFlow) → Nginx stream → UDP load balance → Cribl Edge
+TCP/HTTP             → HAProxy      → TCP load balance → Cribl Edge
+```
+
+Both services run on the same container (10.0.1.175) but handle different protocols.
 
 ## Requirements
 
 - Debian-based OS
 - Network connectivity to backend Cribl Edge nodes
-- Ports 1514-1518 and 8404 available for listening
+- Ports 1514-1518, 2055 (syslog/NetFlow) and 8404 (HAProxy stats) available
 
 ## Role Variables
 
@@ -22,46 +36,60 @@ All variables in `defaults/main.yml` are user-configurable.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `haproxy_syslog_service_state` | started | Service state |
-| `haproxy_syslog_service_enabled` | true | Enable on boot |
-| `haproxy_syslog_listen_ports` | 1514-1518 | Frontend ports |
-| `haproxy_syslog_backends` | cribl-edge-* | Backend servers |
-| `haproxy_syslog_stats_port` | 8404 | Admin interface |
+| `haproxy_service_state` | started | HAProxy service state |
+| `haproxy_service_enabled` | true | Enable HAProxy on boot |
+| `nginx_service_state` | started | Nginx service state |
+| `nginx_service_enabled` | true | Enable Nginx on boot |
+| `haproxy_listen_ports` | 1514-1518, 2055 | TCP frontend ports |
+| `nginx_udp_ports` | 1514-1518, 2055 | UDP frontend ports |
+| `haproxy_backends` | cribl-edge-* | Backend Cribl Edge nodes |
+| `haproxy_stats_port` | 8404 | HAProxy admin interface |
 
 ## Examples
 
 ### Basic Deployment
 
 ```yaml
-- name: Deploy HAProxy
+- name: Deploy load balancers
   hosts: haproxy_group
   roles:
-    - haproxy_syslog
+    - haproxy
 ```
 
 ## Accessing Statistics
 
-After deployment, access HAProxy statistics dashboard:
+HAProxy statistics dashboard:
 
-- URL: `http://haproxy-ip:8404/stats`
+- URL: `http://10.0.1.175:8404/stats`
 - Username: admin
-- Password: (set via `haproxy_syslog_stats_password`)
+- Password: (set via `HAPROXY_STATS_PASSWORD` environment variable)
 
 ## Load Balancing Behavior
+
+### HAProxy (TCP/HTTP)
 
 - Algorithm: round-robin
 - Health checks: TCP port 1514, interval 5s, timeout 5s
 - Persistence: None (stateless syslog)
-- Protocol: TCP and UDP (both)
+- Protocol: TCP only
+
+### Nginx Stream (UDP)
+
+- Algorithm: round-robin (default)
+- Health checks: None (UDP is stateless)
+- Persistence: None
+- Protocol: UDP only
 
 ## Tasks
 
-- Install HAProxy
-- Generate configuration from template
-- Configure frontend listening ports
-- Configure backend servers with health checks
-- Ensure service is running and enabled
+- Install HAProxy and Nginx
+- Generate HAProxy configuration (TCP/HTTP only)
+- Generate Nginx stream configuration (UDP only)
+- Configure frontend listening ports for both services
+- Configure backend servers
+- Ensure both services are running and enabled
 
 ## Handlers
 
 - `reload haproxy`: Reload HAProxy configuration
+- `reload nginx`: Reload Nginx configuration

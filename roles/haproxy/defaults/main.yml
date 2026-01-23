@@ -1,34 +1,39 @@
 ---
-# HAProxy Syslog Load Balancer role defaults
+# HAProxy + Nginx Stream Load Balancer role defaults
 
 # Package management
 haproxy_package_name: haproxy
-haproxy_rsyslog_package_name: rsyslog
+haproxy_nginx_package_name: nginx
 
 # Service configuration
 haproxy_service_name: haproxy
 haproxy_service_state: started
 haproxy_service_enabled: true
 
-# Frontend configuration - TCP ports for HAProxy
+haproxy_nginx_service_name: nginx
+haproxy_nginx_service_state: started
+haproxy_nginx_service_enabled: true
+
+# HAProxy: TCP/HTTP ports
 haproxy_listen_ports:
   - 1514
   - 1515
   - 1516
   - 1517
   - 1518
+  - 2055
 
-# UDP forwarding configuration
-# HAProxy doesn't support UDP natively, so rsyslog receives UDP and forwards via TCP
-haproxy_udp_enabled: true
-haproxy_udp_ports:
+# Nginx Stream: UDP ports for syslog/NetFlow
+haproxy_nginx_udp_ports:
   - 1514
   - 1515
   - 1516
   - 1517
   - 1518
+  - 2055
 
-# Backend configuration - uses hostnames from inventory
+# Backend configuration - Cribl Edge nodes
+# Used by both HAProxy (TCP) and Nginx (UDP)
 haproxy_backends:
   - name: cribl-edge-01
     host: "{{ hostvars['cribl_edge_01'].hostname }}.{{ internal_domain }}"
@@ -51,9 +56,10 @@ haproxy_stats_user: admin
 # This default is intentionally weak - override with vault lookup
 haproxy_stats_password: "{{ lookup('env', 'HAPROXY_STATS_PASSWORD') | default('CHANGEME') }}"
 
-# Load balancing algorithm
+# Load balancing algorithm (used by both HAProxy and Nginx)
 haproxy_algorithm: roundrobin
 
 # Configuration files
 haproxy_config_file: /etc/haproxy/haproxy.cfg
-haproxy_rsyslog_config_file: /etc/rsyslog.d/50-udp-forward.conf
+haproxy_nginx_config_file: /etc/nginx/nginx.conf
+haproxy_nginx_stream_config_file: /etc/nginx/streams.d/syslog-lb.conf

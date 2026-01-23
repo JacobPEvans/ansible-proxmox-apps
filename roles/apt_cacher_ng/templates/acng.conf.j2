@@ -14,7 +14,7 @@ LogDir: {{ apt_cacher_ng_log_dir }}
 Port: {{ apt_cacher_ng_port }}
 
 # Bind address
-BindAddress: {{ apt_cacher_ng_bind_address }}
+ BindAddress: {{ apt_cacher_ng_bind_address }}
 
 # Report page
 ReportPage: {{ apt_cacher_ng_report_page }}
@@ -31,7 +31,7 @@ Debug: {{ apt_cacher_ng_debug_log }}
 # Backend server mappings
 Remap-debrep: file:backends_debian /debian
 
-# Security file
+# Debian security updates repository mapping
 Remap-secdeb: file:backends_debian_security /debian-security
 
 # Ubuntu support (if needed)
