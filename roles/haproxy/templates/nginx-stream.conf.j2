@@ -2,7 +2,8 @@
 # Managed by Ansible - do not edit directly
 #
 # Purpose: Load balance UDP syslog and NetFlow traffic to Cribl Edge nodes
-# HAProxy handles TCP/HTTP, Nginx handles UDP
+# HAProxy handles TCP, Nginx handles UDP
+# Frontend port -> Backend port mapping (e.g., 514 -> 1514)
 
 stream {
   log_format basic '$remote_addr [$time_local] '
@@ -13,22 +14,39 @@ stream {
   access_log /var/log/nginx/stream-access.log basic;
   error_log /var/log/nginx/stream-error.log;
 
-  # Upstream backend for Cribl Edge nodes
-  upstream cribl_edge_udp {
-    # Round-robin load balancing (default)
-{% for backend in haproxy_backends %}
-    server {{ backend.ip }}:{{ backend.port }};
+  # ==========================================================================
+  # Upstream backends - one per destination port
+  # ==========================================================================
+{% set unique_backend_ports = (haproxy_syslog_port_mappings | map(attribute='backend') | list + [haproxy_netflow_port.backend]) | unique %}
+{% for backend_port in unique_backend_ports %}
+
+  # Upstream for backend port {{ backend_port }}
+  upstream cribl_edge_udp_{{ backend_port }} {
+{% for server in haproxy_backend_servers %}
+    server {{ server.ip }}:{{ backend_port }};
 {% endfor %}
   }
+{% endfor %}
 
-{% for port in haproxy_nginx_udp_ports %}
-  # UDP listener for port {{ port }}
+  # ==========================================================================
+  # UDP listeners for syslog ports
+  # ==========================================================================
+{% for mapping in haproxy_syslog_port_mappings %}
+
+  # {{ mapping.name | upper }} - Port {{ mapping.frontend }} -> {{ mapping.backend }}
   server {
-    listen {{ port }} udp;
-    proxy_pass cribl_edge_udp;
+    listen {{ mapping.frontend }} udp;
+    proxy_pass cribl_edge_udp_{{ mapping.backend }};
     proxy_timeout 1s;
     proxy_responses 0;  # UDP is stateless, don't wait for response
   }
-
 {% endfor %}
+
+  # NetFlow - Port {{ haproxy_netflow_port.frontend }} -> {{ haproxy_netflow_port.backend }}
+  server {
+    listen {{ haproxy_netflow_port.frontend }} udp;
+    proxy_pass cribl_edge_udp_{{ haproxy_netflow_port.backend }};
+    proxy_timeout 1s;
+    proxy_responses 0;
+  }
 }

@@ -52,3 +52,13 @@ cribl_docker_stack_healthcheck_interval: "60s"
 cribl_docker_stack_healthcheck_timeout: "30s"
 cribl_docker_stack_healthcheck_retries: 5
 cribl_docker_stack_healthcheck_start_period: "120s"
+
+# Splunk HEC configuration
+# NOTE: HTTP not HTTPS - Splunk VM 200 uses HTTP for HEC per CLAUDE.md
+# IP derived from inventory (NEVER hardcoded)
+cribl_docker_stack_splunk_host: "{{ hostvars['splunk']['ansible_host'] }}"
+cribl_docker_stack_hec_url: "http://{{ cribl_docker_stack_splunk_host }}:8088"
+cribl_docker_stack_hec_token: "{{ lookup('env', 'SPLUNK_HEC_TOKEN') }}"
+
+# Config directory on host for bind mounts
+cribl_docker_stack_config_dir: /opt/cribl/config

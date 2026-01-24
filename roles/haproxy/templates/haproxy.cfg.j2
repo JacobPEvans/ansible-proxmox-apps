@@ -32,22 +32,38 @@ listen stats
   stats auth {{ haproxy_stats_user }}:{{ haproxy_stats_password }}
 {% endif %}
 
-# Syslog TCP load balancing frontends
-# Note: UDP is handled by Nginx stream module, not HAProxy
-{% for port in haproxy_listen_ports %}
-frontend syslog_{{ port }}
-  bind *:{{ port }}
+# =============================================================================
+# Syslog TCP Load Balancing
+# Frontend port -> Backend port mapping (e.g., 514 -> 1514)
+# =============================================================================
+{% for mapping in haproxy_syslog_port_mappings %}
+
+# {{ mapping.name | upper }} - Port {{ mapping.frontend }} -> {{ mapping.backend }}
+frontend syslog_{{ mapping.name }}_{{ mapping.frontend }}
+  bind *:{{ mapping.frontend }}
   mode tcp
-  default_backend syslog_backend
+  default_backend syslog_backend_{{ mapping.backend }}
 
 {% endfor %}
 
-# TCP backend for syslog servers (Cribl Edge nodes)
-backend syslog_backend
+# NetFlow - Port {{ haproxy_netflow_port.frontend }} -> {{ haproxy_netflow_port.backend }}
+frontend netflow_{{ haproxy_netflow_port.frontend }}
+  bind *:{{ haproxy_netflow_port.frontend }}
+  mode tcp
+  default_backend syslog_backend_{{ haproxy_netflow_port.backend }}
+
+# =============================================================================
+# TCP Backends for Cribl Edge nodes (one per destination port)
+# =============================================================================
+{% set unique_backend_ports = (haproxy_syslog_port_mappings | map(attribute='backend') | list + [haproxy_netflow_port.backend]) | unique %}
+{% for backend_port in unique_backend_ports %}
+
+backend syslog_backend_{{ backend_port }}
   mode tcp
   balance {{ haproxy_algorithm }}
   option tcp-check
   timeout server {{ haproxy_health_check_timeout }}
-{% for backend in haproxy_backends %}
-  server {{ backend.name }} {{ backend.ip }}:{{ backend.port }} check inter {{ haproxy_health_check_interval }}
+{% for server in haproxy_backend_servers %}
+  server {{ server.name }} {{ server.ip }}:{{ backend_port }} check inter {{ haproxy_health_check_interval }}
+{% endfor %}
 {% endfor %}
