@@ -7,44 +7,118 @@
 
 # Configure application stacks based on Terraform infrastructure
 
-# Full Logging Pipeline: UniFi → HAProxy → Cribl Edge → Splunk
-# Run order matters: Splunk first, then Cribl, then HAProxy
+# Pre-requisite: Configure apt proxy on all LXC containers
+# This must run BEFORE any roles that use apt to install packages
+- name: Configure apt proxy on LXC containers
+  hosts: lxc_containers
+  become: true
+  gather_facts: false
+  tags:
+    - apt_proxy
+    - always
+
+  vars:
+    # Derive apt-cacher IP from gateway (VMID 106)
+    apt_cacher_ip: "{{ lookup('env', 'PROXMOX_VE_GATEWAY') | regex_replace('\\.[0-9]+$', '.106') }}"
+    apt_cacher_port: 3142
+
+  tasks:
+    - name: Configure apt proxy
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/00proxy
+        content: |
+          Acquire::http::Proxy "http://{{ apt_cacher_ip }}:{{ apt_cacher_port }}";
+        owner: root
+        group: root
+        mode: '0644'
+
+# =============================================================================
+# Phase 1: DNS Configuration
+# Technitium DNS must be configured first to enable hostname-based references
+# =============================================================================
+
+- name: Configure Technitium DNS with internal A records
+  hosts: localhost
+  become: false
+  gather_facts: false
+  tags:
+    - technitium_dns
+    - dns
+
+  vars:
+    # Derive Technitium DNS host IP from gateway (VMID 103)
+    technitium_dns_host: "{{ lookup('env', 'PROXMOX_VE_GATEWAY') | regex_replace('\\.[0-9]+$', '.103') }}"
+
+  roles:
+    - role: technitium_dns
+
+# =============================================================================
+# Phase 2: Destination Configuration
+# Splunk must be running before data pipeline components
+# =============================================================================
 
 - name: Configure Splunk Docker
   hosts: splunk_vms
   become: true
   tags:
     - splunk_docker
+    - splunk
 
   roles:
     - role: splunk_docker
 
-- name: Configure Cribl Edge nodes
-  hosts: cribl_edge
+# =============================================================================
+# Phase 3: Cribl Docker Swarm Stack
+# Deploy Cribl Edge and Stream on Docker VM using Swarm mode
+# This replaces the legacy LXC-based Cribl Edge/Stream and HAProxy
+# =============================================================================
+
+- name: Configure Cribl Docker Swarm Stack
+  hosts: cribl_docker_group
   become: true
-  gather_facts: false
   tags:
-    - cribl_edge
+    - cribl_docker_stack
+    - cribl
+    - swarm
 
   roles:
-    - role: cribl_edge
+    - role: cribl_docker_stack
 
-- name: Configure Cribl Stream
-  hosts: cribl_stream_group
-  become: true
-  gather_facts: false
-  tags:
-    - cribl_stream
+# =============================================================================
+# LEGACY: LXC-based Cribl and HAProxy (deprecated)
+# These plays are kept for backward compatibility but should be removed
+# once migration to Docker Swarm is complete.
+# =============================================================================
 
-  roles:
-    - role: cribl_stream
+# - name: Configure Cribl Edge nodes (LEGACY - use cribl_docker_stack)
+#   hosts: cribl_edge
+#   become: true
+#   gather_facts: false
+#   tags:
+#     - cribl_edge
+#     - legacy
+#
+#   roles:
+#     - role: cribl_edge
 
-- name: Configure HAProxy load balancer
-  hosts: haproxy_group
-  become: true
-  gather_facts: false
-  tags:
-    - haproxy
+# - name: Configure Cribl Stream (LEGACY - use cribl_docker_stack)
+#   hosts: cribl_stream_group
+#   become: true
+#   gather_facts: false
+#   tags:
+#     - cribl_stream
+#     - legacy
+#
+#   roles:
+#     - role: cribl_stream
 
-  roles:
-    - role: haproxy
+# - name: Configure HAProxy load balancer (LEGACY - Docker Swarm handles LB)
+#   hosts: haproxy_group
+#   become: true
+#   gather_facts: false
+#   tags:
+#     - haproxy
+#     - legacy
+#
+#   roles:
+#     - role: haproxy

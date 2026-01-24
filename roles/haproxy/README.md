@@ -1,5 +1,10 @@
 # haproxy
 
+> **DEPRECATED**: This role is deprecated in favor of `cribl_docker_stack`.
+> Docker Swarm's ingress network provides native load balancing, eliminating
+> the need for a separate HAProxy/Nginx layer. Use the `cribl_docker_stack`
+> role for new deployments. This role will be removed in a future release.
+
 Deploy HAProxy (TCP/HTTP) and Nginx Stream (UDP) for protocol-specific load balancing.
 
 ## Purpose

@@ -1,0 +1,58 @@
+---
+# Cribl Docker Stack role defaults
+# Deploys Cribl Edge and Stream on Docker Swarm
+
+# Stack name for docker stack deploy
+cribl_docker_stack_name: cribl
+
+# Docker Swarm initialization
+cribl_docker_stack_swarm_advertise_addr: "{{ ansible_default_ipv4.address }}"
+
+# Cribl image settings
+cribl_docker_stack_image: "cribl/cribl:latest"
+
+# Cribl Edge configuration
+# Note: Sized for 4GB VM with 4 total replicas (2 Edge + 2 Stream)
+cribl_docker_stack_edge_replicas: 2
+cribl_docker_stack_edge_cpu_limit: "1"
+cribl_docker_stack_edge_memory_limit: "768M"
+cribl_docker_stack_edge_cpu_reservation: "0.5"
+cribl_docker_stack_edge_memory_reservation: "256M"
+
+# Cribl Stream configuration
+cribl_docker_stack_stream_replicas: 2
+cribl_docker_stack_stream_cpu_limit: "1"
+cribl_docker_stack_stream_memory_limit: "768M"
+cribl_docker_stack_stream_cpu_reservation: "0.5"
+cribl_docker_stack_stream_memory_reservation: "256M"
+
+# Syslog ports - matches the port assignment table
+cribl_docker_stack_syslog_ports:
+  - 1514  # UniFi
+  - 1515  # Palo Alto
+  - 1516  # Cisco ASA
+  - 1517  # Linux hosts
+  - 1518  # Windows
+
+# NetFlow port
+cribl_docker_stack_netflow_port: 2055
+
+# Cribl web UI ports
+cribl_docker_stack_edge_web_port: 9000
+cribl_docker_stack_stream_web_port: 9100
+
+# Splunk HEC output configuration
+cribl_docker_stack_splunk_hec_url: "http://splunk:8088"
+cribl_docker_stack_splunk_hec_token: "{{ lookup('env', 'SPLUNK_HEC_TOKEN') }}"
+
+# Internal domain for hostname resolution
+cribl_docker_stack_internal_domain: "{{ lookup('env', 'PROXMOX_DOMAIN') }}"
+
+# Health check settings
+cribl_docker_stack_healthcheck_interval: "30s"
+cribl_docker_stack_healthcheck_timeout: "10s"
+cribl_docker_stack_healthcheck_retries: 3
+cribl_docker_stack_healthcheck_start_period: "30s"
+
+# Docker volumes for persistent state/config
+cribl_docker_stack_data_dir: /opt/cribl/data

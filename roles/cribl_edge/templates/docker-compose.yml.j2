@@ -12,10 +12,10 @@ services:
       - CRIBL_EDGE=1
       - CRIBL_HOME=/opt/cribl
     ports:
-      # Syslog listener
-      - "{{ cribl_edge_syslog_port }}:{{ cribl_edge_syslog_port }}/tcp"
-      - "{{ cribl_edge_syslog_port }}:{{ cribl_edge_syslog_port }}/udp"
-      # Web UI (optional, for debugging)
+{% for port_config in cribl_edge_syslog_ports %}
+      - "{{ port_config.port }}:{{ port_config.port }}/{{ port_config.protocol }}"
+{% endfor %}
+      # Web UI (for debugging and configuration)
       - "9000:9000"
     volumes:
       # Persistent data (queue, state)

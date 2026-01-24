@@ -58,6 +58,37 @@
     mode: '0644'
   notify: Reload nginx
 
+- name: Create HAProxy systemd override directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/haproxy.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  when: "'lxc_containers' in group_names"
+
+- name: Deploy HAProxy LXC systemd override
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/haproxy.service.d/lxc-override.conf
+    content: |
+      # HAProxy systemd override for LXC containers
+      # BindReadOnlyPaths is not supported in LXC namespaces
+      [Service]
+      BindReadOnlyPaths=
+    owner: root
+    group: root
+    mode: '0644'
+  when: "'lxc_containers' in group_names"
+  notify: Reload haproxy
+
+- name: Ensure HAProxy socket directory exists
+  ansible.builtin.file:
+    path: /run/haproxy
+    state: directory
+    owner: haproxy
+    group: haproxy
+    mode: '0755'
+
 - name: Start HAProxy service
   ansible.builtin.systemd:
     name: "{{ haproxy_service_name }}"

@@ -1,0 +1,172 @@
+---
+# Cribl Docker Stack Deployment Tasks
+# Deploys Cribl Edge and Stream on Docker Swarm
+
+- name: Validate required variables
+  ansible.builtin.assert:
+    that:
+      - cribl_docker_stack_splunk_hec_token | length > 0
+    fail_msg: "SPLUNK_HEC_TOKEN must be set in Doppler"
+    quiet: true
+
+# =============================================================================
+# Docker Installation
+# =============================================================================
+
+- name: Gather OS facts
+  ansible.builtin.setup:
+    filter: ansible_distribution*
+
+- name: Install Docker prerequisites
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+    state: present
+    update_cache: true
+
+- name: Create keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Add Docker GPG key
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/debian/gpg
+    dest: /etc/apt/keyrings/docker.asc
+    mode: "0644"
+    force: false
+
+- name: Add Docker repository
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc]
+      https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable
+    state: present
+    filename: docker
+
+- name: Install Docker packages
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+    update_cache: true
+
+- name: Ensure Docker service is running
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: true
+
+# =============================================================================
+# Docker Swarm Configuration
+# =============================================================================
+
+- name: Check if Docker Swarm is initialized
+  ansible.builtin.command: docker info --format '{{ '{{' }} .Swarm.LocalNodeState {{ '}}' }}'
+  register: cribl_docker_stack_swarm_state
+  changed_when: false
+
+- name: Initialize Docker Swarm
+  ansible.builtin.command: >
+    docker swarm init --advertise-addr {{ cribl_docker_stack_swarm_advertise_addr }}
+  when: cribl_docker_stack_swarm_state.stdout != "active"
+  register: cribl_docker_stack_swarm_init
+  changed_when: cribl_docker_stack_swarm_init.rc == 0
+
+- name: Create Docker volumes directory
+  ansible.builtin.file:
+    path: "{{ cribl_docker_stack_data_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Create Cribl stack configuration directory
+  ansible.builtin.file:
+    path: /opt/cribl/stack
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy Cribl Docker stack template
+  ansible.builtin.template:
+    src: docker-stack.yml.j2
+    dest: /opt/cribl/stack/docker-stack.yml
+    owner: root
+    group: root
+    mode: "0644"
+  register: cribl_docker_stack_template
+
+- name: Deploy Cribl stack to Docker Swarm
+  ansible.builtin.command: >
+    docker stack deploy -c /opt/cribl/stack/docker-stack.yml {{ cribl_docker_stack_name }}
+  when: cribl_docker_stack_template.changed or cribl_docker_stack_swarm_init.changed | default(false)
+  register: cribl_docker_stack_deploy
+  changed_when: cribl_docker_stack_deploy.rc == 0
+
+- name: Wait for Cribl Edge services to be ready
+  ansible.builtin.command: >
+    docker service ls --filter name={{ cribl_docker_stack_name }}_cribl-edge
+    --format '{{ '{{' }} .Replicas {{ '}}' }}'
+  register: cribl_docker_stack_edge_replicas_status
+  until: >-
+    cribl_docker_stack_edge_replicas_status.stdout ==
+    "{{ cribl_docker_stack_edge_replicas }}/{{ cribl_docker_stack_edge_replicas }}"
+  retries: 30
+  delay: 10
+  changed_when: false
+
+- name: Wait for Cribl Stream services to be ready
+  ansible.builtin.command: >
+    docker service ls --filter name={{ cribl_docker_stack_name }}_cribl-stream
+    --format '{{ '{{' }} .Replicas {{ '}}' }}'
+  register: cribl_docker_stack_stream_replicas_status
+  until: >-
+    cribl_docker_stack_stream_replicas_status.stdout ==
+    "{{ cribl_docker_stack_stream_replicas }}/{{ cribl_docker_stack_stream_replicas }}"
+  retries: 30
+  delay: 10
+  changed_when: false
+
+- name: Verify Cribl Edge health
+  ansible.builtin.uri:
+    url: "http://localhost:{{ cribl_docker_stack_edge_web_port }}/api/v1/health"
+    method: GET
+    return_content: true
+    status_code: 200
+  register: cribl_docker_stack_edge_health
+  retries: 10
+  delay: 5
+  until: cribl_docker_stack_edge_health.status == 200
+  changed_when: false
+
+- name: Verify Cribl Stream health
+  ansible.builtin.uri:
+    url: "http://localhost:{{ cribl_docker_stack_stream_web_port }}/api/v1/health"
+    method: GET
+    return_content: true
+    status_code: 200
+  register: cribl_docker_stack_stream_health
+  retries: 10
+  delay: 5
+  until: cribl_docker_stack_stream_health.status == 200
+  changed_when: false
+
+- name: Display Cribl stack status
+  ansible.builtin.command: docker stack services {{ cribl_docker_stack_name }}
+  register: cribl_docker_stack_status
+  changed_when: false
+
+- name: Show Cribl services
+  ansible.builtin.debug:
+    msg: "{{ cribl_docker_stack_status.stdout_lines }}"

@@ -1,0 +1,121 @@
+---
+# Cribl Docker Swarm Stack
+# Managed by Ansible - Do not edit manually
+# Deploys 2 Cribl Edge + 2 Cribl Stream replicas with ingress load balancing
+
+version: "3.8"
+
+services:
+  cribl-edge:
+    image: {{ cribl_docker_stack_image }}
+    hostname: "cribl-edge-0{{ '{{' }}.Task.Slot{{ '}}' }}"
+    environment:
+      - CRIBL_EDGE=1
+      - CRIBL_HOME=/opt/cribl
+    ports:
+{% for port in cribl_docker_stack_syslog_ports %}
+      # Syslog port {{ port }} (TCP + UDP)
+      - target: {{ port }}
+        published: {{ port }}
+        protocol: tcp
+        mode: ingress
+      - target: {{ port }}
+        published: {{ port }}
+        protocol: udp
+        mode: ingress
+{% endfor %}
+      # NetFlow port {{ cribl_docker_stack_netflow_port }} (UDP)
+      - target: {{ cribl_docker_stack_netflow_port }}
+        published: {{ cribl_docker_stack_netflow_port }}
+        protocol: udp
+        mode: ingress
+      # Cribl Edge Web UI (Edge API is on port 9420 internally)
+      - target: 9420
+        published: {{ cribl_docker_stack_edge_web_port }}
+        protocol: tcp
+        mode: ingress
+    # Note: No persistent volumes - Edge replicas are ephemeral
+    # Each replica maintains its own in-container state
+    deploy:
+      mode: replicated
+      replicas: {{ cribl_docker_stack_edge_replicas }}
+      resources:
+        limits:
+          cpus: '{{ cribl_docker_stack_edge_cpu_limit }}'
+          memory: {{ cribl_docker_stack_edge_memory_limit }}
+        reservations:
+          cpus: '{{ cribl_docker_stack_edge_cpu_reservation }}'
+          memory: {{ cribl_docker_stack_edge_memory_reservation }}
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    healthcheck:
+      # Cribl Edge API is on port 9420
+      test: ["CMD", "curl", "-f", "http://localhost:9420/api/v1/health"]
+      interval: {{ cribl_docker_stack_healthcheck_interval }}
+      timeout: {{ cribl_docker_stack_healthcheck_timeout }}
+      retries: {{ cribl_docker_stack_healthcheck_retries }}
+      start_period: {{ cribl_docker_stack_healthcheck_start_period }}
+    networks:
+      - cribl-net
+
+  cribl-stream:
+    image: {{ cribl_docker_stack_image }}
+    hostname: "cribl-stream-0{{ '{{' }}.Task.Slot{{ '}}' }}"
+    environment:
+      - CRIBL_STREAM=1
+      - CRIBL_HOME=/opt/cribl
+    ports:
+      # Cribl Stream Web UI (mapped to 9100 externally)
+      - target: 9000
+        published: {{ cribl_docker_stack_stream_web_port }}
+        protocol: tcp
+        mode: ingress
+    volumes:
+      - cribl-stream-state:/opt/cribl/state
+      - cribl-stream-config:/opt/cribl/local
+    deploy:
+      mode: replicated
+      replicas: {{ cribl_docker_stack_stream_replicas }}
+      resources:
+        limits:
+          cpus: '{{ cribl_docker_stack_stream_cpu_limit }}'
+          memory: {{ cribl_docker_stack_stream_memory_limit }}
+        reservations:
+          cpus: '{{ cribl_docker_stack_stream_cpu_reservation }}'
+          memory: {{ cribl_docker_stack_stream_memory_reservation }}
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/api/v1/health"]
+      interval: {{ cribl_docker_stack_healthcheck_interval }}
+      timeout: {{ cribl_docker_stack_healthcheck_timeout }}
+      retries: {{ cribl_docker_stack_healthcheck_retries }}
+      start_period: {{ cribl_docker_stack_healthcheck_start_period }}
+    networks:
+      - cribl-net
+
+networks:
+  cribl-net:
+    driver: overlay
+    attachable: true
+
+volumes:
+  # Note: Edge volumes removed - replicas are ephemeral
+  cribl-stream-state:
+    driver: local
+  cribl-stream-config:
+    driver: local
