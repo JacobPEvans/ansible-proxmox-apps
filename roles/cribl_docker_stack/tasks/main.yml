@@ -103,7 +103,7 @@
     state: present
     compose:
       - /opt/cribl/stack/docker-stack.yml
-  when: cribl_docker_stack_template.changed or cribl_docker_stack_swarm_init.changed | default(false)
+  # Always run - module is idempotent and compares compose to running services
   register: cribl_docker_stack_deploy
 
 - name: Wait for Cribl Edge services to be ready
