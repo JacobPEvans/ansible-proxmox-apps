@@ -13,16 +13,18 @@ cribl_docker_stack_image: "cribl/cribl:4.10.1"
 
 # Cribl Edge configuration
 # Note: Sized for 4GB VM with 4 total replicas (2 Edge + 2 Stream)
+# Memory increased from 768M to 1024M to prevent OOM kills (exit 137)
 cribl_docker_stack_edge_replicas: 2
 cribl_docker_stack_edge_cpu_limit: "1"
-cribl_docker_stack_edge_memory_limit: "768M"
+cribl_docker_stack_edge_memory_limit: "1024M"
 cribl_docker_stack_edge_cpu_reservation: "0.5"
 cribl_docker_stack_edge_memory_reservation: "256M"
 
 # Cribl Stream configuration
+# Memory increased from 768M to 1024M to prevent OOM kills (exit 137)
 cribl_docker_stack_stream_replicas: 2
 cribl_docker_stack_stream_cpu_limit: "1"
-cribl_docker_stack_stream_memory_limit: "768M"
+cribl_docker_stack_stream_memory_limit: "1024M"
 cribl_docker_stack_stream_cpu_reservation: "0.5"
 cribl_docker_stack_stream_memory_reservation: "256M"
 
