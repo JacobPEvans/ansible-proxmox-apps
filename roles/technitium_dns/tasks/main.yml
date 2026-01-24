@@ -60,14 +60,13 @@
 
 - name: Get existing A records for zone
   ansible.builtin.uri:
-    url: "{{ technitium_dns_api_url }}/api/zones/records/get"
+    url: >-
+      {{ technitium_dns_api_url }}/api/zones/records/get?domain={{
+      technitium_dns_internal_domain | urlencode }}&zone={{
+      technitium_dns_internal_domain | urlencode }}
     method: GET
     headers:
       X-Api-Token: "{{ technitium_dns_api_token }}"
-    body_format: form-urlencoded
-    body:
-      domain: "{{ technitium_dns_internal_domain }}"
-      zone: "{{ technitium_dns_internal_domain }}"
     return_content: true
     timeout: "{{ technitium_dns_api_timeout }}"
   register: technitium_dns_existing_records

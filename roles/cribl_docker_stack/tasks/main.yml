@@ -2,13 +2,6 @@
 # Cribl Docker Stack Deployment Tasks
 # Deploys Cribl Edge and Stream on Docker Swarm
 
-- name: Validate required variables
-  ansible.builtin.assert:
-    that:
-      - cribl_docker_stack_splunk_hec_token | length > 0
-    fail_msg: "SPLUNK_HEC_TOKEN must be set in Doppler"
-    quiet: true
-
 # =============================================================================
 # Docker Installation
 # =============================================================================
@@ -34,9 +27,13 @@
     state: directory
     mode: "0755"
 
+- name: Set Docker repository distribution
+  ansible.builtin.set_fact:
+    cribl_docker_stack_docker_distro: "{{ ansible_distribution | lower }}"
+
 - name: Add Docker GPG key
   ansible.builtin.get_url:
-    url: https://download.docker.com/linux/debian/gpg
+    url: "https://download.docker.com/linux/{{ cribl_docker_stack_docker_distro }}/gpg"
     dest: /etc/apt/keyrings/docker.asc
     mode: "0644"
     force: false
@@ -45,7 +42,8 @@
   ansible.builtin.apt_repository:
     repo: >-
       deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc]
-      https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable
+      https://download.docker.com/linux/{{ cribl_docker_stack_docker_distro }}
+      {{ ansible_distribution_release }} stable
     state: present
     filename: docker
 
@@ -76,19 +74,11 @@
   changed_when: false
 
 - name: Initialize Docker Swarm
-  ansible.builtin.command: >
-    docker swarm init --advertise-addr {{ cribl_docker_stack_swarm_advertise_addr }}
+  community.docker.docker_swarm:
+    state: present
+    advertise_addr: "{{ cribl_docker_stack_swarm_advertise_addr }}"
   when: cribl_docker_stack_swarm_state.stdout != "active"
   register: cribl_docker_stack_swarm_init
-  changed_when: cribl_docker_stack_swarm_init.rc == 0
-
-- name: Create Docker volumes directory
-  ansible.builtin.file:
-    path: "{{ cribl_docker_stack_data_dir }}"
-    state: directory
-    owner: root
-    group: root
-    mode: "0755"
 
 - name: Create Cribl stack configuration directory
   ansible.builtin.file:
@@ -108,11 +98,13 @@
   register: cribl_docker_stack_template
 
 - name: Deploy Cribl stack to Docker Swarm
-  ansible.builtin.command: >
-    docker stack deploy -c /opt/cribl/stack/docker-stack.yml {{ cribl_docker_stack_name }}
+  community.docker.docker_stack:
+    name: "{{ cribl_docker_stack_name }}"
+    state: present
+    compose:
+      - /opt/cribl/stack/docker-stack.yml
   when: cribl_docker_stack_template.changed or cribl_docker_stack_swarm_init.changed | default(false)
   register: cribl_docker_stack_deploy
-  changed_when: cribl_docker_stack_deploy.rc == 0
 
 - name: Wait for Cribl Edge services to be ready
   ansible.builtin.command: >

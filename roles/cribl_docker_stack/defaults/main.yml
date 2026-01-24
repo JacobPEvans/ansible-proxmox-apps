@@ -8,8 +8,8 @@ cribl_docker_stack_name: cribl
 # Docker Swarm initialization
 cribl_docker_stack_swarm_advertise_addr: "{{ ansible_default_ipv4.address }}"
 
-# Cribl image settings
-cribl_docker_stack_image: "cribl/cribl:latest"
+# Cribl image settings - pinned to specific version for reproducibility
+cribl_docker_stack_image: "cribl/cribl:4.10.1"
 
 # Cribl Edge configuration
 # Note: Sized for 4GB VM with 4 total replicas (2 Edge + 2 Stream)
@@ -41,10 +41,6 @@ cribl_docker_stack_netflow_port: 2055
 cribl_docker_stack_edge_web_port: 9000
 cribl_docker_stack_stream_web_port: 9100
 
-# Splunk HEC output configuration
-cribl_docker_stack_splunk_hec_url: "http://splunk:8088"
-cribl_docker_stack_splunk_hec_token: "{{ lookup('env', 'SPLUNK_HEC_TOKEN') }}"
-
 # Internal domain for hostname resolution
 cribl_docker_stack_internal_domain: "{{ lookup('env', 'PROXMOX_DOMAIN') }}"
 
@@ -53,6 +49,3 @@ cribl_docker_stack_healthcheck_interval: "30s"
 cribl_docker_stack_healthcheck_timeout: "10s"
 cribl_docker_stack_healthcheck_retries: 3
 cribl_docker_stack_healthcheck_start_period: "30s"
-
-# Docker volumes for persistent state/config
-cribl_docker_stack_data_dir: /opt/cribl/data

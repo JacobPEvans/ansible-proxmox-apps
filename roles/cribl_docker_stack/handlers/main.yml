@@ -2,19 +2,21 @@
 # Cribl Docker Stack handlers
 
 - name: Redeploy cribl stack
-  ansible.builtin.command: >
-    docker stack deploy -c /opt/cribl/stack/docker-stack.yml {{ cribl_docker_stack_name }}
+  community.docker.docker_stack:
+    name: "{{ cribl_docker_stack_name }}"
+    state: present
+    compose:
+      - /opt/cribl/stack/docker-stack.yml
   listen: redeploy cribl stack
-  changed_when: true
 
 - name: Scale cribl edge
-  ansible.builtin.command: >
-    docker service scale {{ cribl_docker_stack_name }}_cribl-edge={{ cribl_docker_stack_edge_replicas }}
+  community.docker.docker_swarm_service:
+    name: "{{ cribl_docker_stack_name }}_cribl-edge"
+    replicas: "{{ cribl_docker_stack_edge_replicas }}"
   listen: scale cribl edge
-  changed_when: true
 
 - name: Scale cribl stream
-  ansible.builtin.command: >
-    docker service scale {{ cribl_docker_stack_name }}_cribl-stream={{ cribl_docker_stack_stream_replicas }}
+  community.docker.docker_swarm_service:
+    name: "{{ cribl_docker_stack_name }}_cribl-stream"
+    replicas: "{{ cribl_docker_stack_stream_replicas }}"
   listen: scale cribl stream
-  changed_when: true
