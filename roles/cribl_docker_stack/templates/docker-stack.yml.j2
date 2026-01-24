@@ -52,9 +52,9 @@ services:
         order: stop-first
       restart_policy:
         condition: on-failure
-        delay: 5s
-        max_attempts: 3
-        window: 120s
+        delay: 10s
+        max_attempts: 5
+        window: 300s
     healthcheck:
       # Cribl Edge API is on port 9420
       test: ["CMD", "curl", "-f", "http://localhost:9420/api/v1/health"]
@@ -96,9 +96,9 @@ services:
         order: stop-first
       restart_policy:
         condition: on-failure
-        delay: 5s
-        max_attempts: 3
-        window: 120s
+        delay: 10s
+        max_attempts: 5
+        window: 300s
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/api/v1/health"]
       interval: {{ cribl_docker_stack_healthcheck_interval }}

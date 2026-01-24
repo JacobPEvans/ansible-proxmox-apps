@@ -114,8 +114,8 @@
   until: >-
     cribl_docker_stack_edge_replicas_status.stdout ==
     "{{ cribl_docker_stack_edge_replicas }}/{{ cribl_docker_stack_edge_replicas }}"
-  retries: 30
-  delay: 10
+  retries: 45
+  delay: 15
   changed_when: false
 
 - name: Wait for Cribl Stream services to be ready
@@ -126,8 +126,8 @@
   until: >-
     cribl_docker_stack_stream_replicas_status.stdout ==
     "{{ cribl_docker_stack_stream_replicas }}/{{ cribl_docker_stack_stream_replicas }}"
-  retries: 30
-  delay: 10
+  retries: 45
+  delay: 15
   changed_when: false
 
 - name: Verify Cribl Edge health
@@ -137,8 +137,8 @@
     return_content: true
     status_code: 200
   register: cribl_docker_stack_edge_health
-  retries: 10
-  delay: 5
+  retries: 20
+  delay: 15
   until: cribl_docker_stack_edge_health.status == 200
   changed_when: false
 
@@ -149,8 +149,8 @@
     return_content: true
     status_code: 200
   register: cribl_docker_stack_stream_health
-  retries: 10
-  delay: 5
+  retries: 20
+  delay: 15
   until: cribl_docker_stack_stream_health.status == 200
   changed_when: false
 
