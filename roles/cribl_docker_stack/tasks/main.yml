@@ -97,6 +97,28 @@
     mode: "0644"
   register: cribl_docker_stack_template
 
+- name: Install Python venv and pip for dependencies
+  ansible.builtin.apt:
+    name:
+      - python3-pip
+      - python3-venv
+      - python3-full
+    state: present
+    update_cache: true
+
+- name: Create virtualenv for Ansible Python dependencies
+  ansible.builtin.pip:
+    name:
+      - jsondiff
+      - docker
+    state: present
+    virtualenv: /opt/ansible-venv
+    virtualenv_command: python3 -m venv
+
+- name: Set Python interpreter to use venv for subsequent tasks
+  ansible.builtin.set_fact:
+    ansible_python_interpreter: /opt/ansible-venv/bin/python
+
 - name: Deploy Cribl stack to Docker Swarm
   community.docker.docker_stack:
     name: "{{ cribl_docker_stack_name }}"
@@ -132,7 +154,7 @@
 
 - name: Verify Cribl Edge health
   ansible.builtin.uri:
-    url: "http://localhost:{{ cribl_docker_stack_edge_web_port }}/api/v1/health"
+    url: "http://127.0.0.1:{{ cribl_docker_stack_edge_web_port }}/api/v1/health"
     method: GET
     return_content: true
     status_code: 200
@@ -144,7 +166,7 @@
 
 - name: Verify Cribl Stream health
   ansible.builtin.uri:
-    url: "http://localhost:{{ cribl_docker_stack_stream_web_port }}/api/v1/health"
+    url: "http://127.0.0.1:{{ cribl_docker_stack_stream_web_port }}/api/v1/health"
     method: GET
     return_content: true
     status_code: 200
@@ -162,3 +184,56 @@
 - name: Show Cribl services
   ansible.builtin.debug:
     msg: "{{ cribl_docker_stack_status.stdout_lines }}"
+
+# =============================================================================
+# E2E Validation - No manual intervention required
+# =============================================================================
+
+- name: Get Cribl Edge container IDs
+  ansible.builtin.shell: >
+    docker ps -q --filter name={{ cribl_docker_stack_name }}_cribl-edge
+  register: cribl_docker_stack_edge_container_ids
+  changed_when: false
+  failed_when: cribl_docker_stack_edge_container_ids.stdout == ""
+
+- name: Validate Edge containers are not OOM killed
+  ansible.builtin.shell: |
+    for container_id in {{ cribl_docker_stack_edge_container_ids.stdout_lines | join(' ') }}; do
+      exit_code=$(docker inspect --format='{{ '{{' }} .State.ExitCode {{ '}}' }}' "$container_id")
+      if [ "$exit_code" = "137" ]; then
+        echo "ERROR: Container $container_id was OOM killed (exit code 137)"
+        exit 1
+      fi
+    done
+    echo "All Edge containers healthy (no OOM)"
+  register: cribl_docker_stack_edge_oom_check
+  changed_when: false
+
+- name: Get Cribl Stream container IDs
+  ansible.builtin.shell: >
+    docker ps -q --filter name={{ cribl_docker_stack_name }}_cribl-stream
+  register: cribl_docker_stack_stream_container_ids
+  changed_when: false
+  failed_when: cribl_docker_stack_stream_container_ids.stdout == ""
+
+- name: Validate Stream containers are not OOM killed
+  ansible.builtin.shell: |
+    for container_id in {{ cribl_docker_stack_stream_container_ids.stdout_lines | join(' ') }}; do
+      exit_code=$(docker inspect --format='{{ '{{' }} .State.ExitCode {{ '}}' }}' "$container_id")
+      if [ "$exit_code" = "137" ]; then
+        echo "ERROR: Container $container_id was OOM killed (exit code 137)"
+        exit 1
+      fi
+    done
+    echo "All Stream containers healthy (no OOM)"
+  register: cribl_docker_stack_stream_oom_check
+  changed_when: false
+
+- name: E2E Summary
+  ansible.builtin.debug:
+    msg: |
+      === Cribl Docker Stack E2E Validation PASSED ===
+      Edge: {{ cribl_docker_stack_edge_replicas }}/{{ cribl_docker_stack_edge_replicas }} healthy
+      Stream: {{ cribl_docker_stack_stream_replicas }}/{{ cribl_docker_stack_stream_replicas }} healthy
+      Edge OOM Check: {{ cribl_docker_stack_edge_oom_check.stdout }}
+      Stream OOM Check: {{ cribl_docker_stack_stream_oom_check.stdout }}

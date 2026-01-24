@@ -37,8 +37,11 @@ cd ansible-proxmox-apps
 ### 2. Install Dependencies
 
 ```bash
-pip install ansible==2.12.0
-uv run ansible-galaxy collection install -r requirements.yml
+# Install Ansible via pipx (recommended)
+pipx install ansible
+
+# Install required collections
+~/.local/pipx/venvs/ansible/bin/ansible-galaxy collection install -r requirements.yml
 ```
 
 ### 3. Configure Doppler
@@ -63,16 +66,17 @@ export SPLUNK_VM="192.168.1.104"
 ### 5. Run Playbooks
 
 ```bash
-# Deploy Cribl Edge nodes
-doppler run -- uv run ansible-playbook playbooks/site.yml \
-  --limit cribl_edge
+# Deploy Cribl Docker Swarm stack
+doppler run -- ~/.local/pipx/venvs/ansible/bin/ansible-playbook \
+  -i inventory/hosts.yml playbooks/site.yml --tags cribl_docker_stack
 
-# Deploy HAProxy load balancer
-doppler run -- uv run ansible-playbook playbooks/site.yml \
-  --limit haproxy
+# Deploy Splunk
+doppler run -- ~/.local/pipx/venvs/ansible/bin/ansible-playbook \
+  -i inventory/hosts.yml playbooks/site.yml --tags splunk_docker
 
 # Deploy all applications
-doppler run -- uv run ansible-playbook playbooks/site.yml
+doppler run -- ~/.local/pipx/venvs/ansible/bin/ansible-playbook \
+  -i inventory/hosts.yml playbooks/site.yml
 ```
 
 ## Inventory
@@ -215,7 +219,7 @@ See `requirements.yml` for Ansible Galaxy collection dependencies.
 Run the following to install:
 
 ```bash
-uv run ansible-galaxy collection install -r requirements.yml
+~/.local/pipx/venvs/ansible/bin/ansible-galaxy collection install -r requirements.yml
 ```
 
 ## Linting
@@ -223,13 +227,13 @@ uv run ansible-galaxy collection install -r requirements.yml
 Validate code quality with ansible-lint:
 
 ```bash
-uv run ansible-lint
+~/.local/pipx/venvs/ansible/bin/ansible-lint
 ```
 
 Fix common issues automatically:
 
 ```bash
-uv run ansible-lint --fix
+~/.local/pipx/venvs/ansible/bin/ansible-lint --fix
 ```
 
 ## Contributing

@@ -9,13 +9,14 @@
 
 # Pre-requisite: Configure apt proxy on all LXC containers
 # This must run BEFORE any roles that use apt to install packages
+# Note: Only runs when apt_proxy tag is specified or when running full site.yml
 - name: Configure apt proxy on LXC containers
   hosts: lxc_containers
   become: true
   gather_facts: false
   tags:
     - apt_proxy
-    - always
+    - lxc
 
   vars:
     # Derive apt-cacher IP from gateway (VMID 106)

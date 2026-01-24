@@ -152,7 +152,8 @@ All secrets (API tokens, HEC tokens, passwords) are managed via Doppler:
 doppler secrets download --no-file
 
 # Run playbook with secrets
-doppler run -- uv run ansible-playbook playbooks/site.yml
+doppler run -- ~/.local/pipx/venvs/ansible/bin/ansible-playbook \
+  -i inventory/hosts.yml playbooks/site.yml
 ```
 
 Never commit secrets to git. Use `.gitignore` to exclude:
@@ -176,16 +177,18 @@ See CLAUDE.md in `/Users/jevans/CLAUDE.md` for worktree requirements.
 
 ```bash
 # Lint all Ansible files
-uv run ansible-lint
+~/.local/pipx/venvs/ansible/bin/ansible-lint
 
 # Check specific role
-uv run ansible-lint roles/cribl_edge/
+~/.local/pipx/venvs/ansible/bin/ansible-lint roles/cribl_edge/
 
 # Check playbook syntax
-uv run ansible-playbook playbooks/site.yml --syntax-check
+doppler run -- ~/.local/pipx/venvs/ansible/bin/ansible-playbook \
+  -i inventory/hosts.yml playbooks/site.yml --syntax-check
 
 # Dry run with diff
-uv run ansible-playbook playbooks/site.yml --check --diff
+doppler run -- ~/.local/pipx/venvs/ansible/bin/ansible-playbook \
+  -i inventory/hosts.yml playbooks/site.yml --check --diff
 ```
 
 ## Related Repositories

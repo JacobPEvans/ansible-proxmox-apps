@@ -8,10 +8,32 @@
 
 - name: Load Terraform Infrastructure Inventory
   hosts: localhost
+  become: false
   gather_facts: false
   tags: always
 
+  vars:
+    # Override global ansible_become for localhost tasks
+    ansible_become: false
+
   tasks:
+    - name: Verify terraform inventory exists
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/../inventory/terraform_inventory.json"
+      register: terraform_inventory_check
+
+    - name: Fail if terraform inventory is missing
+      ansible.builtin.fail:
+        msg: |
+          terraform_inventory.json not found!
+
+          Generate it by running from terraform-proxmox:
+            terragrunt output -json ansible_inventory > \
+              ~/git/ansible-proxmox-apps/main/inventory/terraform_inventory.json
+
+          Or sync from existing deployment.
+      when: not terraform_inventory_check.stat.exists
+
     - name: Load Terraform inventory JSON
       ansible.builtin.include_vars:
         file: "{{ playbook_dir }}/../inventory/terraform_inventory.json"
