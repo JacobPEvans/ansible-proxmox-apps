@@ -1,0 +1,22 @@
+---
+# Cribl Docker Stack handlers
+
+- name: Redeploy cribl stack
+  community.docker.docker_stack:
+    name: "{{ cribl_docker_stack_name }}"
+    state: present
+    compose:
+      - /opt/cribl/stack/docker-stack.yml
+  listen: redeploy cribl stack
+
+- name: Scale cribl edge
+  community.docker.docker_swarm_service:
+    name: "{{ cribl_docker_stack_name }}_cribl-edge"
+    replicas: "{{ cribl_docker_stack_edge_replicas }}"
+  listen: scale cribl edge
+
+- name: Scale cribl stream
+  community.docker.docker_swarm_service:
+    name: "{{ cribl_docker_stack_name }}_cribl-stream"
+    replicas: "{{ cribl_docker_stack_stream_replicas }}"
+  listen: scale cribl stream

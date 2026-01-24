@@ -37,8 +37,8 @@
   ansible.builtin.template:
     src: security.conf.j2
     dest: /etc/apt-cacher-ng/security.conf
-    owner: root
-    group: root
+    owner: apt-cacher-ng
+    group: apt-cacher-ng
     mode: '0600'
   notify: Restart apt-cacher-ng
 

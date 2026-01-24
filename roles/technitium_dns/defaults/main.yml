@@ -1,0 +1,40 @@
+---
+# Technitium DNS Server Configuration role defaults
+
+# Technitium API endpoint (internal DNS server)
+technitium_dns_api_url: "http://{{ technitium_dns_host }}:5380"
+
+# API token from Doppler secrets
+technitium_dns_api_token: "{{ lookup('env', 'TECHNITIUM_DNS_API_TOKEN') }}"
+
+# Internal domain for A records (from Doppler)
+technitium_dns_internal_domain: "{{ lookup('env', 'PROXMOX_DOMAIN') }}"
+
+# DNS zone configuration
+technitium_dns_zone_type: "Primary"
+technitium_dns_zone_ttl: 3600
+
+# A records to create - derived from Terraform inventory
+# Format: hostname -> IP mapping
+# These are populated dynamically from hostvars in tasks
+technitium_dns_a_records: []
+
+# CNAME aliases for services
+# Maps service name to canonical hostname
+technitium_dns_cname_records:
+  - name: cribl-edge
+    target: docker
+  - name: cribl-stream
+    target: docker
+
+# Upstream DNS servers (for forwarding non-local queries)
+technitium_dns_forwarders:
+  - "8.8.8.8"
+  - "8.8.4.4"
+
+# DNS server settings
+technitium_dns_recursion: true
+technitium_dns_cache_enabled: true
+
+# Timeout for API requests (seconds)
+technitium_dns_api_timeout: 30
