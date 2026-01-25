@@ -88,6 +88,72 @@
     group: root
     mode: "0755"
 
+# =============================================================================
+# Cribl Edge Configuration - mounted into containers
+# =============================================================================
+
+- name: Create Cribl config directory for bind mounts
+  ansible.builtin.file:
+    path: "{{ cribl_docker_stack_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Create Cribl pipelines directory
+  ansible.builtin.file:
+    path: "{{ cribl_docker_stack_config_dir }}/pipelines/syslog"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+    recursive: true
+
+- name: Deploy Cribl inputs configuration
+  ansible.builtin.template:
+    src: cribl/inputs.yml.j2
+    dest: "{{ cribl_docker_stack_config_dir }}/inputs.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  register: cribl_docker_stack_inputs_config
+  notify: restart cribl services
+
+- name: Deploy Cribl outputs configuration
+  ansible.builtin.template:
+    src: cribl/outputs.yml.j2
+    dest: "{{ cribl_docker_stack_config_dir }}/outputs.yml"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true  # Contains HEC token
+  register: cribl_docker_stack_outputs_config
+  notify: restart cribl services
+
+- name: Deploy Cribl routes configuration
+  ansible.builtin.template:
+    src: cribl/routes.yml.j2
+    dest: "{{ cribl_docker_stack_config_dir }}/routes.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  register: cribl_docker_stack_routes_config
+  notify: restart cribl services
+
+- name: Deploy Cribl syslog pipeline configuration
+  ansible.builtin.template:
+    src: cribl/pipelines/syslog/conf.yml.j2
+    dest: "{{ cribl_docker_stack_config_dir }}/pipelines/syslog/conf.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  register: cribl_docker_stack_pipeline_config
+  notify: restart cribl services
+
+# =============================================================================
+# Docker Stack Deployment
+# =============================================================================
+
 - name: Deploy Cribl Docker stack template
   ansible.builtin.template:
     src: docker-stack.yml.j2

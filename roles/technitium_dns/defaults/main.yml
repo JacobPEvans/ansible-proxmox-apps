@@ -26,6 +26,10 @@ technitium_dns_cname_records:
     target: docker
   - name: cribl-stream
     target: docker
+  # Stable syslog entry point - always points to HAProxy load balancer
+  # Clients should send syslog to: syslog.{domain}:514 (or 515-518 for specific sources)
+  - name: syslog
+    target: haproxy
 
 # Upstream DNS servers (for forwarding non-local queries)
 technitium_dns_forwarders:

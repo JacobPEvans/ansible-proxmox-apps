@@ -14,35 +14,63 @@ haproxy_nginx_service_name: nginx
 haproxy_nginx_service_state: started
 haproxy_nginx_service_enabled: true
 
-# HAProxy: TCP/HTTP ports
-haproxy_listen_ports:
-  - 1514
-  - 1515
-  - 1516
-  - 1517
-  - 1518
-  - 2055
+# Syslog port mappings: frontend (HAProxy/Nginx) -> backend (Cribl Edge)
+# Standard ports (514-518) map to high ports (1514-1518) on backends
+# This allows clients to use standard syslog ports while keeping backends on non-privileged ports
+haproxy_syslog_port_mappings:
+  - frontend: 514
+    backend: 1514
+    name: unifi
+  - frontend: 515
+    backend: 1515
+    name: palo_alto
+  - frontend: 516
+    backend: 1516
+    name: cisco_asa
+  - frontend: 517
+    backend: 1517
+    name: linux
+  - frontend: 518
+    backend: 1518
+    name: windows
+  # Also keep high ports for backwards compatibility
+  - frontend: 1514
+    backend: 1514
+    name: unifi_high
+  - frontend: 1515
+    backend: 1515
+    name: palo_alto_high
+  - frontend: 1516
+    backend: 1516
+    name: cisco_asa_high
+  - frontend: 1517
+    backend: 1517
+    name: linux_high
+  - frontend: 1518
+    backend: 1518
+    name: windows_high
 
-# Nginx Stream: UDP ports for syslog/NetFlow
-haproxy_nginx_udp_ports:
-  - 1514
-  - 1515
-  - 1516
-  - 1517
-  - 1518
-  - 2055
+# NetFlow port (unchanged - no standard port equivalent)
+haproxy_netflow_port:
+  frontend: 2055
+  backend: 2055
 
-# Backend configuration - Cribl Edge nodes
-# Used by both HAProxy (TCP) and Nginx (UDP)
-haproxy_backends:
+# Backend servers - Cribl Edge nodes
+# IP addresses derived from inventory (NEVER hardcoded)
+haproxy_backend_servers:
   - name: cribl-edge-01
-    host: "{{ hostvars['cribl_edge_01'].hostname }}.{{ internal_domain }}"
     ip: "{{ hostvars['cribl_edge_01'].ansible_host }}"
-    port: 1514
   - name: cribl-edge-02
-    host: "{{ hostvars['cribl_edge_02'].hostname }}.{{ internal_domain }}"
     ip: "{{ hostvars['cribl_edge_02'].ansible_host }}"
-    port: 1514
+
+# Legacy variables for backwards compatibility (derived from mappings)
+haproxy_listen_ports: >-
+  {{ haproxy_syslog_port_mappings | map(attribute='frontend') | list
+     + [haproxy_netflow_port.frontend] }}
+haproxy_nginx_udp_ports: >-
+  {{ haproxy_syslog_port_mappings | map(attribute='frontend') | list
+     + [haproxy_netflow_port.frontend] }}
+haproxy_backends: "{{ haproxy_backend_servers }}"
 
 # Health check configuration
 haproxy_health_check_interval: 5000

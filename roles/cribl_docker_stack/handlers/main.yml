@@ -20,3 +20,14 @@
     name: "{{ cribl_docker_stack_name }}_cribl-stream"
     replicas: "{{ cribl_docker_stack_stream_replicas }}"
   listen: scale cribl stream
+
+- name: Force update cribl services on config change
+  ansible.builtin.command: >
+    docker service update
+    --force
+    {{ cribl_docker_stack_name }}_{{ item }}
+  loop:
+    - cribl-edge
+    - cribl-stream
+  listen: restart cribl services
+  changed_when: true
