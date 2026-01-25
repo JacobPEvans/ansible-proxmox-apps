@@ -107,6 +107,7 @@
     owner: root
     group: root
     mode: "0755"
+    recursive: true
 
 - name: Deploy Cribl inputs configuration
   ansible.builtin.template:
@@ -116,6 +117,7 @@
     group: root
     mode: "0644"
   register: cribl_docker_stack_inputs_config
+  notify: restart cribl services
 
 - name: Deploy Cribl outputs configuration
   ansible.builtin.template:
@@ -123,9 +125,10 @@
     dest: "{{ cribl_docker_stack_config_dir }}/outputs.yml"
     owner: root
     group: root
-    mode: "0644"
+    mode: "0600"
   no_log: true  # Contains HEC token
   register: cribl_docker_stack_outputs_config
+  notify: restart cribl services
 
 - name: Deploy Cribl routes configuration
   ansible.builtin.template:
@@ -135,6 +138,7 @@
     group: root
     mode: "0644"
   register: cribl_docker_stack_routes_config
+  notify: restart cribl services
 
 - name: Deploy Cribl syslog pipeline configuration
   ansible.builtin.template:
@@ -144,6 +148,7 @@
     group: root
     mode: "0644"
   register: cribl_docker_stack_pipeline_config
+  notify: restart cribl services
 
 # =============================================================================
 # Docker Stack Deployment

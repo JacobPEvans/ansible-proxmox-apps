@@ -46,16 +46,12 @@ frontend syslog_{{ mapping.name }}_{{ mapping.frontend }}
 
 {% endfor %}
 
-# NetFlow - Port {{ haproxy_netflow_port.frontend }} -> {{ haproxy_netflow_port.backend }}
-frontend netflow_{{ haproxy_netflow_port.frontend }}
-  bind *:{{ haproxy_netflow_port.frontend }}
-  mode tcp
-  default_backend syslog_backend_{{ haproxy_netflow_port.backend }}
+# NetFlow traffic is handled via Nginx (UDP stream); no TCP NetFlow frontend is defined in HAProxy.
 
 # =============================================================================
 # TCP Backends for Cribl Edge nodes (one per destination port)
 # =============================================================================
-{% set unique_backend_ports = (haproxy_syslog_port_mappings | map(attribute='backend') | list + [haproxy_netflow_port.backend]) | unique %}
+{% set unique_backend_ports = (haproxy_syslog_port_mappings | map(attribute='backend') | list) | unique %}
 {% for backend_port in unique_backend_ports %}
 
 backend syslog_backend_{{ backend_port }}

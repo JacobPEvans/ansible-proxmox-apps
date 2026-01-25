@@ -16,26 +16,34 @@ functions:
       add:
         - name: index
           value: >-
-            __inputId.includes('1514') ? 'unifi' :
-            __inputId.includes('1515') ? 'firewall' :
-            __inputId.includes('1516') ? 'firewall' :
-            __inputId.includes('1517') ? 'os' :
-            __inputId.includes('1518') ? 'os' :
-            __inputId.includes('netflow') ? 'network' :
-            'main'
+            (() => {
+              switch(true) {
+                case __inputId.includes('1514'): return 'unifi';
+                case __inputId.includes('1515'):
+                case __inputId.includes('1516'): return 'firewall';
+                case __inputId.includes('1517'):
+                case __inputId.includes('1518'): return 'os';
+                case __inputId.includes('netflow'): return 'network';
+                default: return 'main';
+              }
+            })()
         - name: sourcetype
           value: >-
-            __inputId.includes('1514') ? 'ubiquiti:unifi' :
-            __inputId.includes('1515') ? 'pan:firewall' :
-            __inputId.includes('1516') ? 'cisco:asa' :
-            __inputId.includes('1517') ? 'syslog' :
-            __inputId.includes('1518') ? 'syslog' :
-            __inputId.includes('netflow') ? 'netflow' :
-            'syslog'
+            (() => {
+              switch(true) {
+                case __inputId.includes('1514'): return 'ubiquiti:unifi';
+                case __inputId.includes('1515'): return 'pan:firewall';
+                case __inputId.includes('1516'): return 'cisco:asa';
+                case __inputId.includes('1517'):
+                case __inputId.includes('1518'): return 'syslog';
+                case __inputId.includes('netflow'): return 'netflow';
+                default: return 'syslog';
+              }
+            })()
         - name: source
           value: >-
             __inputId.includes('netflow') ? 'netflow:2055' :
-            'syslog:' + __inputId.match(/\d{4}/)?.[0]
+            'syslog:' + (__inputId.match(/\d{4}/)?.[0] ?? '0000')
 
   # Extract host from syslog message if available
   - id: regex_extract
