@@ -10,21 +10,15 @@
   import_playbook: ../inventory/load_terraform.yml
 
 - name: Validate HAProxy Load Balancer
-  hosts: lxc_containers
+  hosts: haproxy_group
   become: true
   gather_facts: false
   tags:
     - haproxy
     - validation
 
-  pre_tasks:
-    - name: Check if host is haproxy
-      ansible.builtin.set_fact:
-        is_haproxy: "{{ 'haproxy' in (tags | default([])) }}"
-
   tasks:
     - name: HAProxy validation tasks
-      when: is_haproxy | default(false)
       block:
         - name: Verify HAProxy service is running
           ansible.builtin.systemd:
@@ -61,21 +55,15 @@
             msg: "HAProxy validation passed: config valid, all ports listening"
 
 - name: Validate Cribl Edge Nodes
-  hosts: lxc_containers
+  hosts: cribl_edge
   become: true
   gather_facts: false
   tags:
     - cribl_edge
     - validation
 
-  pre_tasks:
-    - name: Check if host is cribl_edge
-      ansible.builtin.set_fact:
-        is_cribl_edge: "{{ 'cribl_edge' in (tags | default([])) }}"
-
   tasks:
     - name: Cribl Edge validation tasks
-      when: is_cribl_edge | default(false)
       block:
         - name: Verify Cribl Edge container is running
           community.docker.docker_container_info:
@@ -212,12 +200,15 @@
   vars:
     # Generate unique test event ID using epoch timestamp
     e2e_test_event_id: "E2E_VALIDATION_{{ ansible_date_time.epoch }}"
-    # Splunk connection details
-    splunk_host: "{{ hostvars['splunk']['ansible_host'] | default('10.0.1.200') }}"
+    # Host IPs from dynamic inventory - NEVER hardcode IPs
+    haproxy_host: "{{ hostvars['haproxy']['ansible_host'] }}"
+    splunk_host: "{{ hostvars['splunk']['ansible_host'] }}"
     splunk_port: 8089
     splunk_user: admin
     # SPLUNK_PASSWORD must be set via Doppler
     splunk_password: "{{ lookup('env', 'SPLUNK_PASSWORD') }}"
+    # Target architecture: send through HAProxy
+    syslog_target: "{{ haproxy_host }}"
 
   tasks:
     - name: Verify SPLUNK_PASSWORD is set
@@ -233,19 +224,19 @@
         state: present
         update_cache: true
 
-    - name: Send test syslog message through pipeline
+    - name: Send test syslog message through HAProxy pipeline
       ansible.builtin.shell:
         cmd: |
           set -o pipefail
           echo "<14>{{ ansible_date_time.iso8601 }} ansible-e2e-test: {{ e2e_test_event_id }}" | \
-          nc -u -w1 localhost 1514
+          nc -u -w1 {{ syslog_target }} 1514
         executable: /bin/bash
       changed_when: false
 
     - name: Wait for event to propagate through pipeline
       ansible.builtin.pause:
         seconds: 30
-        prompt: "Waiting for test event to propagate through Cribl to Splunk..."
+        prompt: "Waiting for test event to propagate through HAProxy → Cribl → Splunk..."
 
     - name: Query Splunk for test event
       ansible.builtin.uri:
@@ -274,11 +265,11 @@
       ansible.builtin.debug:
         msg: |
           === E2E DATA PIPELINE VALIDATION PASSED ===
-          Test event sent via syslog port 1514
+          Test event sent via syslog to {{ syslog_target }}:1514
           Event ID: {{ e2e_test_event_id }}
           Splunk host: {{ splunk_host }}
           Search results: {{ splunk_search_result.json.results | length }} event(s) found
-          Full pipeline verified: Source → Cribl Edge → Cribl Stream → Splunk HEC → Splunk Index
+          Full pipeline verified: Source → HAProxy → Cribl → Splunk HEC → Splunk Index
 
 - name: Pipeline Summary
   hosts: localhost

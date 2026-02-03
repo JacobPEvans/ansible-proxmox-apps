@@ -54,14 +54,23 @@ doppler configure set config prd
 
 ### 4. Set Environment Variables
 
-```bash
-# Export hosts from Proxmox
-export CRIBL_EDGE_1="192.168.1.100"
-export CRIBL_EDGE_2="192.168.1.101"
-export CRIBL_STREAM="192.168.1.102"
-export HAPROXY="192.168.1.103"
-export SPLUNK_VM="192.168.1.104"
+Environment variables are managed via Doppler. The key variables:
+
+| Variable | Purpose |
+| --- | --- |
+| `PROXMOX_VE_GATEWAY` | Network gateway (used to derive host IPs) |
+| `PROXMOX_VE_HOSTNAME` | Proxmox VE hostname |
+| `PROXMOX_SSH_KEY_PATH` | Path to SSH key |
+| `SPLUNK_HEC_TOKEN` | Splunk HTTP Event Collector token |
+
+**IP Address Convention**: IPs are derived from `PROXMOX_VE_GATEWAY`:
+
+```text
+${GATEWAY_PREFIX} = first 3 octets of PROXMOX_VE_GATEWAY
+Host IP = ${GATEWAY_PREFIX}.{VMID}
 ```
+
+See `docs/TESTING.md` for the VMID table.
 
 ### 5. Run Playbooks
 
@@ -81,19 +90,16 @@ doppler run -- ~/.local/pipx/venvs/ansible/bin/ansible-playbook \
 
 ## Inventory
 
-Inventory is built from environment variables. Define these in your Doppler
-project:
+Inventory is built dynamically from Terraform state via `load_terraform.yml`.
+Host IPs are derived from `PROXMOX_VE_GATEWAY` + VMID convention:
 
-```text
-CRIBL_EDGE_1: 192.168.1.100
-CRIBL_EDGE_2: 192.168.1.101
-CRIBL_STREAM: 192.168.1.102
-HAPROXY: 192.168.1.103
-SPLUNK_VM: 192.168.1.104
-```
+| Host | VMID | IP Pattern |
+| --- | --- | --- |
+| HAProxy | 175 | `${GATEWAY_PREFIX}.175` |
+| Splunk | 200 | `${GATEWAY_PREFIX}.200` |
+| Docker Swarm | 250 | `${GATEWAY_PREFIX}.250` |
 
-Override locally with `doppler secrets download --no-file` or environment
-variables.
+No IPs are hardcoded. See `inventory/load_terraform.yml` for implementation.
 
 ## Port Assignments
 

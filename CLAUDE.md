@@ -35,9 +35,18 @@ No hardcoded values are stored in git.
 
 ### Required Environment Variables
 
-IP addresses are **NEVER** hardcoded or stored in Doppler. They are derived from:
-First 3 octets of `PROXMOX_VE_GATEWAY` + `{vmid}`
-(e.g., `PROXMOX_VE_GATEWAY=10.0.1.1` + `vmid=180` → `10.0.1.180`)
+IP addresses are **NEVER** hardcoded. They are derived at runtime:
+
+```text
+${GATEWAY_PREFIX} = first 3 octets of PROXMOX_VE_GATEWAY
+Host IP = ${GATEWAY_PREFIX}.{VMID}
+```
+
+| Component | VMID | IP Pattern |
+| --- | --- | --- |
+| HAProxy | 175 | `${GATEWAY_PREFIX}.175` |
+| Splunk | 200 | `${GATEWAY_PREFIX}.200` |
+| Docker Swarm | 250 | `${GATEWAY_PREFIX}.250` |
 
 | Variable | Purpose |
 | --- | --- |
