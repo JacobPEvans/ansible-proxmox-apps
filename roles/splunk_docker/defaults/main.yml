@@ -11,7 +11,8 @@ splunk_docker_hostname: splunk
 splunk_docker_container_name: splunk
 
 # Splunk credentials (from Doppler)
-splunk_docker_password: "{{ lookup('env', 'SPLUNK_PASSWORD', default='') }}"
+# SPLUNK_ADMIN_PASSWORD matches terraform-proxmox/packer and ansible-splunk conventions
+splunk_docker_password: "{{ lookup('env', 'SPLUNK_ADMIN_PASSWORD', default='') }}"
 splunk_docker_hec_token: "{{ lookup('env', 'SPLUNK_HEC_TOKEN', default='') }}"
 
 # Splunk ports

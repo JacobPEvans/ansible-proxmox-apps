@@ -25,7 +25,7 @@ UDP (syslog/NetFlow) → Nginx stream → UDP load balance → Cribl Edge
 TCP/HTTP             → HAProxy      → TCP load balance → Cribl Edge
 ```
 
-Both services run on the same container (10.0.1.175) but handle different protocols.
+Both services run on the same container (VMID 175) but handle different protocols.
 
 ## Requirements
 
@@ -65,7 +65,7 @@ All variables in `defaults/main.yml` are user-configurable.
 
 HAProxy statistics dashboard:
 
-- URL: `http://10.0.1.175:8404/stats`
+- URL: `http://192.168.0.175:8404/stats` (replace with your HAProxy IP)
 - Username: admin
 - Password: (set via `HAPROXY_STATS_PASSWORD` environment variable)
 

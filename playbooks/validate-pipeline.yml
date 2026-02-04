@@ -212,19 +212,21 @@
   vars:
     # Generate unique test event ID using epoch timestamp
     e2e_test_event_id: "E2E_VALIDATION_{{ ansible_date_time.epoch }}"
-    # Splunk connection details
-    splunk_host: "{{ hostvars['splunk']['ansible_host'] | default('10.0.1.200') }}"
+    # Splunk connection details - always use hostvars, never hardcode IPs
+    splunk_host: "{{ hostvars['splunk']['ansible_host'] }}"
     splunk_port: 8089
     splunk_user: admin
-    # SPLUNK_PASSWORD must be set via Doppler
+    # Use SPLUNK_PASSWORD (current working value in Doppler)
+    # TODO: Migrate Doppler to use SPLUNK_ADMIN_PASSWORD with correct value
     splunk_password: "{{ lookup('env', 'SPLUNK_PASSWORD') }}"
 
   tasks:
-    - name: Verify SPLUNK_PASSWORD is set
+    - name: Verify Splunk password is set
       ansible.builtin.assert:
         that:
           - splunk_password | length > 0
-        fail_msg: "SPLUNK_PASSWORD environment variable must be set. Run with doppler run --"
+        fail_msg: >-
+          SPLUNK_PASSWORD environment variable must be set. Run with doppler run --
         quiet: true
 
     - name: Install netcat for syslog testing
@@ -249,7 +251,7 @@
 
     - name: Query Splunk for test event
       ansible.builtin.uri:
-        url: "https://{{ splunk_host }}:{{ splunk_port }}/services/search/jobs"
+        url: "https://127.0.0.1:{{ splunk_port }}/services/search/jobs"
         method: POST
         user: "{{ splunk_user }}"
         password: "{{ splunk_password }}"
@@ -260,6 +262,7 @@
           search: 'search index=* "{{ e2e_test_event_id }}" | head 1'
           output_mode: json
           exec_mode: oneshot
+      delegate_to: splunk
       register: splunk_search_result
       retries: 6
       delay: 10

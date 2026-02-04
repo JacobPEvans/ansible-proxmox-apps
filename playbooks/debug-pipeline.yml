@@ -1,0 +1,373 @@
+---
+# Debug Pipeline Playbook - Hop-by-Hop Diagnostics
+# Tests connectivity and service health across the logging pipeline
+#
+# Architecture (Target End State):
+#   Syslog Sources → HAProxy (LB) → Docker Swarm (Cribl) → Splunk HEC
+#       :1514         :1514           :1514               :8088
+#
+# Usage:
+#   doppler run -- uv run ansible-playbook \
+#     -i inventory/hosts.yml playbooks/debug-pipeline.yml
+#
+# Run specific hop tests:
+#   doppler run -- uv run ansible-playbook \
+#     -i inventory/hosts.yml playbooks/debug-pipeline.yml --tags hop1
+#
+# Tags:
+#   hop1    - HAProxy listening tests
+#   hop2    - HAProxy → Docker Swarm backend connectivity
+#   hop3    - Cribl Docker service health
+#   hop4    - Cribl configuration verification
+#   hop5    - Cribl → Splunk HEC connectivity
+#   hop6    - Splunk HEC listener tests
+#   summary - Full pipeline results
+
+- name: Import Terraform infrastructure inventory
+  import_playbook: ../inventory/load_terraform.yml
+
+- name: Debug Pipeline - Hop 1 - HAProxy Listeners
+  hosts: localhost
+  become: false
+  gather_facts: false
+  tags:
+    - hop1
+    - haproxy
+
+  vars:
+    # Override global become setting for localhost
+    ansible_become: false
+    # Always use hostvars - NEVER hardcode IPs
+    haproxy_ip: "{{ hostvars['haproxy']['ansible_host'] }}"
+
+  tasks:
+    - name: "Hop 1: Test HAProxy syslog ports (1514-1518)"
+      ansible.builtin.wait_for:
+        host: "{{ haproxy_ip }}"
+        port: "{{ item }}"
+        timeout: 5
+        state: started
+      loop:
+        - 1514
+        - 1515
+        - 1516
+        - 1517
+        - 1518
+      register: haproxy_ports
+      ignore_errors: true
+
+    - name: "Hop 1: Test HAProxy stats port"
+      ansible.builtin.wait_for:
+        host: "{{ haproxy_ip }}"
+        port: 8404
+        timeout: 5
+        state: started
+      register: haproxy_stats
+      ignore_errors: true
+
+    - name: "Hop 1: Display HAProxy results"
+      ansible.builtin.debug:
+        msg: |
+          === HOP 1: HAProxy Listener Status ===
+          HAProxy IP: {{ haproxy_ip }}
+          Syslog ports (1514-1518): {{ 'OK' if haproxy_ports is success else 'FAILED' }}
+          Stats port (8404): {{ 'OK' if haproxy_stats is success else 'FAILED' }}
+
+- name: Debug Pipeline - Hop 2 - HAProxy Backend Connectivity
+  hosts: localhost
+  become: false
+  gather_facts: false
+  tags:
+    - hop2
+    - haproxy
+    - backend
+
+  vars:
+    # Override global become setting for localhost
+    ansible_become: false
+    haproxy_ip: "{{ hostvars['haproxy']['ansible_host'] }}"
+    docker_host_ip: "{{ hostvars['docker-host']['ansible_host'] }}"
+
+  tasks:
+    - name: "Hop 2: Test HAProxy to Docker Swarm backend"
+      ansible.builtin.uri:
+        url: "http://{{ haproxy_ip }}:8404/stats"
+        method: GET
+        return_content: true
+        status_code: [200, 401]
+        timeout: 10
+      register: haproxy_stats_content
+      ignore_errors: true
+
+    - name: "Hop 2: Test Docker host reachability from localhost"
+      ansible.builtin.wait_for:
+        host: "{{ docker_host_ip }}"
+        port: 1514
+        timeout: 5
+        state: started
+      register: docker_host_syslog
+      ignore_errors: true
+
+    - name: "Hop 2: Display backend connectivity results"
+      ansible.builtin.debug:
+        msg: |
+          === HOP 2: HAProxy Backend Connectivity ===
+          HAProxy Stats: {{ 'OK' if haproxy_stats_content is success else 'FAILED' }}
+          Docker Host ({{ docker_host_ip }}:1514): {{ 'OK' if docker_host_syslog is success else 'FAILED' }}
+
+- name: Debug Pipeline - Hop 3 - Cribl Docker Service Health
+  hosts: cribl_docker_group
+  become: true
+  gather_facts: true
+  tags:
+    - hop3
+    - cribl
+    - docker
+
+  vars:
+    cribl_docker_stack_name: cribl
+
+  tasks:
+    - name: "Hop 3: Check Docker Swarm node status"
+      ansible.builtin.command:
+        cmd: docker info --format '{{ "{{" }} .Swarm.LocalNodeState {{ "}}" }}'
+      register: swarm_status
+      changed_when: false
+
+    - name: "Hop 3: List Cribl services"
+      ansible.builtin.command:
+        cmd: docker service ls --filter name={{ cribl_docker_stack_name }}
+      register: cribl_services
+      changed_when: false
+      ignore_errors: true
+
+    - name: "Hop 3: Check Edge service replica count"
+      ansible.builtin.command: >
+        docker service ls --filter name={{ cribl_docker_stack_name }}_cribl-edge
+        --format '{{ "{{" }} .Replicas {{ "}}" }}'
+      register: edge_replicas
+      changed_when: false
+      ignore_errors: true
+
+    - name: "Hop 3: Check Stream service replica count"
+      ansible.builtin.command: >
+        docker service ls --filter name={{ cribl_docker_stack_name }}_cribl-stream
+        --format '{{ "{{" }} .Replicas {{ "}}" }}'
+      register: stream_replicas
+      changed_when: false
+      ignore_errors: true
+
+    - name: "Hop 3: Display Docker service health"
+      ansible.builtin.debug:
+        msg: |
+          === HOP 3: Cribl Docker Service Health ===
+          Host: {{ inventory_hostname }} ({{ ansible_host }})
+          Swarm State: {{ swarm_status.stdout }}
+          Edge Replicas: {{ edge_replicas.stdout | default('N/A') }}
+          Stream Replicas: {{ stream_replicas.stdout | default('N/A') }}
+
+          Services:
+          {{ cribl_services.stdout | default('No services found') }}
+
+- name: Debug Pipeline - Hop 4 - Cribl API Health
+  hosts: cribl_docker_group
+  become: true
+  gather_facts: false
+  tags:
+    - hop4
+    - cribl
+    - api
+
+  tasks:
+    - name: "Hop 4: Test Cribl Edge health endpoint"
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:9000/api/v1/health"
+        method: GET
+        return_content: true
+        status_code: 200
+        timeout: 10
+      register: edge_health
+      ignore_errors: true
+
+    - name: "Hop 4: Test Cribl Stream health endpoint"
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:9100/api/v1/health"
+        method: GET
+        return_content: true
+        status_code: 200
+        timeout: 10
+      register: stream_health
+      ignore_errors: true
+
+    - name: "Hop 4: Test Cribl syslog listener port"
+      ansible.builtin.wait_for:
+        port: 1514
+        timeout: 5
+        state: started
+      register: cribl_syslog_port
+      ignore_errors: true
+
+    - name: "Hop 4: Display Cribl API results"
+      ansible.builtin.debug:
+        msg: |
+          === HOP 4: Cribl API Health ===
+          Host: {{ inventory_hostname }} ({{ ansible_host }})
+          Edge API (9000): {{ 'OK' if edge_health is success else 'FAILED' }}
+          Stream API (9100): {{ 'OK' if stream_health is success else 'FAILED' }}
+          Syslog Port (1514): {{ 'OK' if cribl_syslog_port is success else 'FAILED' }}
+
+- name: Debug Pipeline - Hop 5 - Cribl to Splunk Connectivity
+  hosts: cribl_docker_group
+  become: true
+  gather_facts: false
+  tags:
+    - hop5
+    - cribl
+    - splunk
+
+  vars:
+    splunk_ip: "{{ hostvars['splunk']['ansible_host'] }}"
+    splunk_hec_port: 8088
+
+  tasks:
+    - name: "Hop 5: Test network connectivity to Splunk HEC"
+      ansible.builtin.wait_for:
+        host: "{{ splunk_ip }}"
+        port: "{{ splunk_hec_port }}"
+        timeout: 5
+        state: started
+      register: splunk_network
+      ignore_errors: true
+
+    - name: "Hop 5: Test Splunk HEC health endpoint"
+      ansible.builtin.uri:
+        url: "https://{{ splunk_ip }}:{{ splunk_hec_port }}/services/collector/health"
+        method: GET
+        return_content: true
+        status_code: 200
+        timeout: 10
+        validate_certs: false
+      register: splunk_hec_health
+      ignore_errors: true
+
+    - name: "Hop 5: Display Cribl → Splunk connectivity"
+      ansible.builtin.debug:
+        msg: |
+          === HOP 5: Cribl → Splunk Connectivity ===
+          From: {{ inventory_hostname }} ({{ ansible_host }})
+          To: Splunk ({{ splunk_ip }}:{{ splunk_hec_port }})
+          Network: {{ 'OK' if splunk_network is success else 'FAILED' }}
+          HEC Health: {{ 'OK' if splunk_hec_health is success else 'FAILED' }}
+
+- name: Debug Pipeline - Hop 6 - Splunk HEC Listener
+  hosts: splunk_vms
+  become: true
+  gather_facts: false
+  tags:
+    - hop6
+    - splunk
+    - hec
+
+  tasks:
+    - name: "Hop 6: Check Splunk container status"
+      community.docker.docker_container_info:
+        name: splunk
+      register: splunk_container
+      ignore_errors: true
+
+    - name: "Hop 6: Test Splunk web port (8000)"
+      ansible.builtin.wait_for:
+        port: 8000
+        timeout: 5
+        state: started
+      register: splunk_web
+      ignore_errors: true
+
+    - name: "Hop 6: Test Splunk HEC port (8088)"
+      ansible.builtin.wait_for:
+        port: 8088
+        timeout: 5
+        state: started
+      register: splunk_hec_port
+      ignore_errors: true
+
+    - name: "Hop 6: Test Splunk management port (8089)"
+      ansible.builtin.wait_for:
+        port: 8089
+        timeout: 5
+        state: started
+      register: splunk_mgmt_port
+      ignore_errors: true
+
+    - name: "Hop 6: Test HEC health via localhost"
+      ansible.builtin.uri:
+        url: "https://127.0.0.1:8088/services/collector/health"
+        method: GET
+        return_content: true
+        status_code: 200
+        timeout: 10
+        validate_certs: false
+      register: hec_health_local
+      ignore_errors: true
+
+    - name: "Hop 6: Set container status fact"
+      ansible.builtin.set_fact:
+        container_running: >-
+          {{ 'Running' if (splunk_container.container is defined and
+             splunk_container.container.State.Running) else 'NOT Running' }}
+
+    - name: "Hop 6: Display Splunk HEC status"
+      ansible.builtin.debug:
+        msg: |
+          === HOP 6: Splunk HEC Listener ===
+          Host: {{ inventory_hostname }} ({{ ansible_host }})
+          Container: {{ container_running }}
+          Web UI (8000): {{ 'OK' if splunk_web is success else 'FAILED' }}
+          HEC (8088): {{ 'OK' if splunk_hec_port is success else 'FAILED' }}
+          Management (8089): {{ 'OK' if splunk_mgmt_port is success else 'FAILED' }}
+          HEC Health: {{ 'OK' if hec_health_local is success else 'FAILED' }}
+
+- name: Debug Pipeline - Summary
+  hosts: localhost
+  become: false
+  gather_facts: false
+  tags:
+    - summary
+
+  vars:
+    # Override global become setting for localhost
+    ansible_become: false
+    haproxy_ip: "{{ hostvars['haproxy']['ansible_host'] }}"
+    docker_host_ip: "{{ hostvars['docker-host']['ansible_host'] }}"
+    splunk_ip: "{{ hostvars['splunk']['ansible_host'] }}"
+
+  tasks:
+    - name: "Summary: Display full pipeline architecture"
+      ansible.builtin.debug:
+        msg: |
+          ============================================================
+          LOGGING PIPELINE DEBUG SUMMARY
+          ============================================================
+
+          Target Architecture:
+          --------------------
+          Syslog Sources → HAProxy (LB) → Docker Swarm (Cribl) → Splunk HEC
+              :1514         :1514           :1514               :8088
+
+          Component IPs (from Terraform inventory):
+          -----------------------------------------
+          HAProxy:     {{ haproxy_ip }}
+          Docker Host: {{ docker_host_ip }}
+          Splunk:      {{ splunk_ip }}
+
+          Hop Tests:
+          ----------
+          Hop 1: HAProxy Listeners       (ports 1514-1518, 8404)
+          Hop 2: HAProxy → Backend       (Docker Swarm connectivity)
+          Hop 3: Cribl Docker Services   (Swarm state, replicas)
+          Hop 4: Cribl API Health        (Edge, Stream, syslog port)
+          Hop 5: Cribl → Splunk          (HEC connectivity)
+          Hop 6: Splunk HEC              (container, ports, health)
+
+          Run individual hops with: --tags hop1, hop2, etc.
+          ============================================================

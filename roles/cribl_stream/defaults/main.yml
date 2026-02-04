@@ -22,7 +22,8 @@ cribl_stream_user: cribl
 cribl_stream_group: cribl
 
 # Splunk HEC output configuration
-cribl_stream_splunk_host: "{{ hostvars['splunk'].ansible_host | default('10.0.1.200') }}"
+# Use hostvars for dynamic IP; fallback uses placeholder convention (VMID=200)
+cribl_stream_splunk_host: "{{ hostvars['splunk'].ansible_host | default('192.168.0.200') }}"
 cribl_stream_splunk_hec_port: 8088
 cribl_stream_splunk_hec_token: "{{ lookup('env', 'SPLUNK_HEC_TOKEN', default='') }}"
 cribl_stream_splunk_hec_tls: true

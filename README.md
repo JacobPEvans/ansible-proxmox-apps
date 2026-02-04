@@ -141,6 +141,15 @@ See `roles/haproxy_syslog/README.md` for customization.
 
 ## Architecture
 
+### Target Pipeline (End State)
+
+```text
+Syslog Sources → HAProxy (LB) → Docker Swarm (Cribl) → Splunk HEC
+    :1514          :1514           :1514               :8088
+```
+
+### Detailed Component View
+
 ```text
 ┌──────────────────┐
 │  Syslog Sources  │
@@ -150,28 +159,27 @@ See `roles/haproxy_syslog/README.md` for customization.
          │
          ▼
 ┌──────────────────┐
-│     HAProxy      │
+│     HAProxy      │  ← VMID 175 (192.168.0.175)
 │  Load Balancer   │
 └────────┬─────────┘
          │
-         ├─────────────────┬──────────────────┐
-         │                 │                  │
-         ▼                 ▼                  ▼
-    ┌─────────┐      ┌─────────┐       ┌──────────┐
-    │Cribl    │      │Cribl    │       │Cribl     │
-    │Edge 01  │      │Edge 02  │       │Stream    │
-    └────┬────┘      └────┬────┘       └────┬─────┘
-         │                │                 │
-         └────────────────┼─────────────────┘
-                          │
-                    (Splunk HEC)
-                          │
-                          ▼
-                   ┌──────────────┐
-                   │    Splunk    │
-                   │      VM      │
-                   └──────────────┘
+         ▼
+┌──────────────────┐
+│  Docker Swarm    │  ← VMID 250 (192.168.0.250)
+│  (Cribl E/S)     │
+└────────┬─────────┘
+         │
+    (Splunk HEC :8088)
+         │
+         ▼
+┌──────────────────┐
+│     Splunk       │  ← VMID 200 (192.168.0.200)
+│       VM         │
+└──────────────────┘
 ```
+
+**Note:** IPs shown are placeholders (`192.168.0.*`). Real IPs are derived from
+`PROXMOX_VE_GATEWAY` + VMID at runtime.
 
 ## File Layout
 

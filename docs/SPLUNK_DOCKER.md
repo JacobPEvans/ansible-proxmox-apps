@@ -8,9 +8,13 @@ As of late 2025, the Splunk Docker image requires additional environment variabl
 environment:
   SPLUNK_START_ARGS: "--accept-license"
   SPLUNK_GENERAL_TERMS: "--accept-sgt-current-at-splunk-com"
-  SPLUNK_PASSWORD: "${SPLUNK_PASSWORD}"
+  SPLUNK_PASSWORD: "${SPLUNK_ADMIN_PASSWORD}"
   SPLUNK_HEC_TOKEN: "${SPLUNK_HEC_TOKEN}"
 ```
+
+**Note:** Use `SPLUNK_ADMIN_PASSWORD` (not `SPLUNK_PASSWORD`) to match the
+variable naming convention used by terraform-proxmox packer templates and
+ansible-splunk.
 
 Without `SPLUNK_GENERAL_TERMS`, the container will fail with:
 

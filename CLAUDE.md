@@ -66,20 +66,30 @@ LXC containers use `community.general.proxmox_pct_remote` connection plugin:
 
 ## Network Architecture
 
+### Target Pipeline (End State)
+
+```text
+Syslog Sources → HAProxy (LB) → Docker Swarm (Cribl) → Splunk HEC
+    :1514         :1514           :1514               :8088
+```
+
+HAProxy is the target entry point. It may be temporarily bypassed for debugging
+but production traffic should always flow through HAProxy for load balancing.
+
 ### Syslog Port Assignments
 
-| Port | Protocol | Service | Listener |
-| --- | --- | --- | --- |
-| 1514 | UDP/TCP | Syslog | HAProxy → Cribl Edge |
-| 1515 | UDP/TCP | Syslog | HAProxy → Cribl Edge |
-| 1516 | UDP/TCP | Syslog | HAProxy → Cribl Edge |
-| 1517 | UDP/TCP | Syslog | HAProxy → Cribl Edge |
-| 1518 | UDP/TCP | Syslog | HAProxy → Cribl Edge |
-| 8088 | TCP | Splunk HEC | Cribl → Splunk |
-| 8404 | TCP | HAProxy | Admin interface |
+| Port | Protocol | Service      | Component       |
+| ---- | -------- | ------------ | --------------- |
+| 1514 | UDP/TCP  | UniFi syslog | HAProxy → Cribl |
+| 1515 | UDP/TCP  | Palo Alto    | HAProxy → Cribl |
+| 1516 | UDP/TCP  | Cisco ASA    | HAProxy → Cribl |
+| 1517 | UDP/TCP  | Linux/macOS  | HAProxy → Cribl |
+| 1518 | UDP/TCP  | Windows      | HAProxy → Cribl |
+| 8088 | TCP      | Splunk HEC   | Cribl → Splunk  |
+| 8404 | TCP      | HAProxy      | Admin interface |
 
-HAProxy load balances ports 1514-1518 across two Cribl Edge nodes using
-round-robin with health checks.
+HAProxy load balances ports 1514-1518 across Cribl nodes using round-robin
+with health checks.
 
 ## Cribl Configuration
 
