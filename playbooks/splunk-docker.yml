@@ -11,9 +11,9 @@
     - name: Validate required secrets are set
       ansible.builtin.assert:
         that:
-          - lookup('env', 'SPLUNK_PASSWORD') | length > 0
+          - lookup('env', 'SPLUNK_ADMIN_PASSWORD') | length > 0
           - lookup('env', 'SPLUNK_HEC_TOKEN') | length > 0
-        fail_msg: "SPLUNK_PASSWORD and SPLUNK_HEC_TOKEN must be set via Doppler"
+        fail_msg: "SPLUNK_ADMIN_PASSWORD and SPLUNK_HEC_TOKEN must be set via Doppler"
         success_msg: "Required secrets are configured"
 
   roles:
