@@ -216,17 +216,27 @@
     splunk_host: "{{ hostvars['splunk']['ansible_host'] }}"
     splunk_port: 8089
     splunk_user: admin
-    # Use SPLUNK_PASSWORD (current working value in Doppler)
-    # TODO: Migrate Doppler to use SPLUNK_ADMIN_PASSWORD with correct value
-    splunk_password: "{{ lookup('env', 'SPLUNK_PASSWORD') }}"
+    # Use SPLUNK_ADMIN_PASSWORD to match splunk_docker role and terraform-proxmox/packer conventions
+    splunk_password: "{{ lookup('env', 'SPLUNK_ADMIN_PASSWORD') }}"
 
   tasks:
+    - name: Verify Splunk host is available from inventory
+      ansible.builtin.assert:
+        that:
+          - hostvars['splunk'] is defined
+          - hostvars['splunk']['ansible_host'] is defined
+          - hostvars['splunk']['ansible_host'] | length > 0
+        fail_msg: >-
+          Splunk host not found in inventory. Ensure 'splunk' host is defined
+          in inventory/hosts.yml with ansible_host set.
+        quiet: true
+
     - name: Verify Splunk password is set
       ansible.builtin.assert:
         that:
           - splunk_password | length > 0
         fail_msg: >-
-          SPLUNK_PASSWORD environment variable must be set. Run with doppler run --
+          SPLUNK_ADMIN_PASSWORD environment variable must be set. Run with doppler run --
         quiet: true
 
     - name: Install netcat for syslog testing

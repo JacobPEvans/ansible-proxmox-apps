@@ -107,7 +107,7 @@ nc -zv 192.168.0.175 1514
 curl -s http://192.168.0.175:8404/stats
 
 # Send test syslog message through HAProxy
-echo "<14>$(date --iso-8601=seconds) test-host manual-test: Hello" | \
+echo "<14>$(date -u +'%Y-%m-%dT%H:%M:%SZ') test-host manual-test: Hello" | \
   nc -u -w1 192.168.0.175 1514
 ```
 
