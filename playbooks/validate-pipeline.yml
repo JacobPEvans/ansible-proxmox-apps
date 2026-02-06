@@ -216,15 +216,15 @@
     splunk_host: "{{ hostvars['splunk']['ansible_host'] | default('10.0.1.200') }}"
     splunk_port: 8089
     splunk_user: admin
-    # SPLUNK_ADMIN_PASSWORD must be set via Doppler
-    splunk_password: "{{ lookup('env', 'SPLUNK_ADMIN_PASSWORD') }}"
+    # SPLUNK_PASSWORD must be set via Doppler
+    splunk_password: "{{ lookup('env', 'SPLUNK_PASSWORD') }}"
 
   tasks:
-    - name: Verify SPLUNK_ADMIN_PASSWORD is set
+    - name: Verify SPLUNK_PASSWORD is set
       ansible.builtin.assert:
         that:
           - splunk_password | length > 0
-        fail_msg: "SPLUNK_ADMIN_PASSWORD environment variable must be set. Run with doppler run --"
+        fail_msg: "SPLUNK_PASSWORD environment variable must be set. Run with doppler run --"
         quiet: true
 
     - name: Install netcat for syslog testing

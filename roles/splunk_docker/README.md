@@ -5,7 +5,7 @@ Installs Docker and deploys Splunk Enterprise as a container with HEC enabled.
 ## Requirements
 
 - Debian-based OS with apt
-- Doppler secrets for SPLUNK_ADMIN_PASSWORD and SPLUNK_HEC_TOKEN
+- Doppler secrets for SPLUNK_PASSWORD and SPLUNK_HEC_TOKEN
 
 ## Role Variables
 
