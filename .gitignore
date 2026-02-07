@@ -37,3 +37,6 @@ inventory/terraform_inventory.json
 # Cache
 /fact_cache/
 .pytest_cache/
+
+# Nix/direnv
+.direnv/
