@@ -1,0 +1,426 @@
+---
+# Pipeline Debug Playbook - Hop-by-Hop Diagnostics
+# Isolates connectivity issues at each link in the logging pipeline.
+# Each hop can be run independently via tags.
+#
+# Usage:
+#   doppler run -- uv run ansible-playbook \
+#     -i inventory/hosts.yml playbooks/debug-pipeline.yml
+#
+# Run a single hop:
+#   doppler run -- uv run ansible-playbook \
+#     -i inventory/hosts.yml playbooks/debug-pipeline.yml --tags hop3
+
+- name: Import Terraform infrastructure inventory
+  import_playbook: ../inventory/load_terraform.yml
+
+# =============================================================================
+# Hop 1: HAProxy Frontend - Are listeners accepting connections?
+# =============================================================================
+- name: "Hop 1: HAProxy Listeners"
+  hosts: lxc_containers
+  become: true
+  gather_facts: false
+  tags:
+    - hop1
+    - haproxy
+    - debug
+
+  pre_tasks:
+    - name: Check if host is haproxy
+      ansible.builtin.set_fact:
+        is_haproxy: "{{ 'loadbalancer' in (host_tags | default([])) }}"
+
+  tasks:
+    - name: HAProxy listener diagnostics
+      when: is_haproxy | default(false)
+      block:
+        - name: Check HAProxy process status
+          ansible.builtin.systemd:
+            name: haproxy
+          register: haproxy_active
+          check_mode: true
+          failed_when: false
+
+        - name: Check HAProxy configuration syntax
+          ansible.builtin.command:
+            cmd: haproxy -c -f /etc/haproxy/haproxy.cfg
+          register: haproxy_config
+          changed_when: false
+          failed_when: false
+
+        - name: Check syslog port 1514 (UDP)
+          ansible.builtin.command:
+            cmd: ss -ulnp sport = :1514
+          register: syslog_1514_udp
+          changed_when: false
+          failed_when: false
+
+        - name: Check syslog port 1514 (TCP)
+          ansible.builtin.command:
+            cmd: ss -tlnp sport = :1514
+          register: syslog_1514_tcp
+          changed_when: false
+          failed_when: false
+
+        - name: Check HAProxy stats port
+          ansible.builtin.command:
+            cmd: ss -tlnp sport = :8404
+          register: stats_port
+          changed_when: false
+          failed_when: false
+
+        - name: "Hop 1 Results"
+          ansible.builtin.debug:
+            msg: |
+              === HOP 1: HAProxy Listeners ===
+              Service: {{ haproxy_active.status.ActiveState | default('unknown') }}
+              Config: {{ 'VALID' if haproxy_config.rc == 0
+                else 'INVALID - ' + haproxy_config.stderr | default('') }}
+              Syslog 1514 UDP: {{ 'LISTENING' if '1514' in syslog_1514_udp.stdout | default('') else 'NOT LISTENING' }}
+              Syslog 1514 TCP: {{ 'LISTENING' if '1514' in syslog_1514_tcp.stdout | default('') else 'NOT LISTENING' }}
+              Stats 8404: {{ 'LISTENING' if '8404' in stats_port.stdout | default('') else 'NOT LISTENING' }}
+
+# =============================================================================
+# Hop 2: HAProxy Backend - Can HAProxy reach Cribl Edge?
+# =============================================================================
+- name: "Hop 2: HAProxy Backend Health"
+  hosts: lxc_containers
+  become: true
+  gather_facts: false
+  tags:
+    - hop2
+    - haproxy
+    - debug
+
+  pre_tasks:
+    - name: Check if host is haproxy
+      ansible.builtin.set_fact:
+        is_haproxy: "{{ 'loadbalancer' in (host_tags | default([])) }}"
+
+  tasks:
+    - name: HAProxy backend diagnostics
+      when: is_haproxy | default(false)
+      block:
+        - name: Get HAProxy stats via socket
+          ansible.builtin.command:
+            cmd: >-
+              socat /run/haproxy/admin.sock stdio
+          args:
+            stdin: "show stat\n"
+          register: haproxy_stats
+          changed_when: false
+          failed_when: false
+
+        - name: Get HAProxy backend status
+          ansible.builtin.command:
+            cmd: >-
+              socat /run/haproxy/admin.sock stdio
+          args:
+            stdin: "show servers state\n"
+          register: haproxy_servers
+          changed_when: false
+          failed_when: false
+
+        - name: "Hop 2 Results"
+          ansible.builtin.debug:
+            msg: |
+              === HOP 2: HAProxy Backend Health ===
+              Backend servers:
+              {{ haproxy_servers.stdout | default('Unable to query HAProxy socket') }}
+
+# =============================================================================
+# Hop 3: Cribl Edge - Is the syslog listener responsive?
+# =============================================================================
+- name: "Hop 3: Cribl Edge Syslog Listener"
+  hosts: cribl_docker_group
+  become: true
+  gather_facts: false
+  tags:
+    - hop3
+    - cribl_edge
+    - debug
+
+  vars:
+    cribl_docker_stack_name: cribl
+
+  tasks:
+    - name: Check Cribl Edge service status
+      ansible.builtin.command: >-
+        docker service ls
+        --filter name={{ cribl_docker_stack_name }}_cribl-edge
+        --format {% raw %}'{{.Name}} {{.Replicas}} {{.Image}}'{% endraw %}
+      register: edge_service
+      changed_when: false
+      failed_when: false
+
+    - name: Check syslog port 1514 on Docker host
+      ansible.builtin.command:
+        cmd: ss -ulnp sport = :1514
+      register: docker_syslog_udp
+      changed_when: false
+      failed_when: false
+
+    - name: Check Cribl Edge health endpoint
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:9000/api/v1/health"
+        method: GET
+        return_content: true
+        status_code:
+          - 200
+          - -1
+      register: edge_health
+      failed_when: false
+
+    - name: Check Cribl Edge container logs (last 20 lines)
+      ansible.builtin.command: >-
+        docker service logs {{ cribl_docker_stack_name }}_cribl-edge
+        --tail 20 --no-trunc
+      register: edge_logs
+      changed_when: false
+      failed_when: false
+
+    - name: "Hop 3 Results"
+      ansible.builtin.debug:
+        msg: |
+          === HOP 3: Cribl Edge Syslog Listener ===
+          Service: {{ edge_service.stdout | default('NOT FOUND') }}
+          Syslog 1514 UDP: {{ 'LISTENING' if '1514' in docker_syslog_udp.stdout | default('') else 'NOT LISTENING' }}
+          Health API: {{ 'HEALTHY' if edge_health.status | default(0) == 200
+            else 'UNREACHABLE (status: '
+            + (edge_health.status | default('N/A') | string) + ')' }}
+          Recent logs:
+          {{ edge_logs.stdout | default('No logs available') | truncate(500) }}
+
+# =============================================================================
+# Hop 4: Cribl Edge → Cribl Stream forwarding
+# =============================================================================
+- name: "Hop 4: Cribl Edge to Stream Forwarding"
+  hosts: cribl_docker_group
+  become: true
+  gather_facts: false
+  tags:
+    - hop4
+    - cribl_stream
+    - debug
+
+  vars:
+    cribl_docker_stack_name: cribl
+
+  tasks:
+    - name: Check Cribl Stream service status
+      ansible.builtin.command: >-
+        docker service ls
+        --filter name={{ cribl_docker_stack_name }}_cribl-stream
+        --format {% raw %}'{{.Name}} {{.Replicas}} {{.Image}}'{% endraw %}
+      register: stream_service
+      changed_when: false
+      failed_when: false
+
+    - name: Check Cribl Stream health endpoint
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:9100/api/v1/health"
+        method: GET
+        return_content: true
+        status_code:
+          - 200
+          - -1
+      register: stream_health
+      failed_when: false
+
+    - name: Check Docker network connectivity between Edge and Stream
+      ansible.builtin.command: >-
+        docker network inspect {{ cribl_docker_stack_name }}_default
+        --format {% raw %}'{{range .Containers}}{{.Name}} {{.IPv4Address}}{{"\n"}}{{end}}'{% endraw %}
+      register: docker_network
+      changed_when: false
+      failed_when: false
+
+    - name: Check Cribl Stream container logs (last 20 lines)
+      ansible.builtin.command: >-
+        docker service logs {{ cribl_docker_stack_name }}_cribl-stream
+        --tail 20 --no-trunc
+      register: stream_logs
+      changed_when: false
+      failed_when: false
+
+    - name: "Hop 4 Results"
+      ansible.builtin.debug:
+        msg: |
+          === HOP 4: Edge → Stream Forwarding ===
+          Service: {{ stream_service.stdout | default('NOT FOUND') }}
+          Health API: {{ 'HEALTHY' if stream_health.status | default(0) == 200
+            else 'UNREACHABLE (status: '
+            + (stream_health.status | default('N/A') | string) + ')' }}
+          Docker network containers:
+          {{ docker_network.stdout | default('Unable to inspect network') }}
+          Recent logs:
+          {{ stream_logs.stdout | default('No logs available') | truncate(500) }}
+
+# =============================================================================
+# Hop 5: Cribl Stream → Splunk HEC connectivity
+# =============================================================================
+- name: "Hop 5: Stream to Splunk HEC"
+  hosts: cribl_docker_group
+  become: true
+  gather_facts: false
+  tags:
+    - hop5
+    - splunk
+    - debug
+
+  vars:
+    splunk_host: "{{ hostvars['splunk']['ansible_host'] }}"
+
+  tasks:
+    - name: Verify Splunk host is defined in inventory
+      ansible.builtin.assert:
+        that:
+          - hostvars['splunk']['ansible_host'] is defined
+        fail_msg: "Splunk host not found in inventory. Verify terraform_inventory.json."
+        quiet: true
+
+    - name: Test TCP connectivity to Splunk HEC from Docker host
+      ansible.builtin.wait_for:
+        host: "{{ splunk_host }}"
+        port: 8088
+        timeout: 10
+      register: hec_tcp
+      failed_when: false
+
+    - name: Test Splunk HEC health endpoint from Docker host
+      ansible.builtin.uri:
+        url: "https://{{ splunk_host }}:8088/services/collector/health"
+        method: GET
+        validate_certs: false
+        status_code:
+          - 200
+          - -1
+      register: hec_health
+      failed_when: false
+
+    - name: "Hop 5 Results"
+      ansible.builtin.debug:
+        msg: |
+          === HOP 5: Stream → Splunk HEC ===
+          Splunk host: {{ splunk_host }}
+          TCP 8088: {{ 'REACHABLE' if hec_tcp.state | default('') == 'started' else 'UNREACHABLE' }}
+          HEC health: {{ 'HEALTHY' if hec_health.status | default(0) == 200
+            else 'UNHEALTHY (status: '
+            + (hec_health.status | default('N/A') | string) + ')' }}
+
+# =============================================================================
+# Hop 6: Splunk HEC endpoint and token validation
+# =============================================================================
+- name: "Hop 6: Splunk HEC Endpoint"
+  hosts: splunk_vms
+  become: true
+  gather_facts: false
+  tags:
+    - hop6
+    - splunk
+    - debug
+
+  vars:
+    splunk_password: "{{ lookup('env', 'SPLUNK_PASSWORD') }}"
+
+  tasks:
+    - name: Check Splunk container status
+      community.docker.docker_container_info:
+        name: splunk
+      register: splunk_container
+      failed_when: false
+
+    - name: Check Splunk HEC port locally
+      ansible.builtin.wait_for:
+        port: 8088
+        timeout: 5
+      register: local_hec
+      failed_when: false
+
+    - name: Check Splunk web port locally
+      ansible.builtin.wait_for:
+        port: 8000
+        timeout: 5
+      register: local_web
+      failed_when: false
+
+    - name: Test HEC health endpoint locally
+      ansible.builtin.uri:
+        url: "https://127.0.0.1:8088/services/collector/health"
+        method: GET
+        validate_certs: false
+        status_code:
+          - 200
+          - -1
+      register: local_hec_health
+      failed_when: false
+
+    - name: Test HEC token validity
+      ansible.builtin.uri:
+        url: "https://127.0.0.1:8088/services/collector/event"
+        method: POST
+        validate_certs: false
+        headers:
+          Authorization: "Splunk {{ lookup('env', 'SPLUNK_HEC_TOKEN') }}"
+        body_format: json
+        body:
+          event: "debug-pipeline-token-test"
+          sourcetype: "ansible:debug"
+          index: "main"
+        status_code:
+          - 200
+          - 403
+          - -1
+      register: hec_token_test
+      failed_when: false
+      no_log: true
+
+    - name: Check Splunk container logs (last 10 lines)
+      ansible.builtin.command:
+        cmd: docker logs splunk --tail 10
+      register: splunk_logs
+      changed_when: false
+      failed_when: false
+
+    - name: "Hop 6 Results"
+      ansible.builtin.debug:
+        msg: |
+          === HOP 6: Splunk HEC Endpoint ===
+          Container: {{ 'RUNNING' if (splunk_container.container.State.Running | default(false)) else 'DOWN' }}
+          HEC port 8088: {{ 'LISTENING' if local_hec.state | default('') == 'started' else 'NOT LISTENING' }}
+          Web port 8000: {{ 'LISTENING' if local_web.state | default('') == 'started' else 'NOT LISTENING' }}
+          HEC health: {{ 'HEALTHY' if local_hec_health.status | default(0) == 200 else 'UNHEALTHY' }}
+          HEC token: {{ 'VALID' if hec_token_test.status | default(0) == 200
+            else 'INVALID (status: '
+            + (hec_token_test.status | default('N/A') | string) + ')' }}
+          Recent logs:
+          {{ splunk_logs.stdout | default('No logs available') }}
+
+# =============================================================================
+# Summary: Aggregated results
+# =============================================================================
+- name: "Debug Pipeline Summary"
+  hosts: localhost
+  gather_facts: false
+  tags:
+    - summary
+    - debug
+
+  tasks:
+    - name: Display debug summary
+      ansible.builtin.debug:
+        msg: |
+          ============================================
+          PIPELINE DEBUG COMPLETE
+          ============================================
+          Review hop results above to identify failures.
+          Run individual hops with --tags hop1..hop6.
+
+          Hop 1: HAProxy listeners (syslog ports)
+          Hop 2: HAProxy backend health (Cribl Edge)
+          Hop 3: Cribl Edge syslog listener
+          Hop 4: Edge → Stream forwarding
+          Hop 5: Stream → Splunk HEC connectivity
+          Hop 6: Splunk HEC endpoint and token
+          ============================================
