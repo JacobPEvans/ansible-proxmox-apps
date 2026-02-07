@@ -13,7 +13,7 @@ repos:
       - id: ansible-lint
         name: Ansible-lint
         description: Run ansible-lint on Ansible files
-        entry: uv tool run ansible-lint
+        entry: ansible-lint
         language: system
         files: \.(yaml|yml)$
         pass_filenames: false

@@ -14,18 +14,28 @@ Syslog Sources --> HAProxy --> Docker Swarm (Cribl Edge/Stream) --> Splunk HEC
 
 ## IP and Port Convention
 
-This repository never hardcodes IPs or ports. All values come from
-terraform-managed inventory.
+By convention, application playbooks and roles do not hardcode IPs or
+ports; they read them from terraform-managed inventory (including
+`terraform_data.constants`). Some helper and testing playbooks (for
+example, `playbooks/validate-pipeline.yml`) currently use a small number
+of explicit ports and a default `splunk_host` fallback; these are slated
+to be refactored to consume `terraform_data.constants` everywhere.
 
 ### IP Addresses
 
-IPs are derived from terraform inventory and accessed via `hostvars`:
+IPs are typically derived from terraform inventory and accessed via
+`hostvars`:
 
 ```yaml
 # In playbooks and roles
 splunk_host: "{{ hostvars['splunk']['ansible_host'] }}"
-haproxy_host: "{{ hostvars['haproxy']['ansible_host'] }}"
 ```
+
+**Note**: For LXC containers using `proxmox_pct_remote` connection
+(including `haproxy`), `ansible_host` contains the Proxmox VE hostname
+for the connection plugin, not the container's IP. To get the actual
+container IP for service testing, use `terraform_data.containers` from
+`terraform_inventory.json`.
 
 ### Port Constants
 
@@ -48,12 +58,10 @@ unifi_port: "{{ terraform_data.constants.syslog_ports.unifi }}"
 
 The `terraform-proxmox` repository defines all port assignments and IP
 derivation logic. To view or change values, update `locals.tf` in that
-repository and regenerate the inventory:
+repository and regenerate the inventory using the provided helper script:
 
 ```bash
-cd ~/git/terraform-proxmox/main
-terragrunt output -json ansible_inventory > \
-  ~/git/ansible-proxmox-apps/main/inventory/terraform_inventory.json
+./scripts/sync-terraform-inventory.sh
 ```
 
 ## Automated Testing
@@ -64,7 +72,7 @@ Validates the full pipeline by sending a test syslog message and confirming
 it arrives in Splunk.
 
 ```bash
-doppler run -- uv run ansible-playbook \
+doppler run -- doppler run -- ~/.local/pipx/venvs/ansible/bin/ansible-playbook \
   -i inventory/hosts.yml playbooks/validate-pipeline.yml
 ```
 
@@ -80,54 +88,50 @@ Run individual stages with tags:
 
 ```bash
 # HAProxy only
-doppler run -- uv run ansible-playbook \
+doppler run -- ~/.local/pipx/venvs/ansible/bin/ansible-playbook \
   -i inventory/hosts.yml playbooks/validate-pipeline.yml --tags haproxy
 
 # Splunk only
-doppler run -- uv run ansible-playbook \
+doppler run -- ~/.local/pipx/venvs/ansible/bin/ansible-playbook \
   -i inventory/hosts.yml playbooks/validate-pipeline.yml --tags splunk
 
 # E2E data flow only
-doppler run -- uv run ansible-playbook \
+doppler run -- ~/.local/pipx/venvs/ansible/bin/ansible-playbook \
   -i inventory/hosts.yml playbooks/validate-pipeline.yml --tags e2e
 ```
 
 Available tags: `haproxy`, `cribl_edge`, `splunk`, `cribl_docker_stack`,
 `swarm`, `e2e`, `data_validation`, `validation`, `summary`.
 
-### debug-pipeline.yml -- Hop-by-Hop Diagnostics
-
-Diagnoses connectivity issues at each pipeline hop. Each hop isolates a
-specific link in the chain:
-
-| Hop | What It Tests |
-| --- | --- |
-| hop1 | HAProxy listeners accepting connections |
-| hop2 | HAProxy backend health and connectivity |
-| hop3 | Cribl Edge syslog listener responsiveness |
-| hop4 | Cribl Edge to Cribl Stream forwarding |
-| hop5 | Cribl Stream to Splunk HEC connectivity |
-| hop6 | Splunk HEC endpoint health and token validity |
-| summary | Aggregated pass/fail report |
-
-```bash
-# Full diagnostic
-doppler run -- uv run ansible-playbook \
-  -i inventory/hosts.yml playbooks/debug-pipeline.yml
-
-# Single hop
-doppler run -- uv run ansible-playbook \
-  -i inventory/hosts.yml playbooks/debug-pipeline.yml --tags hop3
-```
-
 ### Required Environment Variables
 
-Both playbooks require secrets injected via Doppler:
+The validation and debug playbooks require both **secrets** (typically
+injected via Doppler) and **non-secret configuration** (usually set in the
+CI environment or your local shell).
+
+#### Secrets (via Doppler)
 
 | Variable | Purpose |
 | --- | --- |
 | `SPLUNK_PASSWORD` | Splunk admin password for search API queries |
 | `SPLUNK_HEC_TOKEN` | HEC token for event submission |
+
+#### Non-secret configuration
+
+The following variables are required by `validate-pipeline.yml` and any
+playbook that uses `inventory/hosts.yml` together with
+`inventory/load_terraform.yml`:
+
+| Variable | Purpose |
+| --- | --- |
+| `PROXMOX_VE_HOSTNAME` | Hostname or IP of the Proxmox VE endpoint |
+| `PROXMOX_SSH_KEY_PATH` | Path to SSH private key for Proxmox VMs |
+
+In addition, these playbooks expect a Terraform-generated inventory file:
+
+- `inventory/terraform_inventory.json` must exist and be up to date before
+  running `validate-pipeline.yml` or any playbook that relies on
+  `inventory/load_terraform.yml`.
 
 ## Manual Quick Tests
 
@@ -137,15 +141,19 @@ values from terraform inventory or Doppler before running.
 ### Resolve IPs from Inventory
 
 ```bash
-# These are examples -- actual IPs come from hostvars
-HAPROXY_IP=$(doppler run -- uv run ansible-inventory \
-  -i inventory/hosts.yml --host haproxy | jq -r '.ansible_host')
+# These are examples -- actual IPs come from terraform_inventory.json
+HAPROXY_IP=$(jq -r '.containers.haproxy.ip' \
+  inventory/terraform_inventory.json)
 
-DOCKER_HOST_IP=$(doppler run -- uv run ansible-inventory \
-  -i inventory/hosts.yml --host cribl-docker | jq -r '.ansible_host')
+# Discover a Docker VM host from the terraform-populated docker_vms group
+DOCKER_VM_HOST=$(jq -r '.docker_vms | keys[0]' \
+  inventory/terraform_inventory.json)
 
-SPLUNK_IP=$(doppler run -- uv run ansible-inventory \
-  -i inventory/hosts.yml --host splunk | jq -r '.ansible_host')
+DOCKER_HOST_IP=$(jq -r ".docker_vms[\"$DOCKER_VM_HOST\"].ip" \
+  inventory/terraform_inventory.json)
+
+SPLUNK_IP=$(jq -r '.splunk_vm.splunk.ip' \
+  inventory/terraform_inventory.json)
 ```
 
 ### HAProxy
@@ -169,6 +177,8 @@ curl -s http://$DOCKER_HOST_IP:$CRIBL_STREAM_API_PORT/api/v1/health
 
 ```bash
 # Test HEC health
+# NOTE: The -k flag disables certificate validation. This is convenient for
+# local testing but insecure. Use --cacert for production-like environments.
 curl -sk https://$SPLUNK_IP:$SPLUNK_HEC_PORT/services/collector/health
 
 # Send test event
@@ -209,12 +219,13 @@ General configuration pattern for any syslog source:
 
 ### No Events in Splunk
 
-Run `debug-pipeline.yml` to isolate the failing hop. Start from hop1
-and work forward:
+Run `validate-pipeline.yml` with specific tags to isolate the failing
+component. Start from HAProxy and work forward:
 
 ```bash
-doppler run -- uv run ansible-playbook \
-  -i inventory/hosts.yml playbooks/debug-pipeline.yml --tags hop1,hop2,hop3
+doppler run -- ~/.local/pipx/venvs/ansible/bin/ansible-playbook \
+  -i inventory/hosts.yml playbooks/validate-pipeline.yml \
+  --tags haproxy,cribl_edge,splunk
 ```
 
 ### HAProxy Backend Down
