@@ -12,11 +12,8 @@ repos:
     hooks:
       - id: ansible-lint
         name: Ansible-lint
-        description: Run ansible-lint via nix shell
-        entry: >-
-          bash -c 'nix develop
-          /Users/jevans/git/nix-config/main/shells/infrastructure-automation
-          --command ansible-lint'
+        description: Run ansible-lint on Ansible files
+        entry: uv tool run ansible-lint
         language: system
         files: \.(yaml|yml)$
         pass_filenames: false
