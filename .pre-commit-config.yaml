@@ -12,8 +12,8 @@ repos:
     hooks:
       - id: ansible-lint
         name: Ansible-lint
-        description: Run ansible-lint on Ansible files
-        entry: uv tool run ansible-lint
+        description: Run ansible-lint on Ansible files (pinned version for reproducibility)
+        entry: uv tool run --from ansible-lint==24.7.0 ansible-lint
         language: system
         files: \.(yaml|yml)$
         pass_filenames: false
