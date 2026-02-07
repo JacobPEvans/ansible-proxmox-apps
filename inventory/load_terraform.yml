@@ -42,9 +42,23 @@
     - name: Add LXC containers to inventory (proxmox_pct_remote connection)
       ansible.builtin.add_host:
         name: "{{ item.key }}"
-        groups:
-          - lxc_containers
-          - all
+        groups: >-
+          {{
+            ['lxc_containers', 'all'] +
+            (
+              ['haproxy_group']
+              if 'loadbalancer' in (item.value.tags | default([]))
+              else []
+            ) +
+            (
+              ['cribl_edge']
+              if (
+                'edge' in (item.value.tags | default([])) and
+                'cribl' in (item.value.tags | default([]))
+              )
+              else []
+            )
+          }}
         ansible_pct_vmid: "{{ item.value.vmid }}"
         ansible_host: "{{ item.value.ip }}"
         ansible_connection: "{{ item.value.ansible_connection }}"
@@ -109,38 +123,3 @@
       when:
         - terraform_data.docker_vms is defined
         - terraform_data.docker_vms | length > 0
-
-    - name: Add HAProxy to haproxy_group
-      ansible.builtin.add_host:
-        name: "{{ item.key }}"
-        groups:
-          - haproxy_group
-        ansible_host: "{{ item.value.ip }}"
-        ansible_connection: "{{ item.value.ansible_connection }}"
-        ansible_pct_vmid: "{{ item.value.vmid }}"
-        ansible_pct_host: "{{ lookup('env', 'PROXMOX_VE_HOSTNAME') }}"
-        ansible_pct_user: root
-        ansible_pct_private_key_file: "{{ lookup('env', 'PROXMOX_SSH_KEY_PATH') }}"
-        ansible_pct_node: "{{ item.value.node }}"
-      loop: "{{ terraform_data.containers | dict2items }}"
-      when:
-        - terraform_data.containers is defined
-        - "'loadbalancer' in item.value.tags | default([])"
-
-    - name: Add Cribl Edge containers to cribl_edge group
-      ansible.builtin.add_host:
-        name: "{{ item.key }}"
-        groups:
-          - cribl_edge
-        ansible_host: "{{ item.value.ip }}"
-        ansible_connection: "{{ item.value.ansible_connection }}"
-        ansible_pct_vmid: "{{ item.value.vmid }}"
-        ansible_pct_host: "{{ lookup('env', 'PROXMOX_VE_HOSTNAME') }}"
-        ansible_pct_user: root
-        ansible_pct_private_key_file: "{{ lookup('env', 'PROXMOX_SSH_KEY_PATH') }}"
-        ansible_pct_node: "{{ item.value.node }}"
-      loop: "{{ terraform_data.containers | dict2items }}"
-      when:
-        - terraform_data.containers is defined
-        - "'edge' in item.value.tags | default([])"
-        - "'cribl' in item.value.tags | default([])"
