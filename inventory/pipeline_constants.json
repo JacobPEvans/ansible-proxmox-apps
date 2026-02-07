@@ -9,7 +9,7 @@
   },
   "syslog_ports": {
     "unifi": 1514,
-    "paloalto": 1515,
+    "palo_alto": 1515,
     "cisco_asa": 1516,
     "linux": 1517,
     "windows": 1518

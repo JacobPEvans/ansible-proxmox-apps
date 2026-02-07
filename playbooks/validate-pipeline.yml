@@ -57,7 +57,7 @@
         - name: Get HAProxy backend status via stats socket
           ansible.builtin.command:
             cmd: >-
-              socat stdio /run/haproxy/admin.sock
+              socat - UNIX-CONNECT:/run/haproxy/admin.sock
             stdin: "show servers state\n"
           register: haproxy_backend
           changed_when: false
@@ -105,14 +105,15 @@
             fail_msg: "Cribl Edge container is not running"
             success_msg: "Cribl Edge container is running"
 
-        - name: Check Cribl Edge syslog port
+        - name: Check Cribl Edge syslog ports
           ansible.builtin.wait_for:
-            port: "{{ constants.syslog_ports.unifi }}"
+            port: "{{ item }}"
             timeout: 5
+          loop: "{{ constants.syslog_ports.values() | list | sort }}"
 
         - name: Display Cribl Edge validation results
           ansible.builtin.debug:
-            msg: "Cribl Edge validation passed: container running, syslog port listening"
+            msg: "Cribl Edge validation passed: container running, all syslog ports listening"
 
 - name: Validate Splunk Enterprise
   hosts: splunk_vms
@@ -191,10 +192,14 @@
       ansible.builtin.debug:
         msg: |
           Splunk validation passed: container running, HEC healthy
-          HEC token: {{ 'VALID' if (hec_token_test.status | default(0)) == 200
-            else ('SKIPPED' if (splunk_hec_token | length == 0)
-            else 'INVALID (status: '
-            + (hec_token_test.status | default('N/A') | string) + ')') }}
+          HEC token: >-
+            {%- if splunk_hec_token | length == 0 -%}
+            SKIPPED
+            {%- elif (hec_token_test.status | default(0)) == 200 -%}
+            VALID
+            {%- else -%}
+            INVALID (status: {{ hec_token_test.status | default('N/A') }})
+            {%- endif -%}
           Recent logs:
           {{ splunk_logs.stdout | default('No logs available') }}
 
@@ -287,6 +292,10 @@
           - Stream: {{ stream_replicas.stdout }} replicas healthy
           Docker network:
           {{ docker_network.stdout | default('Unable to inspect network') }}
+          Recent Edge logs:
+          {{ edge_logs.stdout | default('No logs available') }}
+          Recent Stream logs:
+          {{ stream_logs.stdout | default('No logs available') }}
 
 - name: E2E Data Pipeline Validation
   hosts: cribl_docker_group
