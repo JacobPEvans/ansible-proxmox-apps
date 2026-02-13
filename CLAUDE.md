@@ -73,18 +73,18 @@ Port constants come from `terraform_data.constants`
 
 ```bash
 # Deploy all apps
-doppler run -- pipx run ansible-playbook -i inventory/hosts.yml playbooks/site.yml
+doppler run -- uv run ansible-playbook -i inventory/hosts.yml playbooks/site.yml
 
 # Validate pipeline
-doppler run -- pipx run ansible-playbook -i inventory/hosts.yml playbooks/validate-pipeline.yml
+doppler run -- uv run ansible-playbook -i inventory/hosts.yml playbooks/validate-pipeline.yml
 
 # E2E test only
-doppler run -- pipx run ansible-playbook \
+doppler run -- uv run ansible-playbook \
   -i inventory/hosts.yml playbooks/validate-pipeline.yml \
   --tags e2e
 
 # Lint
-pipx run ansible-lint
+uv run ansible-lint
 ```
 
 ## Related Repositories

@@ -70,50 +70,9 @@
               Backend status:
               {{ haproxy_backend.stdout | default('Socket not available') }}
 
-- name: Validate Cribl Edge Nodes
-  hosts: lxc_containers
-  become: true
-  gather_facts: false
-  tags:
-    - cribl_edge
-    - validation
-
-  vars:
-    constants: "{{ hostvars['localhost']['terraform_data']['constants'] }}"
-
-  pre_tasks:
-    - name: Check if host is cribl_edge
-      ansible.builtin.set_fact:
-        is_cribl_edge: >-
-          {{ 'edge' in (host_tags | default([])) and
-             'cribl' in (host_tags | default([])) }}
-
-  tasks:
-    - name: Cribl Edge validation tasks
-      when: is_cribl_edge | default(false)
-      block:
-        - name: Verify Cribl Edge container is running
-          community.docker.docker_container_info:
-            name: cribl-edge
-          register: cribl_edge_container
-
-        - name: Assert Cribl Edge is running
-          ansible.builtin.assert:
-            that:
-              - cribl_edge_container.container is defined
-              - cribl_edge_container.container.State.Running
-            fail_msg: "Cribl Edge container is not running"
-            success_msg: "Cribl Edge container is running"
-
-        - name: Check Cribl Edge syslog ports
-          ansible.builtin.wait_for:
-            port: "{{ item }}"
-            timeout: 5
-          loop: "{{ constants.syslog_ports.values() | list | sort }}"
-
-        - name: Display Cribl Edge validation results
-          ansible.builtin.debug:
-            msg: "Cribl Edge validation passed: container running, all syslog ports listening"
+# NOTE: Legacy Cribl Edge LXC validation removed - Cribl Edge now runs
+# as a Docker Swarm service on docker-host VM. See "Validate Cribl Docker
+# Swarm Stack" play below for current validation.
 
 - name: Validate Cribl Docker Swarm Stack
   hosts: cribl_docker_group
