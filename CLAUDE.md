@@ -1,210 +1,85 @@
-# Ansible Proxmox Apps - AI Agent Documentation
+# Ansible Proxmox Apps
 
-Repository for Ansible automation of applications running on Proxmox VMs
-and containers.
+Configure applications on Proxmox VMs and LXC containers.
+VMs/containers are provisioned by `terraform-proxmox`;
+this repo handles app config only.
 
-## Repository Purpose
+## This Repo Owns
 
-Deploy and configure application stacks on Proxmox VMs:
+- **Cribl Edge/Stream** (Docker Swarm on docker-host VM)
+- **HAProxy** (LXC container, legacy syslog load balancer)
+- **Technitium DNS** (LXC container)
+- **apt-cacher-ng** (LXC container)
 
-- Cribl Edge: Distributed syslog log processor with persistent queuing
-- Cribl Stream: Central processing node for log pipeline
-- HAProxy: Syslog load balancer
+**This repo does NOT own Splunk.** Splunk is managed by `ansible-splunk`.
 
-Applications are deployed to VMs provisioned by `terraform-proxmox`. This
-repository handles application-level configuration only (NOT Proxmox
-infrastructure).
+## Pipeline Data Flow
 
-## Dependencies
+```text
+Source -> Docker Swarm Host (syslog:1514-1518/udp)
+           |
+       Cribl Edge (2 replicas, Swarm ingress LB)
+         - Pipeline: sets index + sourcetype by port
+         - Output: Splunk HEC (http, port 8088)
+           |
+       Splunk Enterprise (managed by ansible-splunk)
+```
 
-### Upstream Repositories
+### Syslog Port Assignments (from terraform pipeline_constants)
 
-- **terraform-proxmox**: VM provisioning and persistent storage setup
-  - Creates VMs with Debian OS
-  - Provisions 100GB persistent disks at `/opt/cribl/data`
-  - Manages networking and storage backend
+| Port | Source | Splunk Index |
+| --- | --- | --- |
+| 1514 | UniFi | unifi |
+| 1515 | Palo Alto | firewall |
+| 1516 | Cisco ASA | firewall |
+| 1517 | Linux | os |
+| 1518 | Windows | os |
 
-### External Services
+## Inventory
 
-- **Doppler**: Secrets management for API tokens and passwords
+Inventory is loaded dynamically from
+`terraform_inventory.json` via `load_terraform.yml`.
+Port constants come from `terraform_data.constants`
+(defined in terraform-proxmox `locals.tf`).
 
-## Inventory Structure
+### Groups (from terraform inventory)
 
-Inventory is built entirely from environment variables (Doppler secrets).
-No hardcoded values are stored in git.
+- `lxc_containers`: All LXC containers (`proxmox_pct_remote` connection)
+- `docker_vms` / `cribl_docker_group`: Docker Swarm hosts (SSH)
 
 ### Required Environment Variables
-
-IP addresses are **NEVER** hardcoded or stored in Doppler. They are derived from:
-First 3 octets of `PROXMOX_VE_GATEWAY` + `{vmid}`
-(e.g., `PROXMOX_VE_GATEWAY=10.0.1.1` + `vmid=180` → `10.0.1.180`)
 
 | Variable | Purpose |
 | --- | --- |
 | `PROXMOX_VE_HOSTNAME` | Proxmox VE hostname |
-| `PROXMOX_SSH_KEY_PATH` | Path to SSH key for Proxmox |
-| `PROXMOX_VE_GATEWAY` | Network gateway IP (used to derive host IPs) |
+| `PROXMOX_SSH_KEY_PATH` | Path to SSH key |
+| `PROXMOX_VE_GATEWAY` | Network gateway (for IP derivation) |
 | `PROXMOX_DOMAIN` | Internal DNS domain |
-| `SPLUNK_HEC_TOKEN` | Splunk HTTP Event Collector token (secret) |
+| `SPLUNK_HEC_TOKEN` | Splunk HEC token (for Cribl output) |
+| `SPLUNK_PASSWORD` | Splunk admin password (for E2E validation) |
 
-### Container Connection
-
-LXC containers use `community.general.proxmox_pct_remote` connection plugin:
-
-- Connects via SSH to Proxmox host
-- Uses `pct exec` to run commands in containers
-- No SSH required on containers themselves
-- Requires community.general >= 10.3.0
-
-### Groups
-
-- `lxc_containers`: All LXC containers (uses pct_remote connection)
-- `cribl_edge`: Nodes 1 and 2 (syslog ingestion)
-- `cribl_stream_group`: Central processing node
-- `haproxy_group`: Load balancer frontend
-- `splunk_group`: Destination Splunk instance
-
-## Network Architecture
-
-### Syslog Port Assignments
-
-| Port | Protocol | Service | Listener |
-| --- | --- | --- | --- |
-| 1514 | UDP/TCP | Syslog | HAProxy → Cribl Edge |
-| 1515 | UDP/TCP | Syslog | HAProxy → Cribl Edge |
-| 1516 | UDP/TCP | Syslog | HAProxy → Cribl Edge |
-| 1517 | UDP/TCP | Syslog | HAProxy → Cribl Edge |
-| 1518 | UDP/TCP | Syslog | HAProxy → Cribl Edge |
-| 8088 | TCP | Splunk HEC | Cribl → Splunk |
-| 8404 | TCP | HAProxy | Admin interface |
-
-HAProxy load balances ports 1514-1518 across two Cribl Edge nodes using
-round-robin with health checks.
-
-## Cribl Configuration
-
-### Cribl Edge
-
-**Listeners** (Inbound):
-
-- Syslog source: Ports 1514-1518 (UDP/TCP)
-- Configured via Cribl Web UI or API after installation
-
-**Outputs** (Outbound):
-
-- Splunk HEC: `https://splunk-vm:8088/services/collector`
-- Authentication: HEC token from Doppler
-
-**Persistent Queue**:
-
-- Location: `/opt/cribl/data/queue`
-- Size: 100GB (mounted from terraform-proxmox provisioned disk)
-- Purpose: Buffer logs during Splunk outages or high load
-
-### Cribl Stream
-
-**Mode**: Processing node (receives from Edge, forwards to outputs)
-
-**Role in Pipeline**:
-
-1. Receives parsed events from Cribl Edge nodes
-2. Applies data transformation rules
-3. Forwards to Splunk via HEC
-
-**Persistent Storage**:
-
-- Location: `/opt/cribl/data/queue`
-- Size: 100GB (mounted from terraform-proxmox provisioned disk)
-
-## Agent Tasks
-
-### Installation and Deployment
-
-When assigned tasks in this repository:
-
-1. **Verify terraform-proxmox state**: Ensure VMs exist and networking is
-   configured
-2. **Run site.yml**: Deploy all roles via main playbook
-3. **Validate health**: Verify services are running and syslog is flowing
-4. **Check persistent storage**: Confirm 100GB mounts are accessible
-
-### Configuration Changes
-
-- Modify `roles/*/defaults/main.yml` for feature toggles
-- Use `roles/*/templates/` for complex configuration files
-- Always test with `--check --diff` before applying
-- Run linting: `uv run ansible-lint` before commit
-
-### Troubleshooting
-
-Common issues and resolution:
-
-- **Syslog not flowing**: Check HAProxy backend health and Cribl listeners
-- **Persistent queue full**: Monitor `/opt/cribl/data` disk usage
-- **Splunk connection errors**: Verify HEC token and HTTPS certificate
-
-## Secrets Management
-
-All secrets (API tokens, HEC tokens, passwords) are managed via Doppler:
+## Commands
 
 ```bash
-# Download secrets for local testing
-doppler secrets download --no-file
+# Deploy all apps
+doppler run -- pipx run ansible-playbook -i inventory/hosts.yml playbooks/site.yml
 
-# Run playbook with secrets
-doppler run -- ~/.local/pipx/venvs/ansible/bin/ansible-playbook \
-  -i inventory/hosts.yml playbooks/site.yml
-```
+# Validate pipeline
+doppler run -- pipx run ansible-playbook -i inventory/hosts.yml playbooks/validate-pipeline.yml
 
-Never commit secrets to git. Use `.gitignore` to exclude:
+# E2E test only
+doppler run -- pipx run ansible-playbook \
+  -i inventory/hosts.yml playbooks/validate-pipeline.yml \
+  --tags e2e
 
-- `.env` files
-- `group_vars/**/secrets.yml`
-- `host_vars/**/secrets.yml`
-
-## Development Workflow
-
-1. Create worktree for feature branch
-2. Modify playbooks/roles in dedicated branch
-3. Test with `--check --diff`
-4. Validate with `ansible-lint`
-5. Commit and push
-6. Create PR for review
-
-See CLAUDE.md in `/Users/jevans/CLAUDE.md` for worktree requirements.
-
-## Linting and Validation
-
-```bash
-# Lint all Ansible files
-~/.local/pipx/venvs/ansible/bin/ansible-lint
-
-# Check specific role
-~/.local/pipx/venvs/ansible/bin/ansible-lint roles/cribl_edge/
-
-# Check playbook syntax
-doppler run -- ~/.local/pipx/venvs/ansible/bin/ansible-playbook \
-  -i inventory/hosts.yml playbooks/site.yml --syntax-check
-
-# Dry run with diff
-doppler run -- ~/.local/pipx/venvs/ansible/bin/ansible-playbook \
-  -i inventory/hosts.yml playbooks/site.yml --check --diff
+# Lint
+pipx run ansible-lint
 ```
 
 ## Related Repositories
 
-- **terraform-proxmox**: Infrastructure provisioning (VMs, storage, network)
-- **ansible-proxmox**: Proxmox cluster configuration (NOT this repo)
-
-## Skill Documentation
-
-This repository uses these Ansible skills:
-
-- `ansible-fundamentals`: Core module patterns, FQCN, collections
-- `ansible-idempotency`: changed_when, failed_when, idempotency checks
-- `ansible-proxmox`: Proxmox-specific patterns
-- `ansible-secrets`: Doppler integration, no_log patterns
-- `ansible-playbook-design`: Playbook structure, variable organization
-- `ansible-role-design`: Role structure, defaults, handlers
-
-All code must follow patterns defined in these skills.
+| Repo | Relationship |
+| --- | --- |
+| terraform-proxmox | Upstream: provisions VMs/containers |
+| ansible-splunk | Peer: owns Splunk Enterprise deployment |
+| ansible-proxmox | Peer: owns Proxmox host config (kernel, ZFS, firewall) |
