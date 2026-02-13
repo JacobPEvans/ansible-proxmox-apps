@@ -152,7 +152,7 @@ All secrets (API tokens, HEC tokens, passwords) are managed via Doppler:
 doppler secrets download --no-file
 
 # Run playbook with secrets
-doppler run -- ~/.local/pipx/venvs/ansible/bin/ansible-playbook \
+doppler run -- ansible-playbook \
   -i inventory/hosts.yml playbooks/site.yml
 ```
 
@@ -163,6 +163,19 @@ Never commit secrets to git. Use `.gitignore` to exclude:
 - `host_vars/**/secrets.yml`
 
 ## Development Workflow
+
+### Prerequisites
+
+To use the direnv/nix-shell workflow:
+
+- **nix** installed and configured
+- **direnv** installed and enabled for your shell (e.g., `eval "$(direnv hook bash)"`)
+- **nix-direnv** (or equivalent) installed for `use flake` support
+- **NIX_CONFIG_PATH** environment variable (optional): Defaults to `$HOME/git/nix-config/main`
+
+The `.envrc` file auto-activates the nix shell via direnv when entering
+the directory (after running `direnv allow` once), providing ansible,
+ansible-lint, and other tools on PATH.
 
 1. Create worktree for feature branch
 2. Modify playbooks/roles in dedicated branch
@@ -177,17 +190,17 @@ See CLAUDE.md in `/Users/jevans/CLAUDE.md` for worktree requirements.
 
 ```bash
 # Lint all Ansible files
-~/.local/pipx/venvs/ansible/bin/ansible-lint
+ansible-lint
 
 # Check specific role
-~/.local/pipx/venvs/ansible/bin/ansible-lint roles/cribl_edge/
+ansible-lint roles/cribl_edge/
 
 # Check playbook syntax
-doppler run -- ~/.local/pipx/venvs/ansible/bin/ansible-playbook \
+doppler run -- ansible-playbook \
   -i inventory/hosts.yml playbooks/site.yml --syntax-check
 
 # Dry run with diff
-doppler run -- ~/.local/pipx/venvs/ansible/bin/ansible-playbook \
+doppler run -- ansible-playbook \
   -i inventory/hosts.yml playbooks/site.yml --check --diff
 ```
 
