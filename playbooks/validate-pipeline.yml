@@ -115,94 +115,6 @@
           ansible.builtin.debug:
             msg: "Cribl Edge validation passed: container running, all syslog ports listening"
 
-- name: Validate Splunk Enterprise
-  hosts: splunk_vms
-  become: true
-  gather_facts: false
-  tags:
-    - splunk
-    - validation
-
-  vars:
-    constants: "{{ hostvars['localhost']['terraform_data']['constants'] }}"
-    splunk_hec_token: "{{ lookup('env', 'SPLUNK_HEC_TOKEN') }}"
-
-  tasks:
-    - name: Verify Splunk container is running
-      community.docker.docker_container_info:
-        name: splunk
-      register: splunk_container
-
-    - name: Assert Splunk is running
-      ansible.builtin.assert:
-        that:
-          - splunk_container.container is defined
-          - splunk_container.container.State.Running
-        fail_msg: "Splunk container is not running"
-        success_msg: "Splunk container is running"
-
-    - name: Verify Splunk web port
-      ansible.builtin.wait_for:
-        port: "{{ constants.service_ports.splunk_web }}"
-        timeout: 10
-
-    - name: Verify Splunk HEC port
-      ansible.builtin.wait_for:
-        port: "{{ constants.service_ports.splunk_hec }}"
-        timeout: 10
-
-    - name: Test HEC endpoint health
-      ansible.builtin.uri:
-        url: >-
-          https://127.0.0.1:{{ constants.service_ports.splunk_hec
-          }}/services/collector/health
-        method: GET
-        validate_certs: false
-        status_code: 200
-      register: hec_health
-
-    - name: Test HEC token validity
-      ansible.builtin.uri:
-        url: >-
-          https://127.0.0.1:{{ constants.service_ports.splunk_hec
-          }}/services/collector/event
-        method: POST
-        validate_certs: false
-        headers:
-          Authorization: "Splunk {{ splunk_hec_token }}"
-        body_format: json
-        body:
-          event: "pipeline-validation-token-test"
-          sourcetype: "ansible:validation"
-        status_code:
-          - 200
-          - 403
-      register: hec_token_test
-      no_log: true
-      when: splunk_hec_token | length > 0
-
-    - name: Check Splunk container logs (last 10 lines)
-      ansible.builtin.command:
-        cmd: docker logs splunk --tail 10
-      register: splunk_logs
-      changed_when: false
-      failed_when: false
-
-    - name: Display Splunk validation results
-      ansible.builtin.debug:
-        msg: |
-          Splunk validation passed: container running, HEC healthy
-          HEC token: >-
-            {%- if splunk_hec_token | length == 0 -%}
-            SKIPPED
-            {%- elif (hec_token_test.status | default(0)) == 200 -%}
-            VALID
-            {%- else -%}
-            INVALID (status: {{ hec_token_test.status | default('N/A') }})
-            {%- endif -%}
-          Recent logs:
-          {{ splunk_logs.stdout | default('No logs available') }}
-
 - name: Validate Cribl Docker Swarm Stack
   hosts: cribl_docker_group
   become: true
@@ -398,7 +310,6 @@
           ============================================
           Cribl Edge:  Docker Swarm replicas healthy
           Cribl Stream: Docker Swarm replica healthy
-          Splunk:      Container running, HEC healthy
           E2E:         Data flowing through pipeline
           ============================================
           Pipeline is ready for log ingestion!

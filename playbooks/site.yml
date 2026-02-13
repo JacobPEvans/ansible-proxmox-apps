@@ -54,22 +54,7 @@
     - role: technitium_dns
 
 # =============================================================================
-# Phase 2: Destination Configuration
-# Splunk must be running before data pipeline components
-# =============================================================================
-
-- name: Configure Splunk Docker
-  hosts: splunk_vms
-  become: true
-  tags:
-    - splunk_docker
-    - splunk
-
-  roles:
-    - role: splunk_docker
-
-# =============================================================================
-# Phase 3: Cribl Docker Swarm Stack
+# Phase 2: Cribl Docker Swarm Stack
 # Deploy Cribl Edge and Stream on Docker VM using Swarm mode
 # This replaces the legacy LXC-based Cribl Edge/Stream and HAProxy
 # =============================================================================
