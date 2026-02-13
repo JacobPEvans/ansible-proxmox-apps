@@ -12,8 +12,4 @@ repos:
     rev: v26.1.1
     hooks:
       - id: ansible-lint
-        name: Ansible-lint
-        description: Run ansible-lint on Ansible files
-        entry: uv tool run ansible-lint
-        language: system
         files: \.(yaml|yml)$
