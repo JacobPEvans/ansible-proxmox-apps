@@ -3,7 +3,7 @@
 # Validates connectivity, service health, and data flow across the pipeline
 #
 # Usage:
-#   doppler run -- ~/.local/pipx/venvs/ansible/bin/ansible-playbook \
+#   doppler run -- uv run ansible-playbook \
 #     -i inventory/hosts.yml playbooks/validate-pipeline.yml
 
 - name: Import Terraform infrastructure inventory
@@ -17,10 +17,13 @@
     - haproxy
     - validation
 
+  vars:
+    constants: "{{ hostvars['localhost']['terraform_data']['constants'] }}"
+
   pre_tasks:
     - name: Check if host is haproxy
       ansible.builtin.set_fact:
-        is_haproxy: "{{ 'haproxy' in (tags | default([])) }}"
+        is_haproxy: "{{ 'loadbalancer' in (host_tags | default([])) }}"
 
   tasks:
     - name: HAProxy validation tasks
@@ -44,21 +47,28 @@
           ansible.builtin.wait_for:
             port: "{{ item }}"
             timeout: 5
-          loop:
-            - 1514
-            - 1515
-            - 1516
-            - 1517
-            - 1518
+          loop: "{{ constants.syslog_ports.values() | list | sort }}"
 
         - name: Verify stats page is accessible
           ansible.builtin.wait_for:
-            port: 8404
+            port: "{{ constants.service_ports.haproxy_stats }}"
             timeout: 5
+
+        - name: Get HAProxy backend status via stats socket
+          ansible.builtin.command:
+            cmd: >-
+              socat - UNIX-CONNECT:/run/haproxy/admin.sock
+            stdin: "show servers state\n"
+          register: haproxy_backend
+          changed_when: false
+          failed_when: false
 
         - name: Display HAProxy validation results
           ansible.builtin.debug:
-            msg: "HAProxy validation passed: config valid, all ports listening"
+            msg: |
+              HAProxy validation passed: config valid, all ports listening
+              Backend status:
+              {{ haproxy_backend.stdout | default('Socket not available') }}
 
 - name: Validate Cribl Edge Nodes
   hosts: lxc_containers
@@ -68,10 +78,15 @@
     - cribl_edge
     - validation
 
+  vars:
+    constants: "{{ hostvars['localhost']['terraform_data']['constants'] }}"
+
   pre_tasks:
     - name: Check if host is cribl_edge
       ansible.builtin.set_fact:
-        is_cribl_edge: "{{ 'cribl_edge' in (tags | default([])) }}"
+        is_cribl_edge: >-
+          {{ 'edge' in (host_tags | default([])) and
+             'cribl' in (host_tags | default([])) }}
 
   tasks:
     - name: Cribl Edge validation tasks
@@ -90,14 +105,15 @@
             fail_msg: "Cribl Edge container is not running"
             success_msg: "Cribl Edge container is running"
 
-        - name: Check Cribl Edge syslog port
+        - name: Check Cribl Edge syslog ports
           ansible.builtin.wait_for:
-            port: 1514
+            port: "{{ item }}"
             timeout: 5
+          loop: "{{ constants.syslog_ports.values() | list | sort }}"
 
         - name: Display Cribl Edge validation results
           ansible.builtin.debug:
-            msg: "Cribl Edge validation passed: container running, syslog port listening"
+            msg: "Cribl Edge validation passed: container running, all syslog ports listening"
 
 - name: Validate Splunk Enterprise
   hosts: splunk_vms
@@ -106,6 +122,10 @@
   tags:
     - splunk
     - validation
+
+  vars:
+    constants: "{{ hostvars['localhost']['terraform_data']['constants'] }}"
+    splunk_hec_token: "{{ lookup('env', 'SPLUNK_HEC_TOKEN') }}"
 
   tasks:
     - name: Verify Splunk container is running
@@ -123,25 +143,65 @@
 
     - name: Verify Splunk web port
       ansible.builtin.wait_for:
-        port: 8000
+        port: "{{ constants.service_ports.splunk_web }}"
         timeout: 10
 
     - name: Verify Splunk HEC port
       ansible.builtin.wait_for:
-        port: 8088
+        port: "{{ constants.service_ports.splunk_hec }}"
         timeout: 10
 
     - name: Test HEC endpoint health
       ansible.builtin.uri:
-        url: "https://127.0.0.1:8088/services/collector/health"
+        url: >-
+          https://127.0.0.1:{{ constants.service_ports.splunk_hec
+          }}/services/collector/health
         method: GET
         validate_certs: false
         status_code: 200
       register: hec_health
 
+    - name: Test HEC token validity
+      ansible.builtin.uri:
+        url: >-
+          https://127.0.0.1:{{ constants.service_ports.splunk_hec
+          }}/services/collector/event
+        method: POST
+        validate_certs: false
+        headers:
+          Authorization: "Splunk {{ splunk_hec_token }}"
+        body_format: json
+        body:
+          event: "pipeline-validation-token-test"
+          sourcetype: "ansible:validation"
+        status_code:
+          - 200
+          - 403
+      register: hec_token_test
+      no_log: true
+      when: splunk_hec_token | length > 0
+
+    - name: Check Splunk container logs (last 10 lines)
+      ansible.builtin.command:
+        cmd: docker logs splunk --tail 10
+      register: splunk_logs
+      changed_when: false
+      failed_when: false
+
     - name: Display Splunk validation results
       ansible.builtin.debug:
-        msg: "Splunk validation passed: container running, HEC healthy"
+        msg: |
+          Splunk validation passed: container running, HEC healthy
+          HEC token: >-
+            {%- if splunk_hec_token | length == 0 -%}
+            SKIPPED
+            {%- elif (hec_token_test.status | default(0)) == 200 -%}
+            VALID
+            {%- else -%}
+            INVALID (status: {{ hec_token_test.status | default('N/A') }})
+            {%- endif -%}
+          Recent logs:
+          {{ splunk_logs.stdout | default('No logs available') }}
 
 - name: Validate Cribl Docker Swarm Stack
   hosts: cribl_docker_group
@@ -153,6 +213,7 @@
     - validation
 
   vars:
+    constants: "{{ hostvars['localhost']['terraform_data']['constants'] }}"
     cribl_docker_stack_name: cribl
     cribl_docker_stack_edge_replicas: 2
     cribl_docker_stack_stream_replicas: 1
@@ -180,7 +241,9 @@
 
     - name: Verify Edge health endpoint
       ansible.builtin.uri:
-        url: "http://127.0.0.1:9000/api/v1/health"
+        url: >-
+          http://127.0.0.1:{{ constants.service_ports.cribl_edge_api
+          }}/api/v1/health
         method: GET
         return_content: true
         status_code: 200
@@ -188,11 +251,38 @@
 
     - name: Verify Stream health endpoint
       ansible.builtin.uri:
-        url: "http://127.0.0.1:9100/api/v1/health"
+        url: >-
+          http://127.0.0.1:{{ constants.service_ports.cribl_stream_api
+          }}/api/v1/health
         method: GET
         return_content: true
         status_code: 200
       register: stream_health
+
+    - name: Inspect Docker network for container connectivity
+      ansible.builtin.command: >-
+        docker network inspect {{ cribl_docker_stack_name }}_default
+        --format
+        '{% raw %}{{range .Containers}}{{.Name}} {{.IPv4Address}}{{"\\n"}}{{end}}{% endraw %}'
+      register: docker_network
+      changed_when: false
+      failed_when: false
+
+    - name: Check Cribl Edge service logs (last 10 lines)
+      ansible.builtin.command: >-
+        docker service logs {{ cribl_docker_stack_name }}_cribl-edge
+        --tail 10 --no-trunc
+      register: edge_logs
+      changed_when: false
+      failed_when: false
+
+    - name: Check Cribl Stream service logs (last 10 lines)
+      ansible.builtin.command: >-
+        docker service logs {{ cribl_docker_stack_name }}_cribl-stream
+        --tail 10 --no-trunc
+      register: stream_logs
+      changed_when: false
+      failed_when: false
 
     - name: Display Cribl Docker Swarm validation results
       ansible.builtin.debug:
@@ -200,6 +290,12 @@
           Cribl Docker Swarm validation passed:
           - Edge: {{ edge_replicas.stdout }} replicas healthy
           - Stream: {{ stream_replicas.stdout }} replicas healthy
+          Docker network:
+          {{ docker_network.stdout | default('Unable to inspect network') }}
+          Recent Edge logs:
+          {{ edge_logs.stdout | default('No logs available') }}
+          Recent Stream logs:
+          {{ stream_logs.stdout | default('No logs available') }}
 
 - name: E2E Data Pipeline Validation
   hosts: cribl_docker_group
@@ -210,11 +306,12 @@
     - data_validation
 
   vars:
+    constants: "{{ hostvars['localhost']['terraform_data']['constants'] }}"
     # Generate unique test event ID using epoch timestamp
     e2e_test_event_id: "E2E_VALIDATION_{{ ansible_date_time.epoch }}"
-    # Splunk connection details
-    splunk_host: "{{ hostvars['splunk']['ansible_host'] | default('10.0.1.200') }}"
-    splunk_port: 8089
+    # Splunk connection details (no hardcoded fallback)
+    splunk_host: "{{ hostvars['splunk']['ansible_host'] }}"
+    splunk_port: "{{ constants.service_ports.splunk_mgmt }}"
     splunk_user: admin
     # SPLUNK_PASSWORD must be set via Doppler
     splunk_password: "{{ lookup('env', 'SPLUNK_PASSWORD') }}"
@@ -224,7 +321,9 @@
       ansible.builtin.assert:
         that:
           - splunk_password | length > 0
-        fail_msg: "SPLUNK_PASSWORD environment variable must be set. Run with doppler run --"
+        fail_msg: >-
+          SPLUNK_PASSWORD environment variable must be set.
+          Run with doppler run --
         quiet: true
 
     - name: Install netcat for syslog testing
@@ -237,19 +336,23 @@
       ansible.builtin.shell:
         cmd: |
           set -o pipefail
-          echo "<14>{{ ansible_date_time.iso8601 }} ansible-e2e-test: {{ e2e_test_event_id }}" | \
-          nc -u -w1 localhost 1514
+          echo "<14>{{ ansible_date_time.iso8601 }} ansible-e2e-test: \
+          {{ e2e_test_event_id }}" | \
+          nc -u -w1 localhost {{ constants.syslog_ports.unifi }}
         executable: /bin/bash
       changed_when: false
 
     - name: Wait for event to propagate through pipeline
       ansible.builtin.pause:
         seconds: 30
-        prompt: "Waiting for test event to propagate through Cribl to Splunk..."
+        prompt: >-
+          Waiting for test event to propagate through Cribl to Splunk...
 
     - name: Query Splunk for test event
       ansible.builtin.uri:
-        url: "https://{{ splunk_host }}:{{ splunk_port }}/services/search/jobs"
+        url: >-
+          https://{{ splunk_host }}:{{ splunk_port
+          }}/services/search/jobs
         method: POST
         user: "{{ splunk_user }}"
         password: "{{ splunk_password }}"
@@ -274,11 +377,11 @@
       ansible.builtin.debug:
         msg: |
           === E2E DATA PIPELINE VALIDATION PASSED ===
-          Test event sent via syslog port 1514
+          Test event sent via syslog port {{ constants.syslog_ports.unifi }}
           Event ID: {{ e2e_test_event_id }}
           Splunk host: {{ splunk_host }}
           Search results: {{ splunk_search_result.json.results | length }} event(s) found
-          Full pipeline verified: Source → Cribl Edge → Cribl Stream → Splunk HEC → Splunk Index
+          Full pipeline verified: Source -> Cribl Edge -> Cribl Stream -> Splunk HEC -> Splunk Index
 
 - name: Pipeline Summary
   hosts: localhost

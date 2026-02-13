@@ -39,6 +39,16 @@
         file: "{{ playbook_dir }}/../inventory/terraform_inventory.json"
         name: terraform_data
 
+    - name: Load pipeline constants
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../inventory/pipeline_constants.json"
+        name: pipeline_constants
+
+    - name: Merge constants into terraform_data
+      ansible.builtin.set_fact:
+        terraform_data: >-
+          {{ terraform_data | combine({'constants': pipeline_constants}) }}
+
     - name: Add LXC containers to inventory (proxmox_pct_remote connection)
       ansible.builtin.add_host:
         name: "{{ item.key }}"
