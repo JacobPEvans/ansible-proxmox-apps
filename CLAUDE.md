@@ -35,6 +35,17 @@ Source -> Docker Swarm Host (syslog:1514-1518/udp)
 | 1517 | Linux | os |
 | 1518 | Windows | os |
 
+### Service Ports (from terraform pipeline_constants)
+
+| Port | Service |
+| --- | --- |
+| 8000 | Splunk Web UI |
+| 8088 | Splunk HEC |
+| 8089 | Splunk Management |
+| 8404 | HAProxy Stats |
+| 9000 | Cribl Edge API |
+| 9100 | Cribl Stream API |
+
 ## Inventory
 
 Inventory is loaded dynamically from
