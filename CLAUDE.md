@@ -164,8 +164,18 @@ Never commit secrets to git. Use `.gitignore` to exclude:
 
 ## Development Workflow
 
+### Prerequisites
+
+To use the direnv/nix-shell workflow:
+
+- **nix** installed and configured
+- **direnv** installed and enabled for your shell (e.g., `eval "$(direnv hook bash)"`)
+- **nix-direnv** (or equivalent) installed for `use flake` support
+- **NIX_CONFIG_PATH** environment variable (optional): Defaults to `$HOME/git/nix-config/main`
+
 The `.envrc` file auto-activates the nix shell via direnv when entering
-the directory, providing ansible, ansible-lint, and other tools on PATH.
+the directory (after running `direnv allow` once), providing ansible,
+ansible-lint, and other tools on PATH.
 
 1. Create worktree for feature branch
 2. Modify playbooks/roles in dedicated branch
