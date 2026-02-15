@@ -58,16 +58,19 @@ Port constants come from `terraform_data.constants`
 - `lxc_containers`: All LXC containers (`proxmox_pct_remote` connection)
 - `docker_vms` / `cribl_docker_group`: Docker Swarm hosts (SSH)
 
-### Required Environment Variables
+### Environment Variables
 
-| Variable | Purpose |
-| --- | --- |
-| `PROXMOX_VE_HOSTNAME` | Proxmox VE hostname |
-| `PROXMOX_SSH_KEY_PATH` | Path to SSH key |
-| `PROXMOX_VE_GATEWAY` | Network gateway (for IP derivation) |
-| `PROXMOX_DOMAIN` | Internal DNS domain |
-| `SPLUNK_HEC_TOKEN` | Splunk HEC token (for Cribl output) |
-| `SPLUNK_PASSWORD` | Splunk admin password (for E2E validation) |
+| Variable | Purpose | Source |
+| --- | --- | --- |
+| `PROXMOX_VE_HOSTNAME` | Proxmox VE hostname | Doppler / SOPS |
+| `PROXMOX_VE_NODE` | Proxmox node name | SOPS |
+| `PROXMOX_VE_GATEWAY` | Network gateway (for IP derivation) | Doppler / SOPS |
+| `PROXMOX_DOMAIN` | Internal DNS domain | Doppler / SOPS |
+| `PROXMOX_SSH_KEY_PATH` | Path to SSH key | Doppler / SOPS |
+| `SPLUNK_HEC_TOKEN` | Splunk HEC token (for Cribl output) | Doppler / SOPS |
+| `SPLUNK_PASSWORD` | Splunk admin password (for E2E validation) | Doppler / SOPS |
+| `HAPROXY_STATS_PASSWORD` | HAProxy stats page password | SOPS |
+| `TECHNITIUM_DNS_API_TOKEN` | Technitium DNS API token | SOPS |
 
 ## Secrets Management
 
@@ -77,47 +80,23 @@ Port constants come from `terraform_data.constants`
 See the [SOPS integration rule](agentsmd/rules/infra/sops-integration.md)
 in ai-assistant-instructions for full patterns.
 
-### SOPS Usage
+Template: `secrets.enc.yaml.example` — copy, fill in real values, then encrypt.
+
+## Commands
 
 ```bash
-# Deploy with SOPS-encrypted secrets + Doppler overlay
+# Deploy all apps (Doppler-only)
+doppler run -- uv run ansible-playbook -i inventory/hosts.yml playbooks/site.yml
+
+# Deploy all apps (SOPS + Doppler overlay)
 sops exec-env secrets.enc.yaml 'doppler run -- uv run ansible-playbook \
   -i inventory/hosts.yml playbooks/site.yml'
 
 # Edit encrypted secrets
 sops secrets.enc.yaml
 
-# Encrypt after filling in real values
-sops --encrypt --in-place secrets.enc.yaml
-```
-
-### Encrypted Variables (in secrets.enc.yaml)
-
-| Variable | Purpose |
-| --- | --- |
-| `PROXMOX_VE_HOSTNAME` | Proxmox VE hostname |
-| `PROXMOX_VE_NODE` | Proxmox node name |
-| `PROXMOX_VE_GATEWAY` | Network gateway |
-| `PROXMOX_DOMAIN` | Internal DNS domain |
-| `PROXMOX_SSH_KEY_PATH` | Path to SSH key |
-| `SPLUNK_HEC_TOKEN` | Splunk HEC token |
-| `SPLUNK_PASSWORD` | Splunk admin password |
-| `HAPROXY_STATS_PASSWORD` | HAProxy stats page password |
-| `TECHNITIUM_DNS_API_TOKEN` | Technitium DNS API token |
-
-## Commands
-
-```bash
-# Deploy all apps
-doppler run -- uv run ansible-playbook -i inventory/hosts.yml playbooks/site.yml
-
 # Validate pipeline
 doppler run -- uv run ansible-playbook -i inventory/hosts.yml playbooks/validate-pipeline.yml
-
-# E2E test only
-doppler run -- uv run ansible-playbook \
-  -i inventory/hosts.yml playbooks/validate-pipeline.yml \
-  --tags e2e
 
 # Lint
 uv run ansible-lint

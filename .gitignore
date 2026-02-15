@@ -23,6 +23,9 @@ inventory/terraform_inventory.json
 
 # SOPS - plaintext secrets (never commit)
 secrets.yml
+secrets.enc.yaml
+secrets.plain.yaml
+secrets.dec.yaml
 *.dec.yml
 *.decrypted.yml
 
