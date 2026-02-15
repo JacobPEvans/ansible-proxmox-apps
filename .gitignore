@@ -21,6 +21,11 @@ inventory/terraform_inventory.json
 .env.*.local
 *.secrets.yml
 
+# SOPS - plaintext secrets (never commit)
+secrets.yml
+*.dec.yml
+*.decrypted.yml
+
 # IDE
 .vscode/
 .idea/

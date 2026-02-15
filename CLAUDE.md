@@ -69,6 +69,42 @@ Port constants come from `terraform_data.constants`
 | `SPLUNK_HEC_TOKEN` | Splunk HEC token (for Cribl output) |
 | `SPLUNK_PASSWORD` | Splunk admin password (for E2E validation) |
 
+## Secrets Management
+
+**Runtime injection**: Doppler (`doppler run --`)
+**At-rest encryption**: SOPS + age (`secrets.enc.yaml`)
+
+See the [SOPS integration rule](agentsmd/rules/infra/sops-integration.md)
+in ai-assistant-instructions for full patterns.
+
+### SOPS Usage
+
+```bash
+# Deploy with SOPS-encrypted secrets + Doppler overlay
+sops exec-env secrets.enc.yaml 'doppler run -- uv run ansible-playbook \
+  -i inventory/hosts.yml playbooks/site.yml'
+
+# Edit encrypted secrets
+sops secrets.enc.yaml
+
+# Encrypt after filling in real values
+sops --encrypt --in-place secrets.enc.yaml
+```
+
+### Encrypted Variables (in secrets.enc.yaml)
+
+| Variable | Purpose |
+| --- | --- |
+| `PROXMOX_VE_HOSTNAME` | Proxmox VE hostname |
+| `PROXMOX_VE_NODE` | Proxmox node name |
+| `PROXMOX_VE_GATEWAY` | Network gateway |
+| `PROXMOX_DOMAIN` | Internal DNS domain |
+| `PROXMOX_SSH_KEY_PATH` | Path to SSH key |
+| `SPLUNK_HEC_TOKEN` | Splunk HEC token |
+| `SPLUNK_PASSWORD` | Splunk admin password |
+| `HAPROXY_STATS_PASSWORD` | HAProxy stats page password |
+| `TECHNITIUM_DNS_API_TOKEN` | Technitium DNS API token |
+
 ## Commands
 
 ```bash
