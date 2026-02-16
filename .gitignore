@@ -21,6 +21,15 @@ inventory/terraform_inventory.json
 .env.*.local
 *.secrets.yml
 
+# SOPS - plaintext secrets (never commit)
+# Note: secrets.enc.yaml is the ENCRYPTED file and SHOULD be committed
+secrets.yml
+secrets.yaml
+secrets.plain.yaml
+secrets.dec.yaml
+*.dec.yml
+*.decrypted.yml
+
 # IDE
 .vscode/
 .idea/
