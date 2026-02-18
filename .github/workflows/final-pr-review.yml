@@ -7,6 +7,11 @@ on:
   check_suite:
     types: [completed]
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 jobs:
   review:
     uses: JacobPEvans/ai-workflows/.github/workflows/final-pr-review.yml@v0.1.0

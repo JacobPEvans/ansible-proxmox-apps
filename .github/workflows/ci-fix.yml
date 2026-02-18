@@ -6,6 +6,12 @@ on:
     workflows: ["Ansible Lint"]
     types: [completed]
 
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: read
+
 concurrency:
   group: ci-fix-${{ github.event.workflow_run.head_branch }}
   cancel-in-progress: true
