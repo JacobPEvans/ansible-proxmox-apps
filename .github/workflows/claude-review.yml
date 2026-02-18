@@ -7,8 +7,6 @@ on:
   issue_comment:
     types: [created]
 
-permissions: {}
-
 jobs:
   review:
     uses: JacobPEvans/ai-workflows/.github/workflows/claude-review.yml@v0.1.0
