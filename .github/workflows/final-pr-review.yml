@@ -10,10 +10,11 @@ on:
 permissions:
   checks: read
   contents: read
+  id-token: write
   issues: write
   pull-requests: write
 
 jobs:
   review:
-    uses: JacobPEvans/ai-workflows/.github/workflows/final-pr-review.yml@v0.2.3
+    uses: JacobPEvans/ai-workflows/.github/workflows/final-pr-review.yml@v0.2.6
     secrets: inherit
