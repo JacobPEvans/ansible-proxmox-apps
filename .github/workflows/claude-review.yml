@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   review:
-    uses: JacobPEvans/ai-workflows/.github/workflows/claude-review.yml@v0.2.6
+    uses: JacobPEvans/ai-workflows/.github/workflows/claude-review.yml@v0.2.9
     with:
       review_prompt: "Focus on Ansible FQCN usage, idempotency patterns, role structure"
     secrets: inherit
