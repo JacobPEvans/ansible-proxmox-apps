@@ -10,11 +10,11 @@ provisioning, see `terraform-proxmox`.
 
 Deploy and configure the following application stacks:
 
-- **Cribl Edge**: Syslog ingestion and log processing with persistent queue
-- **Cribl Stream**: Central processing node for log pipeline
-- **HAProxy**: Syslog load balancer distributing logs to Cribl Edge nodes
+- **Cribl Docker Stack**: Cribl Edge + Stream on Docker Swarm (syslog ingestion and processing)
+- **Technitium DNS**: Internal DNS server (LXC container)
+- **apt-cacher-ng**: Apt proxy cache (LXC container)
 
-All applications run on Proxmox VMs. VMs and storage are provisioned by
+All applications run on Proxmox VMs or LXC containers provisioned by
 `terraform-proxmox`. This repository handles application configuration only.
 
 ## Dependencies
@@ -52,92 +52,58 @@ doppler configure set project ansible-proxmox-apps
 doppler configure set config prd
 ```
 
-### 4. Set Environment Variables
+### 4. Generate Terraform Inventory
 
 ```bash
-# Export hosts from Proxmox
-export CRIBL_EDGE_1="192.168.1.100"
-export CRIBL_EDGE_2="192.168.1.101"
-export CRIBL_STREAM="192.168.1.102"
-export HAPROXY="192.168.1.103"
-export SPLUNK_VM="192.168.1.104"
+# From terraform-proxmox repo
+terragrunt output -json ansible_inventory > \
+  ~/git/ansible-proxmox-apps/main/inventory/terraform_inventory.json
 ```
 
 ### 5. Run Playbooks
 
 ```bash
-# Deploy Cribl Docker Swarm stack
-doppler run -- ~/.local/pipx/venvs/ansible/bin/ansible-playbook \
-  -i inventory/hosts.yml playbooks/site.yml --tags cribl_docker_stack
-
-# Deploy Splunk
-doppler run -- ~/.local/pipx/venvs/ansible/bin/ansible-playbook \
-  -i inventory/hosts.yml playbooks/site.yml --tags splunk_docker
-
 # Deploy all applications
-doppler run -- ~/.local/pipx/venvs/ansible/bin/ansible-playbook \
-  -i inventory/hosts.yml playbooks/site.yml
+doppler run -- uv run ansible-playbook -i inventory/hosts.yml playbooks/site.yml
+
+# Deploy with SOPS secrets overlay
+sops exec-env secrets.enc.yaml 'doppler run -- uv run ansible-playbook \
+  -i inventory/hosts.yml playbooks/site.yml'
 ```
 
 ## Inventory
 
-Inventory is built from environment variables. Define these in your Doppler
-project:
-
-```text
-CRIBL_EDGE_1: 192.168.1.100
-CRIBL_EDGE_2: 192.168.1.101
-CRIBL_STREAM: 192.168.1.102
-HAPROXY: 192.168.1.103
-SPLUNK_VM: 192.168.1.104
-```
-
-Override locally with `doppler secrets download --no-file` or environment
-variables.
+Inventory is loaded dynamically from `terraform_inventory.json` via
+`inventory/load_terraform.yml`. See `CLAUDE.md` for full details on
+environment variables and inventory groups.
 
 ## Port Assignments
 
-| Application | Protocol | Port Range | Nodes | Purpose |
-| --- | --- | --- | --- | --- |
-| Syslog Input | UDP/TCP | 1514-1518 | Cribl Edge | Log ingestion |
-| Syslog HEC | TCP | 8088 | Cribl Edge | Splunk HEC output |
-| HAProxy Frontend | UDP/TCP | 1514-1518 | HAProxy | Load balance input |
-| HAProxy Stats | TCP | 8404 | HAProxy | Admin interface |
+| Application | Protocol | Port Range | Purpose |
+| --- | --- | --- | --- |
+| Syslog Input | UDP/TCP | 1514-1518 | Log ingestion (Docker Swarm ingress LB) |
+| Cribl Edge API | TCP | 9000 | Cribl Edge web UI |
+| Cribl Stream API | TCP | 9100 | Cribl Stream web UI |
+| Splunk HEC | TCP | 8088 | Splunk HEC output |
 
 ## Roles
 
-### cribl_edge
+### cribl_docker_stack
 
-Deploy Cribl Edge log processor with syslog listeners and Splunk HEC output.
+Deploy Cribl Edge and Stream on Docker Swarm.
 
-- Installs Cribl Edge from official package repository
-- Configures UDP/TCP syslog listeners (ports 1514-1518)
-- Configures Splunk HEC output
-- Mounts 100GB persistent queue disk at `/opt/cribl/data`
+- Initializes Docker Swarm on the host VM
+- Deploys Cribl Edge (2 replicas) and Cribl Stream (1 replica) as Swarm services
+- Configures syslog inputs (ports 1514-1518 UDP/TCP) via Swarm ingress load balancing
+- Configures Splunk HEC output to forward processed logs
 
-See `roles/cribl_edge/README.md` for detailed configuration.
+### technitium_dns
 
-### cribl_stream
+Configure Technitium DNS with internal A records via the API.
 
-Deploy Cribl Stream as central processing node in the pipeline.
+### apt_cacher_ng
 
-- Installs Cribl Stream from official packages
-- Configures as processing node (not leader)
-- Mounts 100GB persistent queue disk at `/opt/cribl/data`
-
-See `roles/cribl_stream/README.md` for configuration options.
-
-### haproxy_syslog
-
-Deploy HAProxy configured for syslog load balancing.
-
-- Installs HAProxy and configures syslog frontend
-- Frontend: UDP/TCP ports 1514-1518
-- Backend: Cribl Edge nodes (cribl-edge-01, cribl-edge-02)
-- Health checks on TCP port 1514
-- Syslog statistics available on port 8404
-
-See `roles/haproxy_syslog/README.md` for customization.
+Deploy apt-cacher-ng as an apt proxy for LXC containers.
 
 ## Architecture
 
@@ -149,28 +115,26 @@ See `roles/haproxy_syslog/README.md` for customization.
     (UDP/TCP 1514-1518)
          │
          ▼
-┌──────────────────┐
-│     HAProxy      │
-│  Load Balancer   │
-└────────┬─────────┘
-         │
-         ├─────────────────┬──────────────────┐
-         │                 │                  │
-         ▼                 ▼                  ▼
-    ┌─────────┐      ┌─────────┐       ┌──────────┐
-    │Cribl    │      │Cribl    │       │Cribl     │
-    │Edge 01  │      │Edge 02  │       │Stream    │
-    └────┬────┘      └────┬────┘       └────┬─────┘
-         │                │                 │
-         └────────────────┼─────────────────┘
-                          │
-                    (Splunk HEC)
-                          │
-                          ▼
-                   ┌──────────────┐
-                   │    Splunk    │
-                   │      VM      │
-                   └──────────────┘
+┌──────────────────────────────┐
+│     Docker Swarm Host        │
+│  ┌──────────┐ ┌──────────┐  │
+│  │Cribl Edge│ │Cribl Edge│  │  (2 replicas, Swarm ingress LB)
+│  │replica 1 │ │replica 2 │  │
+│  └────┬─────┘ └────┬─────┘  │
+│       └──────┬──────┘        │
+│         ┌────▼────┐          │
+│         │ Cribl   │          │
+│         │ Stream  │          │
+│         └────┬────┘          │
+└──────────────┼───────────────┘
+               │
+          (Splunk HEC)
+               │
+               ▼
+        ┌──────────────┐
+        │    Splunk    │
+        │  Enterprise  │
+        └──────────────┘
 ```
 
 ## File Layout
@@ -181,35 +145,19 @@ ansible-proxmox-apps/
 ├── CLAUDE.md                    AI agent documentation
 ├── ansible.cfg                  Ansible configuration
 ├── requirements.yml             Ansible Galaxy dependencies
-├── .ansible-lint                Linting rules
-├── .gitignore                   Git ignore rules
-├── .pre-commit-config.yaml      Pre-commit hooks
+├── secrets.enc.yaml.example     SOPS secrets template
 ├── inventory/
-│   ├── hosts.yml                Dynamic inventory from env vars
+│   ├── hosts.yml                Static inventory skeleton
+│   ├── load_terraform.yml       Terraform inventory loader
 │   └── group_vars/
 │       └── all.yml              Global variables
 ├── playbooks/
-│   └── site.yml                 Main playbook (all roles)
+│   ├── site.yml                 Main deployment playbook
+│   └── validate-pipeline.yml    Pipeline health checks
 └── roles/
-    ├── cribl_edge/
-    │   ├── README.md
-    │   ├── defaults/main.yml
-    │   ├── tasks/main.yml
-    │   ├── handlers/main.yml
-    │   └── templates/
-    ├── cribl_stream/
-    │   ├── README.md
-    │   ├── defaults/main.yml
-    │   ├── tasks/main.yml
-    │   ├── handlers/main.yml
-    │   └── templates/
-    └── haproxy_syslog/
-        ├── README.md
-        ├── defaults/main.yml
-        ├── tasks/main.yml
-        ├── handlers/main.yml
-        └── templates/
-            └── haproxy.cfg.j2
+    ├── cribl_docker_stack/      Cribl Edge + Stream on Docker Swarm
+    ├── technitium_dns/          Internal DNS configuration
+    └── apt_cacher_ng/           Apt proxy cache
 ```
 
 ## Requirements
