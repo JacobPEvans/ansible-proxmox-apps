@@ -246,4 +246,4 @@ Fix common issues automatically:
 
 ## License
 
-MIT
+Apache License 2.0 - see [LICENSE](LICENSE) for details.
