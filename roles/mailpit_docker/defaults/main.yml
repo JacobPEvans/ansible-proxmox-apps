@@ -5,7 +5,7 @@ mailpit_docker_smtp_port: 1025
 mailpit_docker_web_port: 8025
 mailpit_docker_data_dir: /opt/mailpit
 mailpit_docker_relay_starttls: true
-mailpit_docker_relay_all: true
+mailpit_docker_relay_all: false
 
 # Sensitive config from SOPS (via env var)
 mailpit_docker_relay_host: "{{ lookup('env', 'MAILPIT_RELAY_HOST') }}"

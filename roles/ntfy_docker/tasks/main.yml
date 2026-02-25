@@ -58,6 +58,29 @@
     state: present
     update_cache: true
 
+- name: Install fuse-overlayfs for Docker on ZFS-backed LXC containers
+  ansible.builtin.apt:
+    name: fuse-overlayfs
+    state: present
+
+- name: Configure Docker to use fuse-overlayfs storage driver (required for ZFS-backed LXC)
+  ansible.builtin.copy:
+    dest: /etc/docker/daemon.json
+    content: |
+      {
+        "storage-driver": "fuse-overlayfs"
+      }
+    owner: root
+    group: root
+    mode: "0644"
+  register: ntfy_docker_daemon_config
+
+- name: Restart Docker to apply fuse-overlayfs configuration
+  ansible.builtin.systemd:  # noqa: no-handler
+    name: docker
+    state: restarted
+  when: ntfy_docker_daemon_config.changed
+
 - name: Ensure Docker service is running
   ansible.builtin.systemd:
     name: docker
@@ -134,6 +157,17 @@
 # =============================================================================
 # Deploy via Docker Compose
 # =============================================================================
+
+- name: Check if ntfy container is running
+  ansible.builtin.command: docker ps -q --filter name=ntfy --filter status=running
+  register: ntfy_docker_running_check
+  changed_when: false
+  failed_when: false
+
+- name: Clean stale Docker state before fresh deployment
+  ansible.builtin.command: docker system prune -af --volumes
+  when: ntfy_docker_running_check.stdout == ''
+  changed_when: true
 
 - name: Deploy ntfy via docker compose
   community.docker.docker_compose_v2:

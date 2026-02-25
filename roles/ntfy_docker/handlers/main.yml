@@ -1,6 +1,11 @@
 ---
 # ntfy Docker handlers
 
+- name: Restart docker
+  ansible.builtin.systemd:
+    name: docker
+    state: restarted
+
 - name: Restart ntfy
   community.docker.docker_compose_v2:
     project_src: "{{ ntfy_docker_data_dir }}"
