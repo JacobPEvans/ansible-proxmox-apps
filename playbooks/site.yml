@@ -147,6 +147,6 @@
   gather_facts: false
   tags:
     - mssql_docker
-
+    - database
   roles:
     - role: mssql_docker

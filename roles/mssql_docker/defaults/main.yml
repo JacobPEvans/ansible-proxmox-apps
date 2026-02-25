@@ -1,7 +1,4 @@
 ---
-# MSSQL Docker role defaults
-# All variables prefixed with mssql_docker_*
-
 mssql_docker_image: "mcr.microsoft.com/mssql/server:2022-latest"
 mssql_docker_container_name: mssql
 # TODO: Move to terraform_data.constants.service_ports.mssql

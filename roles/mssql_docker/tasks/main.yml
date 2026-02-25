@@ -1,7 +1,4 @@
 ---
-# MSSQL Docker role tasks
-# Installs Docker and deploys SQL Server 2022 container via docker-compose
-
 # =============================================================================
 # Docker Installation
 # =============================================================================
@@ -127,18 +124,27 @@
 
 - name: Wait for SQL Server port to be ready
   ansible.builtin.wait_for:
-    host: "127.0.0.1"
+    host: 127.0.0.1
     port: "{{ mssql_docker_port }}"
     timeout: 120
     delay: 10
 
 - name: Verify SQL Server is accepting connections
-  ansible.builtin.command: >
-    docker exec -e SQLCMDPASSWORD="{{ mssql_docker_sa_password }}"
-    {{ mssql_docker_container_name }}
-    /opt/mssql-tools18/bin/sqlcmd
-    -S localhost -U sa
-    -Q "SELECT @@VERSION" -C -l 30
+  community.docker.docker_container_exec:
+    container: "{{ mssql_docker_container_name }}"
+    argv:
+      - /opt/mssql-tools18/bin/sqlcmd
+      - -S
+      - localhost
+      - -U
+      - sa
+      - -Q
+      - SELECT @@VERSION
+      - -C
+      - -l
+      - "30"
+    env:
+      SQLCMDPASSWORD: "{{ mssql_docker_sa_password }}"
   register: mssql_docker_version_check
   retries: 6
   delay: 10

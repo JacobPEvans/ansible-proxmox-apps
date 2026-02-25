@@ -1,8 +1,5 @@
 ---
-# Restore Microsoft sample databases into SQL Server
-# Downloads .bak files and restores them via sqlcmd inside the container
-
-- name: Download sample database .bak files
+- name: Download sample database files
   ansible.builtin.get_url:
     url: "{{ item.url }}"
     dest: "{{ mssql_docker_data_dir }}/backup/{{ item.name }}.{{ item.type | default('bak') }}"
@@ -12,33 +9,50 @@
     label: "{{ item.name }}"
 
 - name: Restore .bak sample databases
-  ansible.builtin.command: >
-    docker exec -e SQLCMDPASSWORD="{{ mssql_docker_sa_password }}"
-    {{ mssql_docker_container_name }}
-    /opt/mssql-tools18/bin/sqlcmd
-    -S localhost -U sa
-    -C -l 60
-    -Q "RESTORE DATABASE [{{ item.name }}]
+  community.docker.docker_container_exec:
+    container: "{{ mssql_docker_container_name }}"
+    argv:
+      - /opt/mssql-tools18/bin/sqlcmd
+      - -S
+      - localhost
+      - -U
+      - sa
+      - -C
+      - -l
+      - "60"
+      - -Q
+      - >-
+        RESTORE DATABASE [{{ item.name }}]
         FROM DISK = '/var/opt/mssql/backup/{{ item.name }}.bak'
         WITH MOVE '{{ item.name }}' TO '/var/opt/mssql/data/{{ item.name }}.mdf',
              MOVE '{{ item.name }}_log' TO '/var/opt/mssql/data/{{ item.name }}_log.ldf',
-             REPLACE, STATS = 10"
+             REPLACE, STATS = 10
+    env:
+      SQLCMDPASSWORD: "{{ mssql_docker_sa_password }}"
   loop: "{{ mssql_docker_sample_databases }}"
   when: item.type | default('bak') == 'bak'
   loop_control:
     label: "{{ item.name }}"
   register: mssql_docker_restore_bak
-  changed_when: "'RESTORE DATABASE successfully processed' in stdout"
+  changed_when: "'RESTORE DATABASE successfully processed' in mssql_docker_restore_bak.stdout"
   no_log: true
 
 - name: Run SQL script databases
-  ansible.builtin.shell: >
-    docker exec -i -e SQLCMDPASSWORD="{{ mssql_docker_sa_password }}"
-    {{ mssql_docker_container_name }}
-    /opt/mssql-tools18/bin/sqlcmd
-    -S localhost -U sa
-    -C -l 60
-    < "{{ mssql_docker_data_dir }}/backup/{{ item.name }}.sql"
+  community.docker.docker_container_exec:
+    container: "{{ mssql_docker_container_name }}"
+    argv:
+      - /opt/mssql-tools18/bin/sqlcmd
+      - -S
+      - localhost
+      - -U
+      - sa
+      - -C
+      - -l
+      - "60"
+      - -i
+      - "/var/opt/mssql/backup/{{ item.name }}.sql"
+    env:
+      SQLCMDPASSWORD: "{{ mssql_docker_sa_password }}"
   loop: >-
     {{ mssql_docker_sample_databases
        | selectattr('type', 'defined')
@@ -49,12 +63,21 @@
   no_log: true
 
 - name: Verify sample databases were restored
-  ansible.builtin.command: >
-    docker exec -e SQLCMDPASSWORD="{{ mssql_docker_sa_password }}"
-    {{ mssql_docker_container_name }}
-    /opt/mssql-tools18/bin/sqlcmd
-    -S localhost -U sa
-    -C -Q "SELECT name FROM sys.databases WHERE name NOT IN ('master','tempdb','model','msdb')"
+  community.docker.docker_container_exec:
+    container: "{{ mssql_docker_container_name }}"
+    argv:
+      - /opt/mssql-tools18/bin/sqlcmd
+      - -S
+      - localhost
+      - -U
+      - sa
+      - -C
+      - -Q
+      - >-
+        SELECT name FROM sys.databases
+        WHERE name NOT IN ('master','tempdb','model','msdb')
+    env:
+      SQLCMDPASSWORD: "{{ mssql_docker_sa_password }}"
   register: mssql_docker_db_list
   changed_when: false
   no_log: true
