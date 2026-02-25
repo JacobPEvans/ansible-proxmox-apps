@@ -38,6 +38,26 @@
           terraform_data.constants missing — inventory/load_terraform.yml
           did not load constants correctly
 
+    - name: Verify netflow_ports in constants
+      ansible.builtin.assert:
+        that:
+          - terraform_data.constants.netflow_ports is defined
+          - terraform_data.constants.netflow_ports.unifi == 2055
+        fail_msg: >-
+          terraform_data.constants.netflow_ports missing or incorrect —
+          expected unifi: 2055
+
+    - name: Verify notification_ports in constants
+      ansible.builtin.assert:
+        that:
+          - terraform_data.constants.notification_ports is defined
+          - terraform_data.constants.notification_ports.mailpit_smtp == 1025
+          - terraform_data.constants.notification_ports.mailpit_web == 8025
+          - terraform_data.constants.notification_ports.ntfy_http == 8080
+        fail_msg: >-
+          terraform_data.constants.notification_ports missing or incorrect —
+          expected mailpit_smtp: 1025, mailpit_web: 8025, ntfy_http: 8080
+
     - name: Verify terraform containers are in lxc_containers group
       ansible.builtin.assert:
         that:

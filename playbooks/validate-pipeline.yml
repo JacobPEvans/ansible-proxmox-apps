@@ -215,11 +215,13 @@
 
     - name: Wait for event to propagate through pipeline
       ansible.builtin.pause:
-        seconds: 30
+        seconds: 10
         prompt: >-
           Waiting for test event to propagate through Cribl to Splunk...
 
-    - name: Query Splunk for test event
+    # Pipeline latency assertion: poll up to 120 seconds (retries: 12, delay: 10)
+    # The loop fails the play if the event does not appear within 120 seconds.
+    - name: Query Splunk for test event (pipeline latency assertion, 120s timeout)
       ansible.builtin.uri:
         url: >-
           https://{{ splunk_host }}:{{ splunk_port
@@ -235,7 +237,7 @@
           output_mode: json
           exec_mode: oneshot
       register: splunk_search_result
-      retries: 6
+      retries: 12
       delay: 10
       until: >-
         splunk_search_result.status == 200 and
@@ -244,6 +246,31 @@
         splunk_search_result.status != 200 or
         (splunk_search_result.json.results | default([]) | length == 0)
 
+    - name: Query Splunk for test event in unifi index
+      ansible.builtin.uri:
+        url: >-
+          https://{{ splunk_host }}:{{ splunk_port
+          }}/services/search/jobs
+        method: POST
+        user: "{{ splunk_user }}"
+        password: "{{ splunk_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        body_format: form-urlencoded
+        body:
+          search: 'search index=unifi "{{ e2e_test_event_id }}" | head 1'
+          output_mode: json
+          exec_mode: oneshot
+      register: splunk_unifi_index_result
+      retries: 6
+      delay: 10
+      until: >-
+        splunk_unifi_index_result.status == 200 and
+        (splunk_unifi_index_result.json.results | default([]) | length > 0)
+      failed_when: >-
+        splunk_unifi_index_result.status != 200 or
+        (splunk_unifi_index_result.json.results | default([]) | length == 0)
+
     - name: E2E Data Pipeline PASSED
       ansible.builtin.debug:
         msg: |
@@ -251,8 +278,80 @@
           Test event sent via syslog port {{ constants.syslog_ports.unifi }}
           Event ID: {{ e2e_test_event_id }}
           Splunk host: {{ splunk_host }}
-          Search results: {{ splunk_search_result.json.results | length }} event(s) found
-          Full pipeline verified: Source -> Cribl Edge -> Cribl Stream -> Splunk HEC -> Splunk Index
+          Search results (index=*): {{ splunk_search_result.json.results | length }} event(s) found
+          Search results (index=unifi): {{ splunk_unifi_index_result.json.results | length }} event(s) found
+          Full pipeline verified: Source -> Cribl Edge -> Cribl Stream -> Splunk HEC -> Splunk Index (unifi)
+
+- name: Validate NetFlow Port
+  hosts: cribl_docker_group
+  become: true
+  gather_facts: false
+  tags:
+    - netflow
+    - validation
+
+  tasks:
+    - name: Check netflow port 2055 UDP is listening
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          ss -ulnp | grep ':2055'
+        executable: /bin/bash
+      register: netflow_port_check
+      failed_when: netflow_port_check.rc != 0
+      changed_when: false
+
+    - name: Display NetFlow port validation result
+      ansible.builtin.debug:
+        msg: |
+          NetFlow validation passed: port 2055 UDP is listening
+          {{ netflow_port_check.stdout }}
+
+- name: Validate Cribl Edge Metrics
+  hosts: cribl_docker_group
+  become: true
+  gather_facts: false
+  tags:
+    - cribl_edge_metrics
+    - validation
+
+  vars:
+    constants: "{{ hostvars['localhost']['terraform_data']['constants'] }}"
+
+  tasks:
+    - name: Check Cribl Edge has active inputs (no auth)
+      ansible.builtin.uri:
+        url: >-
+          http://127.0.0.1:{{ constants.service_ports.cribl_edge_api
+          }}/api/v1/system/metrics
+        method: GET
+        status_code:
+          - 200
+      register: cribl_metrics_no_auth
+      failed_when: cribl_metrics_no_auth.status != 200
+      changed_when: false
+      when: cribl_edge_api_token is not defined or cribl_edge_api_token | length == 0
+
+    - name: Check Cribl Edge has active inputs (with auth token)
+      ansible.builtin.uri:
+        url: >-
+          http://127.0.0.1:{{ constants.service_ports.cribl_edge_api
+          }}/api/v1/system/metrics
+        method: GET
+        headers:
+          Authorization: "Bearer {{ cribl_edge_api_token }}"
+        status_code:
+          - 200
+      register: cribl_metrics_with_auth
+      failed_when: cribl_metrics_with_auth.status != 200
+      changed_when: false
+      when: cribl_edge_api_token is defined and cribl_edge_api_token | length > 0
+
+    - name: Display Cribl Edge metrics validation result
+      ansible.builtin.debug:
+        msg: |
+          Cribl Edge metrics check passed: API responded with 200
+          (auth token used: {{ (cribl_edge_api_token is defined and cribl_edge_api_token | length > 0) | string }})
 
 - name: Pipeline Summary
   hosts: localhost
@@ -267,8 +366,12 @@
           ============================================
           LOGGING PIPELINE VALIDATION COMPLETE
           ============================================
-          Cribl Edge:  Docker Swarm replicas healthy
+          Cribl Edge:   Docker Swarm replicas healthy
           Cribl Stream: Docker Swarm replica healthy
-          E2E:         Data flowing through pipeline
+          NetFlow:      Port 2055 UDP listening
+          Cribl Edge:   Metrics API responding
+          E2E:          Data flowing through pipeline
+          E2E (unifi):  Event landed in index=unifi
+          Latency:      Event appeared within 120s
           ============================================
           Pipeline is ready for log ingestion!

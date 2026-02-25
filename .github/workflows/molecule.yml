@@ -23,8 +23,8 @@ permissions:
   contents: read
 
 jobs:
-  syntax:
-    name: Molecule Syntax Check
+  test:
+    name: Molecule Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -53,9 +53,41 @@ jobs:
       - name: Install Ansible collections
         run: ansible-galaxy collection install -r requirements.yml --force
 
-      - name: Run molecule syntax check
-        run: molecule syntax
+      - name: Run molecule tests
+        run: molecule test
         env:
           PY_COLORS: "1"
           ANSIBLE_FORCE_COLOR: "1"
           MSSQL_SA_PASSWORD: "Molecule-Test-P@ssw0rd123"
+
+  template-render:
+    name: Template Rendering Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "latest"
+
+      - name: Install Ansible and dependencies
+        run: |
+          uv pip install --system \
+            'ansible-core>=2.16'
+
+      - name: Install Ansible collections
+        run: ansible-galaxy collection install -r requirements.yml --force
+
+      - name: Run template rendering tests
+        run: ansible-playbook tests/template_render/verify_templates.yml -c local
+        env:
+          PY_COLORS: "1"
+          ANSIBLE_FORCE_COLOR: "1"

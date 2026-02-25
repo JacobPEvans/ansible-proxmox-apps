@@ -4,33 +4,41 @@
       "vmid": 190,
       "ip": "192.168.0.190",
       "hostname": "haproxy",
-      "ansible_connection": "proxmox_pct_remote",
+      "ansible_connection": "community.proxmox.proxmox_pct_remote",
+      "ansible_pct_vmid": 190,
       "tags": ["loadbalancer"],
-      "node": "pve"
+      "node": "pve",
+      "pool_id": "homelab"
     },
     "cribl-edge-01": {
       "vmid": 181,
       "ip": "192.168.0.181",
       "hostname": "cribl-edge-01",
-      "ansible_connection": "proxmox_pct_remote",
+      "ansible_connection": "community.proxmox.proxmox_pct_remote",
+      "ansible_pct_vmid": 181,
       "tags": ["cribl", "edge"],
-      "node": "pve"
+      "node": "pve",
+      "pool_id": "homelab"
     },
     "mssql": {
       "vmid": 210,
       "ip": "192.168.0.210",
       "hostname": "mssql",
-      "ansible_connection": "proxmox_pct_remote",
+      "ansible_connection": "community.proxmox.proxmox_pct_remote",
+      "ansible_pct_vmid": 210,
       "tags": ["database"],
-      "node": "pve"
+      "node": "pve",
+      "pool_id": "homelab"
     },
     "apt-cacher": {
       "vmid": 191,
       "ip": "192.168.0.191",
       "hostname": "apt-cacher",
-      "ansible_connection": "proxmox_pct_remote",
+      "ansible_connection": "community.proxmox.proxmox_pct_remote",
+      "ansible_pct_vmid": 191,
       "tags": [],
-      "node": "pve"
+      "node": "pve",
+      "pool_id": "homelab"
     }
   },
   "vms": {},
@@ -41,7 +49,8 @@
       "hostname": "docker-host",
       "ansible_connection": "ssh",
       "tags": ["docker", "cribl"],
-      "node": "pve"
+      "node": "pve",
+      "pool_id": "homelab"
     }
   },
   "splunk_vm": {
@@ -55,20 +64,27 @@
   },
   "constants": {
     "service_ports": {
-      "ssh": 22,
+      "haproxy_stats": 8404,
       "splunk_web": 8000,
       "splunk_hec": 8088,
       "splunk_mgmt": 8089,
-      "haproxy_stats": 8404,
       "cribl_edge_api": 9000,
       "cribl_stream_api": 9100
     },
     "syslog_ports": {
       "unifi": 1514,
-      "paloalto": 1515,
+      "palo_alto": 1515,
       "cisco_asa": 1516,
       "linux": 1517,
       "windows": 1518
+    },
+    "netflow_ports": {
+      "unifi": 2055
+    },
+    "notification_ports": {
+      "mailpit_smtp": 1025,
+      "mailpit_web": 8025,
+      "ntfy_http": 8080
     }
   }
 }

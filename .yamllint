@@ -11,7 +11,7 @@ rules:
   indentation:
     spaces: 2
   truthy:
-    allowed-values: ['true', 'false', 'yes', 'no']
+    allowed-values: ['true', 'false', 'yes', 'no', 'on']
   # Required by ansible-lint
   comments-indentation: false
   comments:
