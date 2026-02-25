@@ -1,0 +1,16 @@
+---
+services:
+  mssql:
+    image: "{{ mssql_docker_image }}"
+    container_name: "{{ mssql_docker_container_name }}"
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "{{ mssql_docker_sa_password }}"
+      MSSQL_MEMORY_LIMIT_MB: "{{ mssql_docker_memory_limit_mb }}"
+    ports:
+      - "{{ mssql_docker_port }}:1433"
+    volumes:
+      - "{{ mssql_docker_data_dir }}/data:/var/opt/mssql/data"
+      - "{{ mssql_docker_data_dir }}/log:/var/opt/mssql/log"
+      - "{{ mssql_docker_data_dir }}/backup:/var/opt/mssql/backup"

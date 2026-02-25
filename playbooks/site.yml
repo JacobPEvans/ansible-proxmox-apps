@@ -135,3 +135,19 @@
     - push
   roles:
     - role: ntfy_docker
+
+# =============================================================================
+# Phase 5: Microsoft SQL Server
+# Deploy SQL Server 2022 on Docker in LXC container
+# =============================================================================
+
+- name: Configure Microsoft SQL Server
+  hosts: mssql_group
+  become: true
+  gather_facts: false
+  tags:
+    - mssql
+    - database
+
+  roles:
+    - role: mssql_docker
