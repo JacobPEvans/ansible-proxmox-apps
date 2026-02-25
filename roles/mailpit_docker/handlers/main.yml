@@ -4,4 +4,5 @@
 - name: Restart mailpit
   community.docker.docker_compose_v2:
     project_src: "{{ mailpit_docker_data_dir }}"
-    state: restarted
+    state: present
+    recreate: always

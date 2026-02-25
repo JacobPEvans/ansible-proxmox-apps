@@ -1,5 +1,5 @@
 ---
-mailpit_docker_image: "axllent/mailpit:latest"
+mailpit_docker_image: "axllent/mailpit:v1.29.2"
 mailpit_docker_container_name: mailpit
 mailpit_docker_smtp_port: 1025
 mailpit_docker_web_port: 8025
@@ -12,5 +12,5 @@ mailpit_docker_relay_host: "{{ lookup('env', 'MAILPIT_RELAY_HOST') }}"
 mailpit_docker_relay_port: "{{ lookup('env', 'MAILPIT_RELAY_PORT') | default('587', true) }}"
 mailpit_docker_relay_username: "{{ lookup('env', 'MAILPIT_RELAY_USERNAME') }}"
 
-# Secret from Doppler (via env var)
+# Secret from SOPS (via env var)
 mailpit_docker_relay_password: "{{ lookup('env', 'MAILPIT_RELAY_PASSWORD') }}"
