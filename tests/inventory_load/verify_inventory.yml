@@ -1,0 +1,114 @@
+---
+# Inventory load verification playbook
+# Validates that load_terraform.yml correctly assigns dynamic groups
+# from Terraform inventory tags.
+#
+# Usage (CI - uses fixture):
+#   cp tests/inventory_load/terraform_inventory.json inventory/terraform_inventory.json
+#   ansible-playbook tests/inventory_load/verify_inventory.yml \
+#     -i inventory/hosts.yml -c local
+#
+# Covers:
+#   - haproxy_group assigned for 'loadbalancer' tagged containers   (PR #36)
+#   - cribl_edge group assigned for 'cribl'+'edge' tagged containers (PR #36)
+#   - mssql_group assigned for 'database' tagged containers          (PR #72)
+#   - lxc_containers populated for all terraform containers
+#   - splunk_group / cribl_docker_group populated from their sections
+#
+# Note: hosts.yml pre-populates some groups (haproxy_group, cribl_edge,
+# lxc_containers) with static hosts. These tests verify that terraform
+# dynamic hosts are correctly added on top of any static entries.
+
+- name: Load Terraform inventory
+  import_playbook: ../../inventory/load_terraform.yml
+
+- name: Verify dynamic group assignments
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Verify terraform_data constants were loaded
+      ansible.builtin.assert:
+        that:
+          - hostvars['localhost']['terraform_data'] is defined
+          - hostvars['localhost']['terraform_data']['constants'] is defined
+          - hostvars['localhost']['terraform_data']['constants']['service_ports'] is defined
+          - hostvars['localhost']['terraform_data']['constants']['syslog_ports'] is defined
+        fail_msg: >-
+          terraform_data.constants missing — inventory/load_terraform.yml
+          did not load constants correctly
+
+    - name: Verify terraform containers are in lxc_containers group
+      ansible.builtin.assert:
+        that:
+          - groups['lxc_containers'] is defined
+          - "'haproxy' in groups['lxc_containers']"
+          - "'cribl-edge-01' in groups['lxc_containers']"
+          - "'mssql' in groups['lxc_containers']"
+          - "'apt-cacher' in groups['lxc_containers']"
+        fail_msg: >-
+          lxc_containers group is missing terraform hosts;
+          current members: {{ groups['lxc_containers'] | default([]) | join(', ') }}
+
+    - name: Verify haproxy_group contains 'loadbalancer'-tagged container
+      ansible.builtin.assert:
+        that:
+          - groups['haproxy_group'] is defined
+          - "'haproxy' in groups['haproxy_group']"
+        fail_msg: >-
+          haproxy_group should contain 'haproxy' (loadbalancer tag);
+          got {{ groups['haproxy_group'] | default([]) }}
+
+    - name: Verify cribl_edge group contains terraform 'cribl'+'edge' tagged container
+      ansible.builtin.assert:
+        that:
+          - groups['cribl_edge'] is defined
+          - "'cribl-edge-01' in groups['cribl_edge']"
+        fail_msg: >-
+          cribl_edge should contain 'cribl-edge-01' (cribl+edge tags);
+          got {{ groups['cribl_edge'] | default([]) }}
+
+    - name: Verify mssql_group contains 'database'-tagged container
+      ansible.builtin.assert:
+        that:
+          - groups['mssql_group'] is defined
+          - "'mssql' in groups['mssql_group']"
+        fail_msg: >-
+          mssql_group should contain 'mssql' (database tag);
+          got {{ groups['mssql_group'] | default([]) }}
+
+    - name: Verify untagged container is NOT in special groups
+      ansible.builtin.assert:
+        that:
+          - "'apt-cacher' not in (groups['haproxy_group'] | default([]))"
+          - "'apt-cacher' not in (groups['mssql_group'] | default([]))"
+        fail_msg: "apt-cacher (no tags) should not appear in haproxy_group or mssql_group"
+
+    - name: Verify splunk is in splunk_group
+      ansible.builtin.assert:
+        that:
+          - groups['splunk_group'] is defined
+          - "'splunk' in groups['splunk_group']"
+        fail_msg: >-
+          splunk_group should contain 'splunk';
+          got {{ groups['splunk_group'] | default([]) }}
+
+    - name: Verify docker VMs are in cribl_docker_group
+      ansible.builtin.assert:
+        that:
+          - groups['cribl_docker_group'] is defined
+          - "'docker-host' in groups['cribl_docker_group']"
+        fail_msg: >-
+          cribl_docker_group should contain 'docker-host';
+          got {{ groups['cribl_docker_group'] | default([]) }}
+
+    - name: Display group membership summary
+      ansible.builtin.debug:
+        msg: |
+          Inventory group verification PASSED:
+          - lxc_containers:     {{ groups['lxc_containers'] | default([]) | join(', ') }}
+          - haproxy_group:      {{ groups['haproxy_group'] | default([]) | join(', ') }}
+          - cribl_edge:         {{ groups['cribl_edge'] | default([]) | join(', ') }}
+          - mssql_group:        {{ groups['mssql_group'] | default([]) | join(', ') }}
+          - splunk_group:       {{ groups['splunk_group'] | default([]) | join(', ') }}
+          - cribl_docker_group: {{ groups['cribl_docker_group'] | default([]) | join(', ') }}

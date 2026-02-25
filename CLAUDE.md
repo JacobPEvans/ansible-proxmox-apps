@@ -114,6 +114,47 @@ doppler run -- uv run ansible-playbook -i inventory/hosts.yml playbooks/validate
 uv run ansible-lint
 ```
 
+## Testing
+
+### Fast (CI + pre-commit — runs automatically)
+
+| Check | Command | When |
+| --- | --- | --- |
+| Ansible lint | `uv run ansible-lint` | pre-commit, every PR |
+| Playbook syntax | `ansible-playbook --syntax-check` | every PR (CI) |
+| Inventory group validation | see below | every PR (CI) |
+| Molecule syntax | `uv run molecule syntax` | every PR (CI, roles/molecule changes) |
+
+**Inventory validation locally:**
+
+```bash
+cp tests/inventory_load/terraform_inventory.json inventory/terraform_inventory.json
+ansible-playbook tests/inventory_load/verify_inventory.yml \
+  -i inventory/hosts.yml -c local
+```
+
+### Extended (manual — run before merging role changes)
+
+Full Molecule test deploys the `mssql_docker` role in a Docker container,
+starts SQL Server, and verifies port 1433 is accepting connections.
+Requires Docker on the local machine (~5-10 min).
+
+```bash
+# Install Molecule dependencies (once)
+uv pip install molecule 'molecule-plugins[docker]>=23.0.0' 'docker>=7.0.0'
+ansible-galaxy collection install -r requirements.yml
+
+# Run full test cycle (create -> converge -> idempotence -> verify -> destroy)
+uv run molecule test
+
+# Or step through individually for debugging
+uv run molecule converge   # deploy role into container
+uv run molecule verify     # run assertions
+uv run molecule destroy    # clean up
+```
+
+**When to run:** Any time you modify a role in `roles/` before opening a PR.
+
 ## Related Repositories
 
 | Repo | Relationship |

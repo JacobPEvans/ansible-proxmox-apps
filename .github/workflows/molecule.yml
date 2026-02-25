@@ -1,0 +1,61 @@
+---
+name: Molecule
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "molecule/**"
+      - "roles/**/*.yml"
+      - "roles/**/*.yaml"
+      - "roles/**/*.j2"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "molecule/**"
+      - "roles/**/*.yml"
+      - "roles/**/*.yaml"
+      - "roles/**/*.j2"
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    name: Molecule Syntax Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "latest"
+
+      - name: Install Molecule and dependencies
+        run: |
+          uv pip install --system \
+            molecule \
+            'molecule-plugins[docker]>=23.0.0' \
+            'ansible-core>=2.16' \
+            'docker>=7.0.0' \
+            ansible-lint
+
+      - name: Install Ansible collections
+        run: ansible-galaxy collection install -r requirements.yml --force
+
+      - name: Run molecule syntax check
+        run: molecule syntax
+        env:
+          PY_COLORS: "1"
+          ANSIBLE_FORCE_COLOR: "1"
+          MSSQL_SA_PASSWORD: "Molecule-Test-P@ssw0rd123"

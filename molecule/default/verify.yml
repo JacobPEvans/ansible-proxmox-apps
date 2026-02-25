@@ -1,0 +1,114 @@
+---
+# Molecule verification playbook
+# Validates that the mssql_docker role executed correctly
+
+- name: Verify
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    mssql_docker_data_dir: /opt/mssql
+    mssql_docker_image: "mcr.microsoft.com/mssql/server:2022-latest"
+    mssql_docker_container_name: mssql
+
+  tasks:
+    - name: Check MSSQL data directory exists
+      ansible.builtin.stat:
+        path: "{{ mssql_docker_data_dir }}"
+      register: data_dir
+
+    - name: Assert MSSQL data directory exists
+      ansible.builtin.assert:
+        that:
+          - data_dir.stat.exists
+          - data_dir.stat.isdir
+        fail_msg: "MSSQL data directory not found at {{ mssql_docker_data_dir }}"
+
+    - name: Check MSSQL subdirectories exist
+      ansible.builtin.stat:
+        path: "{{ mssql_docker_data_dir }}/{{ item }}"
+      register: subdir_check
+      loop:
+        - data
+        - log
+        - backup
+
+    - name: Assert MSSQL subdirectories exist
+      ansible.builtin.assert:
+        that:
+          - item.stat.exists
+          - item.stat.isdir
+        fail_msg: "MSSQL subdirectory not found: {{ item.item }}"
+      loop: "{{ subdir_check.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Check docker-compose.yml was deployed
+      ansible.builtin.stat:
+        path: "{{ mssql_docker_data_dir }}/docker-compose.yml"
+      register: compose_file
+
+    - name: Assert docker-compose.yml exists
+      ansible.builtin.assert:
+        that:
+          - compose_file.stat.exists
+        fail_msg: "docker-compose.yml not found - template was not deployed"
+
+    - name: Read docker-compose.yml content
+      ansible.builtin.slurp:
+        src: "{{ mssql_docker_data_dir }}/docker-compose.yml"
+      register: compose_content
+
+    - name: Assert docker-compose.yml references correct MSSQL image
+      ansible.builtin.assert:
+        that:
+          - "mssql_docker_image in (compose_content.content | b64decode)"
+        fail_msg: "docker-compose.yml does not reference expected MSSQL 2022 image"
+
+    - name: Assert docker-compose.yml has correct container name
+      ansible.builtin.assert:
+        that:
+          - "'container_name: ' ~ mssql_docker_container_name in (compose_content.content | b64decode)"
+        fail_msg: "docker-compose.yml does not have expected container name 'mssql'"
+
+    - name: Assert docker-compose.yml mounts all required data volumes
+      ansible.builtin.assert:
+        that:
+          - "'/var/opt/mssql/data' in (compose_content.content | b64decode)"
+          - "'/var/opt/mssql/log' in (compose_content.content | b64decode)"
+          - "'/var/opt/mssql/backup' in (compose_content.content | b64decode)"
+        fail_msg: "docker-compose.yml is missing required MSSQL volume mounts"
+
+    - name: Check Docker service is running
+      ansible.builtin.systemd:
+        name: docker
+      register: docker_status
+      failed_when: false
+
+    - name: Assert Docker service is active
+      ansible.builtin.assert:
+        that:
+          - docker_status.status.ActiveState == 'active'
+        fail_msg: >-
+          Docker service is not running
+          (ActiveState: {{ docker_status.status.ActiveState | default('unknown') }})
+
+    - name: Check MSSQL container is running
+      ansible.builtin.shell: >
+        docker ps --filter "name=^mssql$" --filter status=running --quiet
+      register: container_running
+      changed_when: false
+
+    - name: Assert MSSQL container is running
+      ansible.builtin.assert:
+        that:
+          - container_running.stdout | length > 0
+        fail_msg: "MSSQL container is not running"
+
+    - name: Verify SQL Server port 1433 is accepting connections
+      ansible.builtin.wait_for:
+        host: "127.0.0.1"
+        port: 1433
+        timeout: 60
+        delay: 5

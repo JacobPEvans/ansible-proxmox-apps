@@ -1,0 +1,19 @@
+---
+# Molecule converge playbook
+# Tests the mssql_docker role against the test container
+
+- name: Converge
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    # Test credentials - never use in production
+    mssql_docker_sa_password: "Molecule-Test-P@ssw0rd123"
+    # Disable sample database restore to avoid large downloads in tests
+    mssql_docker_restore_samples: false
+
+  tasks:
+    - name: Include mssql_docker role
+      ansible.builtin.include_role:
+        name: mssql_docker
