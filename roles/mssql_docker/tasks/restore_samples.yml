@@ -13,32 +13,30 @@
 
 - name: Restore .bak sample databases
   ansible.builtin.command: >
-    docker exec {{ mssql_docker_container_name }}
+    docker exec -e SQLCMDPASSWORD="{{ mssql_docker_sa_password }}"
+    {{ mssql_docker_container_name }}
     /opt/mssql-tools18/bin/sqlcmd
-    -S localhost -U sa -P "{{ mssql_docker_sa_password }}"
+    -S localhost -U sa
     -C -l 60
     -Q "RESTORE DATABASE [{{ item.name }}]
         FROM DISK = '/var/opt/mssql/backup/{{ item.name }}.bak'
         WITH MOVE '{{ item.name }}' TO '/var/opt/mssql/data/{{ item.name }}.mdf',
              MOVE '{{ item.name }}_log' TO '/var/opt/mssql/data/{{ item.name }}_log.ldf',
              REPLACE, STATS = 10"
-  loop: >-
-    {{
-      (mssql_docker_sample_databases | rejectattr('type', 'defined') | list) +
-      (mssql_docker_sample_databases | selectattr('type', 'defined')
-       | selectattr('type', 'eq', 'bak') | list)
-    }}
+  loop: "{{ mssql_docker_sample_databases }}"
+  when: item.type | default('bak') == 'bak'
   loop_control:
     label: "{{ item.name }}"
   register: mssql_docker_restore_bak
-  changed_when: "'RESTORE DATABASE successfully processed' in mssql_docker_restore_bak.stdout"
+  changed_when: "'RESTORE DATABASE successfully processed' in stdout"
   no_log: true
 
 - name: Run SQL script databases
   ansible.builtin.shell: >
-    docker exec -i {{ mssql_docker_container_name }}
+    docker exec -i -e SQLCMDPASSWORD="{{ mssql_docker_sa_password }}"
+    {{ mssql_docker_container_name }}
     /opt/mssql-tools18/bin/sqlcmd
-    -S localhost -U sa -P "{{ mssql_docker_sa_password }}"
+    -S localhost -U sa
     -C -l 60
     < "{{ mssql_docker_data_dir }}/backup/{{ item.name }}.sql"
   loop: >-
@@ -47,18 +45,15 @@
        | selectattr('type', 'eq', 'sql') | list }}
   loop_control:
     label: "{{ item.name }}"
-  when: >-
-    mssql_docker_sample_databases
-    | selectattr('type', 'defined')
-    | selectattr('type', 'eq', 'sql') | list | length > 0
   changed_when: false
   no_log: true
 
 - name: Verify sample databases were restored
   ansible.builtin.command: >
-    docker exec {{ mssql_docker_container_name }}
+    docker exec -e SQLCMDPASSWORD="{{ mssql_docker_sa_password }}"
+    {{ mssql_docker_container_name }}
     /opt/mssql-tools18/bin/sqlcmd
-    -S localhost -U sa -P "{{ mssql_docker_sa_password }}"
+    -S localhost -U sa
     -C -Q "SELECT name FROM sys.databases WHERE name NOT IN ('master','tempdb','model','msdb')"
   register: mssql_docker_db_list
   changed_when: false

@@ -82,6 +82,7 @@ Port constants come from `terraform_data.constants`
 | `MAILPIT_RELAY_PORT` | SMTP relay port (default 587) | SOPS |
 | `MAILPIT_RELAY_USERNAME` | SMTP relay username | SOPS |
 | `MAILPIT_RELAY_PASSWORD` | SMTP relay password / app password | Doppler / SOPS |
+| `MSSQL_SA_PASSWORD` | SQL Server SA password (for mssql_docker role) | SOPS |
 
 ## Secrets Management
 
