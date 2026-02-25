@@ -1,0 +1,18 @@
+---
+services:
+  mailpit:
+    image: {{ mailpit_docker_image }}
+    container_name: {{ mailpit_docker_container_name }}
+    restart: unless-stopped
+    ports:
+      - "{{ mailpit_docker_smtp_port }}:1025"
+      - "{{ mailpit_docker_web_port }}:8025"
+    environment:
+      MP_SMTP_RELAY_HOST: "{{ mailpit_docker_relay_host }}"
+      MP_SMTP_RELAY_PORT: "{{ mailpit_docker_relay_port }}"
+      MP_SMTP_RELAY_USERNAME: "{{ mailpit_docker_relay_username }}"
+      MP_SMTP_RELAY_PASSWORD: "{{ mailpit_docker_relay_password }}"
+      MP_SMTP_RELAY_STARTTLS: "{{ mailpit_docker_relay_starttls | lower }}"
+      MP_SMTP_RELAY_ALL: "{{ mailpit_docker_relay_all | lower }}"
+    volumes:
+      - {{ mailpit_docker_data_dir }}/data:/data
