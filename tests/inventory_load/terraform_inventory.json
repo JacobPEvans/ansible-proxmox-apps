@@ -1,0 +1,74 @@
+{
+  "containers": {
+    "haproxy": {
+      "vmid": 190,
+      "ip": "192.168.0.190",
+      "hostname": "haproxy",
+      "ansible_connection": "proxmox_pct_remote",
+      "tags": ["loadbalancer"],
+      "node": "pve"
+    },
+    "cribl-edge-01": {
+      "vmid": 181,
+      "ip": "192.168.0.181",
+      "hostname": "cribl-edge-01",
+      "ansible_connection": "proxmox_pct_remote",
+      "tags": ["cribl", "edge"],
+      "node": "pve"
+    },
+    "mssql": {
+      "vmid": 210,
+      "ip": "192.168.0.210",
+      "hostname": "mssql",
+      "ansible_connection": "proxmox_pct_remote",
+      "tags": ["database"],
+      "node": "pve"
+    },
+    "apt-cacher": {
+      "vmid": 191,
+      "ip": "192.168.0.191",
+      "hostname": "apt-cacher",
+      "ansible_connection": "proxmox_pct_remote",
+      "tags": [],
+      "node": "pve"
+    }
+  },
+  "vms": {},
+  "docker_vms": {
+    "docker-host": {
+      "vmid": 180,
+      "ip": "192.168.0.180",
+      "hostname": "docker-host",
+      "ansible_connection": "ssh",
+      "tags": ["docker", "cribl"],
+      "node": "pve"
+    }
+  },
+  "splunk_vm": {
+    "splunk": {
+      "vmid": 200,
+      "ip": "192.168.0.200",
+      "hostname": "splunk",
+      "ansible_connection": "ssh",
+      "node": "pve"
+    }
+  },
+  "constants": {
+    "service_ports": {
+      "ssh": 22,
+      "splunk_web": 8000,
+      "splunk_hec": 8088,
+      "splunk_mgmt": 8089,
+      "haproxy_stats": 8404,
+      "cribl_edge_api": 9000,
+      "cribl_stream_api": 9100
+    },
+    "syslog_ports": {
+      "unifi": 1514,
+      "paloalto": 1515,
+      "cisco_asa": 1516,
+      "linux": 1517,
+      "windows": 1518
+    }
+  }
+}
