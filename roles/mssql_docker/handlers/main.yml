@@ -1,0 +1,8 @@
+---
+- name: Restart mssql container
+  community.docker.docker_compose_v2:
+    project_src: "{{ mssql_docker_data_dir }}"
+    state: present
+    recreate: always
+  no_log: true
+  listen: restart mssql

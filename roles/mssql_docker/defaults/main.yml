@@ -1,0 +1,31 @@
+---
+# MSSQL Docker role defaults
+# All variables prefixed with mssql_docker_*
+
+mssql_docker_image: "mcr.microsoft.com/mssql/server:2022-latest"
+mssql_docker_container_name: mssql
+# TODO: Move to terraform_data.constants.service_ports.mssql
+# once terraform-proxmox defines the MSSQL service port
+mssql_docker_port: 1433
+mssql_docker_memory_limit_mb: 3072
+mssql_docker_data_dir: /opt/mssql
+
+# SA password from SOPS secrets (via env var)
+mssql_docker_sa_password: "{{ lookup('env', 'MSSQL_SA_PASSWORD') }}"
+
+# Sample databases to restore (all from Microsoft's official GitHub)
+mssql_docker_restore_samples: true
+mssql_docker_samples_base_url: >-
+  https://github.com/Microsoft/sql-server-samples/releases/download
+mssql_docker_sample_databases:
+  - name: AdventureWorksLT2022
+    url: "{{ mssql_docker_samples_base_url }}/adventureworks/AdventureWorksLT2022.bak"
+  - name: AdventureWorks2022
+    url: "{{ mssql_docker_samples_base_url }}/adventureworks/AdventureWorks2022.bak"
+  - name: AdventureWorksDW2022
+    url: "{{ mssql_docker_samples_base_url }}/adventureworks/AdventureWorksDW2022.bak"
+  - name: WideWorldImporters-Full
+    url: "{{ mssql_docker_samples_base_url }}/wide-world-importers-v1.0/WideWorldImporters-Full.bak"
+  - name: Northwind
+    url: "{{ mssql_docker_samples_base_url }}/northwind-pubs/instnwnd_2022.sql"
+    type: sql

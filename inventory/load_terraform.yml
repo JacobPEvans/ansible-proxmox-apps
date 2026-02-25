@@ -86,6 +86,11 @@
               ['ntfy_group']
               if 'push' in (item.value.tags | default([]))
               else []
+            ) +
+            (
+              ['mssql_group']
+              if 'database' in (item.value.tags | default([]))
+              else []
             )
           }}
         ansible_pct_vmid: "{{ item.value.vmid }}"
