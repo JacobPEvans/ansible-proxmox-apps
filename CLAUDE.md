@@ -10,6 +10,8 @@ this repo handles app config only.
 - **HAProxy** (LXC container, legacy syslog load balancer)
 - **Technitium DNS** (LXC container)
 - **apt-cacher-ng** (LXC container)
+- **Mailpit** (LXC container, SMTP relay with web UI)
+- **ntfy** (LXC container, push notification server)
 
 **This repo does NOT own Splunk.** Splunk is managed by `ansible-splunk`.
 
@@ -45,6 +47,9 @@ Source -> Docker Swarm Host (syslog:1514-1518/udp)
 | 8404 | HAProxy Stats |
 | 9000 | Cribl Edge API |
 | 9100 | Cribl Stream API |
+| 1025 | Mailpit SMTP |
+| 8025 | Mailpit Web UI |
+| 8080 | ntfy HTTP |
 
 ## Inventory
 
@@ -57,6 +62,8 @@ Port constants come from `terraform_data.constants`
 
 - `lxc_containers`: All LXC containers (`proxmox_pct_remote` connection)
 - `docker_vms` / `cribl_docker_group`: Docker Swarm hosts (SSH)
+- `mailpit_group`: Containers tagged `smtp` (Mailpit SMTP relay)
+- `ntfy_group`: Containers tagged `push` (ntfy push notifications)
 
 ### Environment Variables
 
@@ -71,6 +78,10 @@ Port constants come from `terraform_data.constants`
 | `SPLUNK_PASSWORD` | Splunk admin password (for E2E validation) | Doppler / SOPS |
 | `HAPROXY_STATS_PASSWORD` | HAProxy stats page password | SOPS |
 | `TECHNITIUM_DNS_API_TOKEN` | Technitium DNS API token | SOPS |
+| `MAILPIT_RELAY_HOST` | SMTP relay hostname | SOPS |
+| `MAILPIT_RELAY_PORT` | SMTP relay port (default 587) | SOPS |
+| `MAILPIT_RELAY_USERNAME` | SMTP relay username | SOPS |
+| `MAILPIT_RELAY_PASSWORD` | SMTP relay password / app password | Doppler / SOPS |
 
 ## Secrets Management
 

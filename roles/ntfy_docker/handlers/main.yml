@@ -1,0 +1,8 @@
+---
+# ntfy Docker handlers
+
+- name: Restart ntfy
+  community.docker.docker_compose_v2:
+    project_src: "{{ ntfy_docker_data_dir }}"
+    state: present
+    recreate: always

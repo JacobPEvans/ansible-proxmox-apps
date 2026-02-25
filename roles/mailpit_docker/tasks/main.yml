@@ -1,0 +1,146 @@
+---
+# Mailpit Docker Deployment Tasks
+# Deploys Mailpit SMTP relay as a Docker container
+
+# =============================================================================
+# Docker Installation
+# =============================================================================
+
+- name: Gather OS facts
+  ansible.builtin.setup:
+    filter: ansible_distribution*
+
+- name: Install Docker prerequisites
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+    state: present
+    update_cache: true
+
+- name: Create keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Set Docker repository distribution
+  ansible.builtin.set_fact:
+    mailpit_docker_distro: "{{ ansible_distribution | lower }}"
+
+- name: Add Docker GPG key
+  ansible.builtin.get_url:
+    url: "https://download.docker.com/linux/{{ mailpit_docker_distro }}/gpg"
+    dest: /etc/apt/keyrings/docker.asc
+    mode: "0644"
+    force: false
+
+- name: Add Docker repository
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc]
+      https://download.docker.com/linux/{{ mailpit_docker_distro }}
+      {{ ansible_distribution_release }} stable
+    state: present
+    filename: docker
+
+- name: Install Docker packages
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+    update_cache: true
+
+- name: Ensure Docker service is running
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: true
+
+# =============================================================================
+# Mailpit Data Directory
+# =============================================================================
+
+- name: Create Mailpit data directory
+  ansible.builtin.file:
+    path: "{{ mailpit_docker_data_dir }}/data"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+# =============================================================================
+# Docker Compose Configuration
+# =============================================================================
+
+- name: Deploy Mailpit docker-compose template
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ mailpit_docker_data_dir }}/docker-compose.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  no_log: true
+  notify: Restart mailpit
+
+# =============================================================================
+# Python venv for Ansible Docker modules
+# =============================================================================
+
+- name: Install Python venv and pip for dependencies
+  ansible.builtin.apt:
+    name:
+      - python3-pip
+      - python3-venv
+      - python3-full
+    state: present
+    update_cache: true
+
+- name: Create virtualenv for Ansible Python dependencies
+  ansible.builtin.pip:
+    name:
+      - docker
+    state: present
+    virtualenv: /opt/ansible-venv
+    virtualenv_command: python3 -m venv
+
+- name: Set Python interpreter to use venv for subsequent tasks
+  ansible.builtin.set_fact:
+    ansible_python_interpreter: /opt/ansible-venv/bin/python
+
+# =============================================================================
+# Deploy via Docker Compose
+# =============================================================================
+
+- name: Deploy Mailpit via docker compose
+  community.docker.docker_compose_v2:
+    project_src: "{{ mailpit_docker_data_dir }}"
+    state: present
+
+# =============================================================================
+# Health Check
+# =============================================================================
+
+- name: Wait for Mailpit web UI to be ready
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: "{{ mailpit_docker_web_port }}"
+    timeout: 60
+
+- name: Verify Mailpit web UI health
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ mailpit_docker_web_port }}"
+    method: GET
+    status_code: 200
+  register: mailpit_docker_health
+  retries: 10
+  delay: 5
+  until: mailpit_docker_health.status == 200
+  changed_when: false

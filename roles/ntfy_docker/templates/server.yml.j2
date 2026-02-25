@@ -1,0 +1,5 @@
+base-url: "http://{{ ansible_host }}"
+listen-http: ":80"
+cache-file: "/var/cache/ntfy/cache.db"
+cache-duration: "{{ ntfy_docker_cache_duration }}"
+attachment-cache-dir: "{{ ntfy_docker_attachment_cache_dir }}"

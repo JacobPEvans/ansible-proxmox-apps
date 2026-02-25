@@ -108,3 +108,30 @@
 #
 #   roles:
 #     - role: haproxy
+
+# =============================================================================
+# Phase 4: Notification Services
+# Mailpit SMTP relay and ntfy push notifications
+# =============================================================================
+
+- name: Configure Mailpit SMTP relay
+  hosts: mailpit_group
+  become: true
+  gather_facts: false
+  tags:
+    - mailpit
+    - notifications
+    - smtp
+  roles:
+    - role: mailpit_docker
+
+- name: Configure ntfy push notification server
+  hosts: ntfy_group
+  become: true
+  gather_facts: false
+  tags:
+    - ntfy
+    - notifications
+    - push
+  roles:
+    - role: ntfy_docker
