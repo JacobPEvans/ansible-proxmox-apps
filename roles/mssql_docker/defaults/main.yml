@@ -11,10 +11,12 @@ mssql_docker_memory_limit_mb: 3072
 mssql_docker_data_dir: /opt/mssql
 
 # SA password from SOPS secrets (via env var)
-mssql_docker_sa_password: "{{ lookup('env', 'MSSQL_SA_PASSWORD') }}"
+mssql_docker_sa_password: >-
+  {{ lookup('env', 'MSSQL_SA_PASSWORD')
+     | mandatory('MSSQL_SA_PASSWORD environment variable must be set') }}
 
 # Sample databases to restore (all from Microsoft's official GitHub)
-mssql_docker_restore_samples: true
+mssql_docker_restore_samples: false
 mssql_docker_samples_base_url: >-
   https://github.com/Microsoft/sql-server-samples/releases/download
 mssql_docker_sample_databases:

@@ -90,7 +90,7 @@
     dest: "{{ mssql_docker_data_dir }}/docker-compose.yml"
     owner: root
     group: root
-    mode: "0644"
+    mode: "0600"
   no_log: true
   notify: restart mssql
 
@@ -134,9 +134,10 @@
 
 - name: Verify SQL Server is accepting connections
   ansible.builtin.command: >
-    docker exec {{ mssql_docker_container_name }}
+    docker exec -e SQLCMDPASSWORD="{{ mssql_docker_sa_password }}"
+    {{ mssql_docker_container_name }}
     /opt/mssql-tools18/bin/sqlcmd
-    -S localhost -U sa -P "{{ mssql_docker_sa_password }}"
+    -S localhost -U sa
     -Q "SELECT @@VERSION" -C -l 30
   register: mssql_docker_version_check
   retries: 6
