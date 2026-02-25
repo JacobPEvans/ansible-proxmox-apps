@@ -9,6 +9,7 @@ driver:
 
 platforms:
   - name: mssql-test
+    # No stable version tags available; geerlingguy only publishes :latest
     image: geerlingguy/docker-debian12-ansible:latest
     privileged: true
     command: ""
@@ -30,13 +31,6 @@ provisioner:
     defaults:
       interpreter_python: auto_silent
       roles_path: ${MOLECULE_PROJECT_DIRECTORY}/roles
-  inventory:
-    group_vars:
-      all:
-        # Test credentials - never use in production
-        mssql_docker_sa_password: "Molecule-Test-P@ssw0rd123"
-        # Skip large sample database downloads in molecule tests
-        mssql_docker_restore_samples: false
   env:
     MSSQL_SA_PASSWORD: "Molecule-Test-P@ssw0rd123"
 

@@ -9,6 +9,8 @@
 
   vars:
     mssql_docker_data_dir: /opt/mssql
+    mssql_docker_image: "mcr.microsoft.com/mssql/server:2022-latest"
+    mssql_docker_container_name: mssql
 
   tasks:
     - name: Check MSSQL data directory exists
@@ -61,13 +63,13 @@
     - name: Assert docker-compose.yml references correct MSSQL image
       ansible.builtin.assert:
         that:
-          - "'mcr.microsoft.com/mssql/server:2022-latest' in (compose_content.content | b64decode)"
+          - "mssql_docker_image in (compose_content.content | b64decode)"
         fail_msg: "docker-compose.yml does not reference expected MSSQL 2022 image"
 
     - name: Assert docker-compose.yml has correct container name
       ansible.builtin.assert:
         that:
-          - "'container_name: mssql' in (compose_content.content | b64decode)"
+          - "'container_name: ' ~ mssql_docker_container_name in (compose_content.content | b64decode)"
         fail_msg: "docker-compose.yml does not have expected container name 'mssql'"
 
     - name: Assert docker-compose.yml mounts all required data volumes
