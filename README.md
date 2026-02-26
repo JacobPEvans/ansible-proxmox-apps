@@ -149,31 +149,21 @@ See `roles/apt_cacher_ng/README.md` for configuration.
 
 Deploy Cribl Stream and Cribl Edge as Docker containers.
 
-See `roles/cribl_docker_stack/README.md` for configuration.
-
 ### mailpit_docker
 
 Deploy Mailpit email testing container for local SMTP capture and inspection.
-
-See `roles/mailpit_docker/README.md` for configuration.
 
 ### mssql_docker
 
 Deploy Microsoft SQL Server as a Docker container.
 
-See `roles/mssql_docker/README.md` for configuration.
-
 ### ntfy_docker
 
 Deploy ntfy push notification service as a Docker container.
 
-See `roles/ntfy_docker/README.md` for configuration.
-
 ### technitium_dns
 
 Deploy Technitium DNS server container for local DNS resolution and blocking.
-
-See `roles/technitium_dns/README.md` for configuration.
 
 ## Architecture
 
