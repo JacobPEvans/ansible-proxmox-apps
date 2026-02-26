@@ -319,39 +319,28 @@
     constants: "{{ hostvars['localhost']['terraform_data']['constants'] }}"
 
   tasks:
-    - name: Check Cribl Edge has active inputs (no auth)
+    - name: Check Cribl Edge has active inputs
       ansible.builtin.uri:
         url: >-
           http://127.0.0.1:{{ constants.service_ports.cribl_edge_api
           }}/api/v1/system/metrics
         method: GET
+        headers: >-
+          {{ {'Authorization': 'Bearer ' + cribl_edge_api_token}
+          if cribl_edge_api_token is defined and cribl_edge_api_token | length > 0
+          else omit }}
         status_code:
           - 200
-      register: cribl_metrics_no_auth
-      failed_when: cribl_metrics_no_auth.status != 200
+      register: cribl_metrics
+      failed_when: cribl_metrics.status != 200
       changed_when: false
-      when: cribl_edge_api_token is not defined or cribl_edge_api_token | length == 0
-
-    - name: Check Cribl Edge has active inputs (with auth token)
-      ansible.builtin.uri:
-        url: >-
-          http://127.0.0.1:{{ constants.service_ports.cribl_edge_api
-          }}/api/v1/system/metrics
-        method: GET
-        headers:
-          Authorization: "Bearer {{ cribl_edge_api_token }}"
-        status_code:
-          - 200
-      register: cribl_metrics_with_auth
-      failed_when: cribl_metrics_with_auth.status != 200
-      changed_when: false
-      when: cribl_edge_api_token is defined and cribl_edge_api_token | length > 0
 
     - name: Display Cribl Edge metrics validation result
       ansible.builtin.debug:
         msg: |
           Cribl Edge metrics check passed: API responded with 200
           (auth token used: {{ (cribl_edge_api_token is defined and cribl_edge_api_token | length > 0) | string }})
+          status: {{ cribl_metrics.status }}
 
 - name: Pipeline Summary
   hosts: localhost

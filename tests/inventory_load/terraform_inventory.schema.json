@@ -152,62 +152,46 @@
       "properties": {
         "service_ports": {
           "type": "object",
-          "required": ["haproxy_stats", "splunk_web", "splunk_hec", "splunk_mgmt", "cribl_edge_api", "cribl_stream_api"],
-          "additionalProperties": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 65535
-          },
           "properties": {
-            "haproxy_stats": {"type": "integer"},
-            "splunk_web": {"type": "integer"},
-            "splunk_hec": {"type": "integer"},
-            "splunk_mgmt": {"type": "integer"},
-            "cribl_edge_api": {"type": "integer"},
-            "cribl_stream_api": {"type": "integer"}
-          }
+            "haproxy_stats": {"type": "integer", "minimum": 1, "maximum": 65535},
+            "splunk_web": {"type": "integer", "minimum": 1, "maximum": 65535},
+            "splunk_hec": {"type": "integer", "minimum": 1, "maximum": 65535},
+            "splunk_mgmt": {"type": "integer", "minimum": 1, "maximum": 65535},
+            "cribl_edge_api": {"type": "integer", "minimum": 1, "maximum": 65535},
+            "cribl_stream_api": {"type": "integer", "minimum": 1, "maximum": 65535}
+          },
+          "required": ["haproxy_stats", "splunk_web", "splunk_hec", "splunk_mgmt", "cribl_edge_api", "cribl_stream_api"],
+          "additionalProperties": false
         },
         "syslog_ports": {
           "type": "object",
-          "required": ["unifi", "palo_alto", "cisco_asa", "linux", "windows"],
-          "additionalProperties": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 65535
-          },
           "properties": {
-            "unifi": {"type": "integer"},
-            "palo_alto": {"type": "integer"},
-            "cisco_asa": {"type": "integer"},
-            "linux": {"type": "integer"},
-            "windows": {"type": "integer"}
-          }
+            "unifi": {"type": "integer", "minimum": 1, "maximum": 65535},
+            "palo_alto": {"type": "integer", "minimum": 1, "maximum": 65535},
+            "cisco_asa": {"type": "integer", "minimum": 1, "maximum": 65535},
+            "linux": {"type": "integer", "minimum": 1, "maximum": 65535},
+            "windows": {"type": "integer", "minimum": 1, "maximum": 65535}
+          },
+          "required": ["unifi", "palo_alto", "cisco_asa", "linux", "windows"],
+          "additionalProperties": false
         },
         "netflow_ports": {
           "type": "object",
-          "required": ["unifi"],
-          "additionalProperties": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 65535
-          },
           "properties": {
-            "unifi": {"type": "integer"}
-          }
+            "unifi": {"type": "integer", "minimum": 1, "maximum": 65535}
+          },
+          "required": ["unifi"],
+          "additionalProperties": false
         },
         "notification_ports": {
           "type": "object",
-          "required": ["mailpit_smtp", "mailpit_web", "ntfy_http"],
-          "additionalProperties": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 65535
-          },
           "properties": {
-            "mailpit_smtp": {"type": "integer"},
-            "mailpit_web": {"type": "integer"},
-            "ntfy_http": {"type": "integer"}
-          }
+            "mailpit_smtp": {"type": "integer", "minimum": 1, "maximum": 65535},
+            "mailpit_web": {"type": "integer", "minimum": 1, "maximum": 65535},
+            "ntfy_http": {"type": "integer", "minimum": 1, "maximum": 65535}
+          },
+          "required": ["mailpit_smtp", "mailpit_web", "ntfy_http"],
+          "additionalProperties": false
         }
       }
     }

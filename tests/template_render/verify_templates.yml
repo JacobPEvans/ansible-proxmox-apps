@@ -73,23 +73,21 @@
     - name: Assert docker-stack publishes each syslog port (TCP)
       ansible.builtin.assert:
         that:
-          - "'published: ' ~ item ~ '\n        protocol: tcp' in _docker_stack or
-             'published: ' ~ item in _docker_stack"
+          - "('published: ' ~ item ~ '\n        protocol: tcp') in _docker_stack"
         fail_msg: "docker-stack.yml.j2 is missing TCP publish for syslog port {{ item }}"
       loop: "{{ cribl_docker_stack_syslog_ports }}"
 
     - name: Assert docker-stack publishes each syslog port (UDP)
       ansible.builtin.assert:
         that:
-          - "'published: ' ~ item in _docker_stack and 'protocol: udp' in _docker_stack"
+          - "('published: ' ~ item ~ '\n        protocol: udp') in _docker_stack"
         fail_msg: "docker-stack.yml.j2 is missing UDP publish for syslog port {{ item }}"
       loop: "{{ cribl_docker_stack_syslog_ports }}"
 
     - name: Assert docker-stack publishes netflow port 2055 (UDP)
       ansible.builtin.assert:
         that:
-          - "'published: 2055' in _docker_stack"
-          - "'protocol: udp' in _docker_stack"
+          - "('published: 2055\n        protocol: udp') in _docker_stack"
         fail_msg: "docker-stack.yml.j2 is missing netflow port 2055 UDP publish"
 
     - name: Assert docker-stack references cribl image
