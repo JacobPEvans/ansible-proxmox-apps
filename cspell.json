@@ -1,0 +1,36 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "ansible",
+    "ansiblelint",
+    "bpg",
+    "cribl",
+    "CRIBL",
+    "doppler",
+    "haproxy",
+    "HAPROXY",
+    "homelab",
+    "lxc",
+    "mailpit",
+    "Mailpit",
+    "markdownlint",
+    "ntfy",
+    "pipx",
+    "proxmox",
+    "renovate",
+    "splunk",
+    "SPLUNK",
+    "syslog",
+    "technitium",
+    "terragrunt",
+    "venvs",
+    "yamllint"
+  ],
+  "ignorePaths": [
+    ".git",
+    "node_modules",
+    "*.lock",
+    "inventory/terraform_inventory.json"
+  ]
+}

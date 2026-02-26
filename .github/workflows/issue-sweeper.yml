@@ -1,5 +1,5 @@
 ---
-name: Issue Sweeper
+name: Issue Maintenance
 
 on:
   schedule:
@@ -15,4 +15,8 @@ permissions:
 jobs:
   sweep:
     uses: JacobPEvans/ai-workflows/.github/workflows/issue-sweeper.yml@v0.4.0
+    secrets: inherit
+
+  hygiene:
+    uses: JacobPEvans/ai-workflows/.github/workflows/issue-hygiene.yml@v0.4.0
     secrets: inherit

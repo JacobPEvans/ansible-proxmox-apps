@@ -22,7 +22,7 @@ All applications run on Proxmox VMs. VMs and storage are provisioned by
 - **terraform-proxmox**: Provisions VMs and persistent storage
 - **Doppler**: Secrets management (API keys, passwords)
 - Ansible 2.12+
-- Python 3.9+
+- Python 3.12+
 
 ## Quick Start
 
@@ -37,11 +37,11 @@ cd ansible-proxmox-apps
 ### 2. Install Dependencies
 
 ```bash
-# Install Ansible via pipx (recommended)
-pipx install ansible
+# Install Ansible via uv (recommended)
+uv tool install ansible
 
 # Install required collections
-~/.local/pipx/venvs/ansible/bin/ansible-galaxy collection install -r requirements.yml
+uv tool run ansible-galaxy collection install -r requirements.yml
 ```
 
 ### 3. Configure Doppler
@@ -67,15 +67,15 @@ export SPLUNK_VM="192.168.1.104"
 
 ```bash
 # Deploy Cribl Docker Swarm stack
-doppler run -- ~/.local/pipx/venvs/ansible/bin/ansible-playbook \
+doppler run -- uv tool run ansible-playbook \
   -i inventory/hosts.yml playbooks/site.yml --tags cribl_docker_stack
 
 # Deploy Splunk
-doppler run -- ~/.local/pipx/venvs/ansible/bin/ansible-playbook \
+doppler run -- uv tool run ansible-playbook \
   -i inventory/hosts.yml playbooks/site.yml --tags splunk_docker
 
 # Deploy all applications
-doppler run -- ~/.local/pipx/venvs/ansible/bin/ansible-playbook \
+doppler run -- uv tool run ansible-playbook \
   -i inventory/hosts.yml playbooks/site.yml
 ```
 
@@ -127,7 +127,7 @@ Deploy Cribl Stream as central processing node in the pipeline.
 
 See `roles/cribl_stream/README.md` for configuration options.
 
-### haproxy_syslog
+### haproxy
 
 Deploy HAProxy configured for syslog load balancing.
 
@@ -137,7 +137,43 @@ Deploy HAProxy configured for syslog load balancing.
 - Health checks on TCP port 1514
 - Syslog statistics available on port 8404
 
-See `roles/haproxy_syslog/README.md` for customization.
+See `roles/haproxy/README.md` for customization.
+
+### apt_cacher_ng
+
+APT package caching proxy to reduce bandwidth usage across containers and VMs.
+
+See `roles/apt_cacher_ng/README.md` for configuration.
+
+### cribl_docker_stack
+
+Deploy Cribl Stream and Cribl Edge as Docker containers.
+
+See `roles/cribl_docker_stack/README.md` for configuration.
+
+### mailpit_docker
+
+Deploy Mailpit email testing container for local SMTP capture and inspection.
+
+See `roles/mailpit_docker/README.md` for configuration.
+
+### mssql_docker
+
+Deploy Microsoft SQL Server as a Docker container.
+
+See `roles/mssql_docker/README.md` for configuration.
+
+### ntfy_docker
+
+Deploy ntfy push notification service as a Docker container.
+
+See `roles/ntfy_docker/README.md` for configuration.
+
+### technitium_dns
+
+Deploy Technitium DNS server container for local DNS resolution and blocking.
+
+See `roles/technitium_dns/README.md` for configuration.
 
 ## Architecture
 
@@ -203,7 +239,7 @@ ansible-proxmox-apps/
     │   ├── tasks/main.yml
     │   ├── handlers/main.yml
     │   └── templates/
-    └── haproxy_syslog/
+    └── haproxy/
         ├── README.md
         ├── defaults/main.yml
         ├── tasks/main.yml
@@ -219,7 +255,7 @@ See `requirements.yml` for Ansible Galaxy collection dependencies.
 Run the following to install:
 
 ```bash
-~/.local/pipx/venvs/ansible/bin/ansible-galaxy collection install -r requirements.yml
+uv tool run ansible-galaxy collection install -r requirements.yml
 ```
 
 ## Linting
@@ -227,13 +263,13 @@ Run the following to install:
 Validate code quality with ansible-lint:
 
 ```bash
-~/.local/pipx/venvs/ansible/bin/ansible-lint
+uv tool run ansible-lint
 ```
 
 Fix common issues automatically:
 
 ```bash
-~/.local/pipx/venvs/ansible/bin/ansible-lint --fix
+uv tool run ansible-lint --fix
 ```
 
 ## Contributing
