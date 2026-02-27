@@ -15,12 +15,14 @@ repos:
       - id: yamllint
         args: [-c, .yamllint]
 
-  - repo: https://github.com/ansible/ansible-lint
-    rev: v26.2.0
+  - repo: local
     hooks:
       - id: ansible-lint
+        name: ansible-lint
+        language: system
+        entry: ansible-lint
         files: \.(yaml|yml)$
-        language_version: python3.12
+        pass_filenames: false
 
   - repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.47.0
