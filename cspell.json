@@ -1,7 +1,7 @@
 {
   "version": "0.2",
   "language": "en",
-  "words": [
+  "words": ["agentic", "backdoors", "Exfiltration", "exfiltration", "toolsets", "tinyurl", "unshallow", "unsanitized",
     "ansible",
     "ansiblelint",
     "bpg",
