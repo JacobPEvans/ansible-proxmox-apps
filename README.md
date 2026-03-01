@@ -262,6 +262,29 @@ Fix common issues automatically:
 uv tool run ansible-lint --fix
 ```
 
+## Development Environment
+
+This project uses [Nix flakes](https://wiki.nixos.org/wiki/Flakes) + [direnv](https://direnv.net/) for a reproducible dev environment.
+
+### Prerequisites
+
+- [Nix](https://nixos.org/download/) with flakes enabled
+- [direnv](https://direnv.net/docs/installation.html) with [nix-direnv](https://github.com/nix-community/nix-direnv)
+
+### Setup
+
+```sh
+cd ansible-proxmox-apps/main    # or any worktree
+direnv allow                    # one-time per worktree
+```
+
+### Tools provided
+
+- `ansible`, `ansible-lint`, `molecule` — configuration management
+- `sops`, `age` — secrets management
+- `python3` with paramiko, pyyaml, jinja2 — Ansible dependencies
+- `jq`, `yq`, `pre-commit` — utilities
+
 ## Contributing
 
 1. Update inventories in `inventory/`

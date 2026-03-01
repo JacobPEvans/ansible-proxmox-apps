@@ -155,6 +155,29 @@ uv run molecule destroy    # clean up
 
 **When to run:** Any time you modify a role in `roles/` before opening a PR.
 
+## Dev Environment
+
+This repo uses [Nix flakes](https://wiki.nixos.org/wiki/Flakes) + [direnv](https://direnv.net/) for a reproducible dev environment.
+
+### Activation
+
+```sh
+direnv allow    # one-time per worktree — auto-activates on cd
+```
+
+### Manual activation
+
+```sh
+nix develop
+```
+
+### Tools provided
+
+- ansible, ansible-lint, molecule — configuration management
+- sops, age — secrets management
+- python3 with paramiko, pyyaml, jinja2, jsondiff — Ansible dependencies
+- jq, yq, pre-commit — utilities
+
 ## Related Repositories
 
 | Repo | Relationship |
