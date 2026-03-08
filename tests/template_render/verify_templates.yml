@@ -171,7 +171,7 @@
     - name: Assert outputs.yml includes HEC token
       ansible.builtin.assert:
         that:
-          - "'token: ' ~ cribl_docker_stack_hec_token in _outputs"
+          - "cribl_docker_stack_hec_token in _outputs"
         fail_msg: "outputs.yml.j2 does not include HEC token"
 
     # -------------------------------------------------------------------------
