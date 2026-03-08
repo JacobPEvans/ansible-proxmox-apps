@@ -148,7 +148,7 @@
   register: mssql_docker_version_check
   retries: 6
   delay: 10
-  until: mssql_docker_version_check.rc == 0
+  until: (mssql_docker_version_check.rc | default(-1)) == 0
   changed_when: false
   no_log: true
 
