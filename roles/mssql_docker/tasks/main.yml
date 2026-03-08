@@ -117,6 +117,7 @@
     project_src: "{{ mssql_docker_data_dir }}"
     state: present
   no_log: true
+  changed_when: false
 
 # =============================================================================
 # Health Check
