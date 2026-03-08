@@ -1,5 +1,5 @@
 ---
-qdrant_docker_image: "qdrant/qdrant:latest"
+qdrant_docker_image: "qdrant/qdrant:v1.17.0"
 qdrant_docker_container_name: qdrant
 qdrant_docker_http_port: 6333
 qdrant_docker_grpc_port: 6334

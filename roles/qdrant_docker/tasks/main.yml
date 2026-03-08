@@ -3,6 +3,17 @@
 # Deploys Qdrant vector database as a Docker container
 
 # =============================================================================
+# Validation
+# =============================================================================
+
+- name: Validate Qdrant API key is set
+  ansible.builtin.assert:
+    that:
+      - qdrant_docker_api_key | length > 0
+    fail_msg: "QDRANT_API_KEY environment variable is not set. Add it to Doppler before deploying."
+    quiet: true
+
+# =============================================================================
 # Docker Installation
 # =============================================================================
 
@@ -97,7 +108,7 @@
     state: directory
     owner: root
     group: root
-    mode: "0755"
+    mode: "0750"
 
 - name: Create qdrant snapshots directory
   ansible.builtin.file:
@@ -105,7 +116,7 @@
     state: directory
     owner: root
     group: root
-    mode: "0755"
+    mode: "0750"
 
 - name: Create qdrant config directory
   ansible.builtin.file:
@@ -113,7 +124,7 @@
     state: directory
     owner: root
     group: root
-    mode: "0755"
+    mode: "0750"
 
 # =============================================================================
 # Qdrant Configuration
@@ -167,7 +178,7 @@
 # =============================================================================
 
 - name: Check if qdrant container is running
-  ansible.builtin.command: docker ps -q --filter name=qdrant --filter status=running
+  ansible.builtin.command: docker ps -q --filter name={{ qdrant_docker_container_name }} --filter status=running
   register: qdrant_docker_running_check
   changed_when: false
   failed_when: false
