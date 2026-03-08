@@ -151,10 +151,12 @@
   until: (mssql_docker_version_check.rc | default(-1)) == 0
   changed_when: false
   no_log: true
+  tags: [molecule-notest]
 
 - name: Show SQL Server version
   ansible.builtin.debug:
     msg: "{{ mssql_docker_version_check.stdout_lines[0] }}"
+  tags: [molecule-notest]
 
 # =============================================================================
 # Sample Database Restoration
