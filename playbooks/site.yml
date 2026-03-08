@@ -150,3 +150,19 @@
     - database
   roles:
     - role: mssql_docker
+
+# =============================================================================
+# Phase 6: Qdrant Vector Database
+# AI RAG memory store for DGX Spark
+# =============================================================================
+
+- name: Configure Qdrant vector database
+  hosts: qdrant_group
+  become: true
+  gather_facts: false
+  tags:
+    - qdrant_docker
+    - vectordb
+    - ai
+  roles:
+    - role: qdrant_docker

@@ -16,7 +16,7 @@
     technitium_dns_a_records: >-
       {{
         technitium_dns_a_records | default([]) +
-        [{'name': item.value.hostname, 'ip': item.value.ansible_host}]
+        [{'name': item.value.hostname, 'ip': item.value.container_ip | default(item.value.ansible_host)}]
       }}
   loop: "{{ hostvars | dict2items }}"
   when:

@@ -1,0 +1,7 @@
+---
+qdrant_docker_image: "qdrant/qdrant:latest"
+qdrant_docker_container_name: qdrant
+qdrant_docker_http_port: 6333
+qdrant_docker_grpc_port: 6334
+qdrant_docker_data_dir: /opt/qdrant
+qdrant_docker_api_key: "{{ lookup('env', 'QDRANT_API_KEY') }}"
