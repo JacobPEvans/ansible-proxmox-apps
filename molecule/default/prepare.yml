@@ -35,3 +35,18 @@
           - python3-full
         state: present
       when: ansible_os_family == 'Debian'
+
+    - name: Create Docker config directory
+      ansible.builtin.file:
+        path: /etc/docker
+        state: directory
+        mode: "0755"
+
+    - name: Configure Docker vfs storage driver for Docker-in-Docker
+      ansible.builtin.copy:
+        dest: /etc/docker/daemon.json
+        content: |
+          {
+            "storage-driver": "vfs"
+          }
+        mode: "0644"
