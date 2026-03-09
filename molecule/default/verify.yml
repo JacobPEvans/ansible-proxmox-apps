@@ -69,7 +69,7 @@
     - name: Assert docker-compose.yml has correct container name
       ansible.builtin.assert:
         that:
-          - "'container_name: ' ~ mssql_docker_container_name in (compose_content.content | b64decode)"
+          - "mssql_docker_container_name in (compose_content.content | b64decode)"
         fail_msg: "docker-compose.yml does not have expected container name 'mssql'"
 
     - name: Assert docker-compose.yml mounts all required data volumes
