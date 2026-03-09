@@ -29,7 +29,7 @@
       "tags": ["database"],
       "node": "pve",
       "pool_id": "homelab"
-    },
+    }
   },
   "vms": {},
   "docker_vms": {

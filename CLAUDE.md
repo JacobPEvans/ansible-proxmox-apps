@@ -102,8 +102,9 @@ Template: `secrets.enc.yaml.example` — copy, fill in real values, then encrypt
 sops exec-env secrets.enc.yaml 'doppler run -- uv run ansible-playbook \
   -i inventory/hosts.yml playbooks/site.yml'
 
-# Deploy all apps (Doppler-only — skips roles requiring SOPS-only secrets)
-doppler run -- uv run ansible-playbook -i inventory/hosts.yml playbooks/site.yml
+# Deploy all apps (Doppler-only — skip SOPS-only roles like technitium_dns)
+doppler run -- uv run ansible-playbook -i inventory/hosts.yml playbooks/site.yml \
+  --skip-tags technitium_dns
 
 # Edit encrypted secrets
 sops secrets.enc.yaml
