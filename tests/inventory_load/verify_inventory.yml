@@ -12,6 +12,7 @@
 #   - haproxy_group assigned for 'loadbalancer' tagged containers   (PR #36)
 #   - cribl_edge group assigned for 'cribl'+'edge' tagged containers (PR #36)
 #   - mssql_group assigned for 'database' tagged containers          (PR #72)
+#   - apt_cacher_group assigned for 'apt-cache' tagged containers
 #   - lxc_containers populated for all terraform containers
 #   - splunk_group / cribl_docker_group populated from their sections
 #
@@ -66,6 +67,7 @@
           - "'haproxy' in groups['lxc_containers']"
           - "'cribl-edge-01' in groups['lxc_containers']"
           - "'mssql' in groups['lxc_containers']"
+          - "'apt-cacher-ng' in groups['lxc_containers']"
         fail_msg: >-
           lxc_containers group is missing terraform hosts;
           current members: {{ groups['lxc_containers'] | default([]) | join(', ') }}
@@ -115,6 +117,13 @@
           cribl_docker_group should contain 'docker-host';
           got {{ groups['cribl_docker_group'] | default([]) }}
 
+    - name: Assert apt-cacher-ng is in apt_cacher_group
+      ansible.builtin.assert:
+        that:
+          - "'apt_cacher_group' in groups"
+          - "'apt-cacher-ng' in groups['apt_cacher_group']"
+        fail_msg: "apt-cacher-ng should be in apt_cacher_group (tag: apt-cache)"
+
     - name: Display group membership summary
       ansible.builtin.debug:
         msg: |
@@ -125,3 +134,4 @@
           - mssql_group:        {{ groups['mssql_group'] | default([]) | join(', ') }}
           - splunk_group:       {{ groups['splunk_group'] | default([]) | join(', ') }}
           - cribl_docker_group: {{ groups['cribl_docker_group'] | default([]) | join(', ') }}
+          - apt_cacher_group:   {{ groups['apt_cacher_group'] | default([]) | join(', ') }}

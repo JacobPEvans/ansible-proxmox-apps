@@ -29,6 +29,16 @@
       "tags": ["database"],
       "node": "pve",
       "pool_id": "homelab"
+    },
+    "apt-cacher-ng": {
+      "vmid": 106,
+      "ip": "192.168.0.106",
+      "hostname": "apt-cacher-ng",
+      "ansible_connection": "community.proxmox.proxmox_pct_remote",
+      "ansible_pct_vmid": 106,
+      "tags": ["apt-cache", "container", "infrastructure", "terraform"],
+      "node": "pve",
+      "pool_id": "infrastructure"
     }
   },
   "vms": {},
@@ -59,7 +69,8 @@
       "splunk_hec": 8088,
       "splunk_mgmt": 8089,
       "cribl_edge_api": 9000,
-      "cribl_stream_api": 9100
+      "cribl_stream_api": 9100,
+      "apt_cacher_ng": 3142
     },
     "syslog_ports": {
       "unifi": 1514,
