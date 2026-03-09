@@ -18,6 +18,7 @@
 # Note: hosts.yml pre-populates some groups (haproxy_group, cribl_edge,
 # lxc_containers) with static hosts. These tests verify that terraform
 # dynamic hosts are correctly added on top of any static entries.
+# Static apt_cacher host has been removed from hosts.yml (container never provisioned).
 
 - name: Load Terraform inventory
   import_playbook: ../../inventory/load_terraform.yml
@@ -65,7 +66,6 @@
           - "'haproxy' in groups['lxc_containers']"
           - "'cribl-edge-01' in groups['lxc_containers']"
           - "'mssql' in groups['lxc_containers']"
-          - "'apt-cacher' in groups['lxc_containers']"
         fail_msg: >-
           lxc_containers group is missing terraform hosts;
           current members: {{ groups['lxc_containers'] | default([]) | join(', ') }}
@@ -96,13 +96,6 @@
         fail_msg: >-
           mssql_group should contain 'mssql' (database tag);
           got {{ groups['mssql_group'] | default([]) }}
-
-    - name: Verify untagged container is NOT in special groups
-      ansible.builtin.assert:
-        that:
-          - "'apt-cacher' not in (groups['haproxy_group'] | default([]))"
-          - "'apt-cacher' not in (groups['mssql_group'] | default([]))"
-        fail_msg: "apt-cacher (no tags) should not appear in haproxy_group or mssql_group"
 
     - name: Verify splunk is in splunk_group
       ansible.builtin.assert:

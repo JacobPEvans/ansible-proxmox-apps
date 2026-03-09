@@ -30,16 +30,6 @@
       "node": "pve",
       "pool_id": "homelab"
     },
-    "apt-cacher": {
-      "vmid": 191,
-      "ip": "192.168.0.191",
-      "hostname": "apt-cacher",
-      "ansible_connection": "community.proxmox.proxmox_pct_remote",
-      "ansible_pct_vmid": 191,
-      "tags": [],
-      "node": "pve",
-      "pool_id": "homelab"
-    }
   },
   "vms": {},
   "docker_vms": {

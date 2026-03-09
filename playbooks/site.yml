@@ -7,32 +7,6 @@
 
 # Configure application stacks based on Terraform infrastructure
 
-# Pre-requisite: Configure apt proxy on all LXC containers
-# This must run BEFORE any roles that use apt to install packages
-# Note: Only runs when apt_proxy tag is specified or when running full site.yml
-- name: Configure apt proxy on LXC containers
-  hosts: lxc_containers
-  become: true
-  gather_facts: false
-  tags:
-    - apt_proxy
-    - lxc
-
-  vars:
-    # Derive apt-cacher IP from gateway (VMID 106)
-    apt_cacher_ip: "{{ lookup('env', 'PROXMOX_VE_GATEWAY') | regex_replace('\\.[0-9]+$', '.106') }}"
-    apt_cacher_port: 3142
-
-  tasks:
-    - name: Configure apt proxy
-      ansible.builtin.copy:
-        dest: /etc/apt/apt.conf.d/00proxy
-        content: |
-          Acquire::http::Proxy "http://{{ apt_cacher_ip }}:{{ apt_cacher_port }}";
-        owner: root
-        group: root
-        mode: '0644'
-
 # =============================================================================
 # Phase 1: DNS Configuration
 # Technitium DNS must be configured first to enable hostname-based references

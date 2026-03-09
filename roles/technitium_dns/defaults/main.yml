@@ -4,7 +4,7 @@
 # Technitium API endpoint (internal DNS server)
 technitium_dns_api_url: "http://{{ technitium_dns_host }}:5380"
 
-# API token from Doppler secrets
+# API token from SOPS secrets (not in Doppler)
 technitium_dns_api_token: "{{ lookup('env', 'TECHNITIUM_DNS_API_TOKEN') }}"
 
 # Internal domain for A records (from Doppler)
