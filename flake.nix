@@ -41,10 +41,10 @@
           default = pkgs.mkShell {
             buildInputs = with pkgs; [
               # === Configuration Management ===
-              # ansible-core: minimal engine, no bundled collections — avoids duplicate
+              # ansible_core: minimal engine, no bundled collections — avoids duplicate
               # collection warnings when user-installed collections (requirements.yml)
               # overlap with the full ansible package's bundled versions.
-              ansible-core
+              python3Packages.ansible-core
               ansible-lint
               molecule
 
