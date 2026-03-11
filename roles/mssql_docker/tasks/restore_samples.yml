@@ -1,4 +1,25 @@
 ---
+- name: Check if sample databases already exist
+  community.docker.docker_container_exec:
+    container: "{{ mssql_docker_container_name }}"
+    argv:
+      - /opt/mssql-tools18/bin/sqlcmd
+      - -S
+      - localhost
+      - -U
+      - sa
+      - -C
+      - -Q
+      - "SELECT name FROM sys.databases WHERE name = '{{ item.name }}'"
+    env:
+      SQLCMDPASSWORD: "{{ mssql_docker_sa_password }}"
+  loop: "{{ mssql_docker_sample_databases }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: mssql_docker_db_exists
+  changed_when: false
+  no_log: true
+
 - name: Download sample database files
   ansible.builtin.get_url:
     url: "{{ item.url }}"
@@ -30,9 +51,12 @@
     env:
       SQLCMDPASSWORD: "{{ mssql_docker_sa_password }}"
   loop: "{{ mssql_docker_sample_databases }}"
-  when: item.type | default('bak') == 'bak'
+  when:
+    - item.type | default('bak') == 'bak'
+    - item.name not in mssql_docker_db_exists.results[ansible_loop.index0].stdout | default('')
   loop_control:
     label: "{{ item.name }}"
+    index_var: ansible_loop
   register: mssql_docker_restore_bak
   changed_when: "'RESTORE DATABASE successfully processed' in mssql_docker_restore_bak.stdout"
   no_log: true
@@ -57,6 +81,10 @@
     {{ mssql_docker_sample_databases
        | selectattr('type', 'defined')
        | selectattr('type', 'eq', 'sql') | list }}
+  when: item.name not in mssql_docker_db_exists.results |
+        selectattr('item.name', 'defined') |
+        map(attribute='stdout') |
+        join('')
   loop_control:
     label: "{{ item.name }}"
   changed_when: false
