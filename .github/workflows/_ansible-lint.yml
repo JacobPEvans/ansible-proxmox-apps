@@ -2,30 +2,8 @@
 name: Ansible Lint
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'playbooks/**/*.yml'
-      - 'playbooks/**/*.yaml'
-      - 'roles/**/*.yml'
-      - 'roles/**/*.yaml'
-      - 'inventory/**'
-      - 'tests/**'
-      - '.ansible-lint'
-  pull_request:
-    branches:
-      - main
-    paths:
-      - 'playbooks/**/*.yml'
-      - 'playbooks/**/*.yaml'
-      - 'roles/**/*.yml'
-      - 'roles/**/*.yaml'
-      - 'inventory/**'
-      - 'tests/**'
-      - '.ansible-lint'
+  workflow_call:
 
-# Minimum required permissions for security (least privilege)
 permissions:
   contents: read
 

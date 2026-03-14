@@ -2,22 +2,7 @@
 name: Molecule
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "molecule/**"
-      - "roles/**/*.yml"
-      - "roles/**/*.yaml"
-      - "roles/**/*.j2"
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "molecule/**"
-      - "roles/**/*.yml"
-      - "roles/**/*.yaml"
-      - "roles/**/*.j2"
+  workflow_call:
 
 permissions:
   contents: read
