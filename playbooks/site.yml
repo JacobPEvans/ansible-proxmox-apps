@@ -68,7 +68,7 @@
 # =============================================================================
 # Phase 2: Cribl Docker Swarm Stack
 # Deploy Cribl Edge and Stream on Docker VM using Swarm mode
-# This replaces the legacy LXC-based Cribl Edge/Stream and HAProxy
+# This replaces the legacy LXC-based Cribl Edge/Stream
 # =============================================================================
 
 - name: Configure Cribl Docker Swarm Stack

@@ -89,9 +89,10 @@ def infrastructure_reachable(docker_host_ip):
     sock.settimeout(5)
     try:
         sock.connect((docker_host_ip, 22))
-        sock.close()
     except (socket.timeout, ConnectionRefusedError, OSError):
         pytest.skip(
             f"Infrastructure unreachable: cannot connect to "
             f"{docker_host_ip}:22 (docker-host SSH)"
         )
+    finally:
+        sock.close()

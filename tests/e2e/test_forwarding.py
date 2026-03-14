@@ -96,13 +96,14 @@ class TestNetFlow:
         mgmt_url, user, password = splunk_creds
         port = constants["netflow_ports"]["unifi"]
 
-        send_netflow_v5(docker_host_ip, port)
+        # Use a unique src_port as a sentinel to correlate the test packet
+        sentinel_port = 40000 + (int(time.time()) % 25000)
+        send_netflow_v5(docker_host_ip, port, src_port=sentinel_port)
 
-        # NetFlow doesn't carry a text sentinel, so search for recent
-        # NetFlow events by sourcetype
+        # Filter by the sentinel src_port to avoid matching pre-existing traffic
         search_str = (
-            'search index=network earliest=-2m '
-            '| head 5'
+            f'search index=network earliest=-5m src_port={sentinel_port} '
+            f'| head 5'
         )
         deadline = time.time() + 120
 
@@ -117,7 +118,8 @@ class TestNetFlow:
             time.sleep(10)
 
         assert len(results) > 0, (
-            "NetFlow routing: no events found in index=network after 120s"
+            f"NetFlow routing: no events with src_port={sentinel_port} "
+            f"found in index=network after 120s"
         )
 
 

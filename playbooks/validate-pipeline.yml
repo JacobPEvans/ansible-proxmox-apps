@@ -23,7 +23,7 @@
   pre_tasks:
     - name: Check if host is haproxy
       ansible.builtin.set_fact:
-        is_haproxy: "{{ 'haproxy' in (host_tags | default([])) }}"
+        is_haproxy: "{{ 'haproxy' in (host_tags | default([])) or 'loadbalancer' in (host_tags | default([])) }}"
 
   tasks:
     - name: HAProxy validation tasks
@@ -390,6 +390,15 @@
     splunk_password: "{{ lookup('env', 'SPLUNK_PASSWORD') }}"
 
   tasks:
+    - name: Verify SPLUNK_PASSWORD is set
+      ansible.builtin.assert:
+        that:
+          - splunk_password | length > 0
+        fail_msg: >-
+          SPLUNK_PASSWORD environment variable must be set.
+          Run with doppler run --
+        quiet: true
+
     - name: Check netflow UDP port is listening
       ansible.builtin.shell:
         cmd: |
@@ -399,6 +408,10 @@
       register: netflow_port_check
       failed_when: netflow_port_check.rc != 0
       changed_when: false
+
+    - name: Generate unique sentinel port for NetFlow test correlation
+      ansible.builtin.set_fact:
+        netflow_sentinel_port: "{{ 40000 + (ansible_date_time.epoch | int % 25000) }}"
 
     - name: Send minimal NetFlow v5 test packet
       ansible.builtin.shell:
@@ -422,6 +435,7 @@
           )
 
           # NetFlow v5 flow record (48 bytes): minimal valid record
+          # Uses sentinel src_port for test correlation in Splunk
           record = struct.pack('!IIIHHIIIIHHBBBBHHBBH',
               0x0A000001,  # src_addr 10.0.0.1
               0x0A000002,  # dst_addr 10.0.0.2
@@ -432,7 +446,7 @@
               64,          # octets
               0,           # first_switched
               0,           # last_switched
-              8080,        # src_port
+              {{ netflow_sentinel_port }},  # src_port (sentinel)
               80,          # dst_port
               0,           # pad1
               6,           # tcp_flags
@@ -448,7 +462,7 @@
           sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
           sock.sendto(header + record, ('127.0.0.1', {{ constants.netflow_ports.unifi }}))
           sock.close()
-          print('NetFlow v5 test packet sent successfully')
+          print('NetFlow v5 test packet sent with sentinel src_port={{ netflow_sentinel_port }}')
           "
         executable: /bin/bash
       changed_when: false
@@ -473,7 +487,7 @@
         validate_certs: false
         body_format: form-urlencoded
         body:
-          search: 'search index=network sourcetype=netflow earliest=-5m | head 1'
+          search: 'search index=network earliest=-5m src_port={{ netflow_sentinel_port }} | head 1'
           output_mode: json
           exec_mode: oneshot
       register: splunk_netflow_result

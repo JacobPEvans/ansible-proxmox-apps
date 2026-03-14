@@ -18,9 +18,17 @@ if [ ! -f "$INVENTORY_FILE" ]; then
     exit 1
 fi
 
-HAPROXY_HOST="${HAPROXY_HOST:-$(jq -r '.containers.haproxy.ip' "$INVENTORY_FILE")}"
-DOCKER_HOST_IP="${DOCKER_HOST_IP:-$(jq -r '.docker_vms["docker-host"].ip' "$INVENTORY_FILE")}"
-SPLUNK_HOST="${SPLUNK_HOST:-$(jq -r '.splunk_vm.splunk.ip' "$INVENTORY_FILE")}"
+HAPROXY_HOST="${HAPROXY_HOST:-$(jq -r '.containers.haproxy.ip // empty' "$INVENTORY_FILE")}"
+DOCKER_HOST_IP="${DOCKER_HOST_IP:-$(jq -r '.docker_vms["docker-host"].ip // empty' "$INVENTORY_FILE")}"
+SPLUNK_HOST="${SPLUNK_HOST:-$(jq -r '.splunk_vm.splunk.ip // empty' "$INVENTORY_FILE")}"
+
+for var_name in HAPROXY_HOST DOCKER_HOST_IP SPLUNK_HOST; do
+    if [ -z "${!var_name}" ]; then
+        echo -e "${RED}ERROR: Could not resolve $var_name from $INVENTORY_FILE${NC}"
+        echo "Override with: export $var_name=<ip>"
+        exit 1
+    fi
+done
 
 PASSED=0
 FAILED=0

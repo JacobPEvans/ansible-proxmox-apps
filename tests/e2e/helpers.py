@@ -116,7 +116,7 @@ def wait_for_event(mgmt_url, user, password, sentinel, index, timeout=120):
     )
 
 
-def send_netflow_v5(host, port):
+def send_netflow_v5(host, port, src_port=12345, dst_port=80):
     """Send a minimal NetFlow v5 packet via UDP.
 
     Constructs a valid NetFlow v5 header with one flow record and sends
@@ -126,6 +126,8 @@ def send_netflow_v5(host, port):
     Args:
         host: Target hostname or IP address.
         port: Target UDP port number.
+        src_port: Source port in the flow record (use unique values for test correlation).
+        dst_port: Destination port in the flow record (use unique values for test correlation).
     """
     unix_secs = int(time.time())
 
@@ -152,8 +154,8 @@ def send_netflow_v5(host, port):
     # src_as(2), dst_as(2), src_mask(1), dst_mask(1), pad2(2)
     flow_record = struct.pack(
         "!IIIHHIIIIHHBBBBHHBBH",
-        0xC0A800C9,  # src_addr: 192.168.0.201
-        0xC0A800CA,  # dst_addr: 192.168.0.202
+        0xC0A800C9,  # src_addr: 192.168.0.201 (RFC 1918 test address)
+        0xC0A800CA,  # dst_addr: 192.168.0.202 (RFC 1918 test address)
         0,           # nexthop
         0,           # input interface
         0,           # output interface
@@ -161,8 +163,8 @@ def send_netflow_v5(host, port):
         64,          # octets
         0,           # first
         0,           # last
-        12345,       # src_port
-        80,          # dst_port
+        src_port,    # src_port (sentinel for test correlation)
+        dst_port,    # dst_port (sentinel for test correlation)
         0,           # pad1
         0,           # tcp_flags
         6,           # proto (TCP)

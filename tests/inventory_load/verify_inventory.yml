@@ -9,7 +9,7 @@
 #     -i inventory/hosts.yml -c local
 #
 # Covers:
-#   - haproxy_group assigned for 'haproxy' tagged containers        (PR #36)
+#   - haproxy_group assigned for 'haproxy' tagged containers        (PR #117)
 #   - cribl_edge group assigned for 'cribl'+'edge' tagged containers (PR #36)
 #   - mssql_group assigned for 'database' tagged containers          (PR #72)
 #   - apt_cacher_group assigned for 'apt-cache' tagged containers

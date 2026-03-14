@@ -22,11 +22,11 @@ class TestHAProxy:
         ["unifi", "palo_alto", "cisco_asa", "linux", "windows"],
     )
     def test_haproxy_syslog_ports(self, haproxy_host, constants, port_name):
-        """Verify HAProxy is accepting TCP connections on each syslog port."""
+        """Verify HAProxy is accepting UDP syslog on each port."""
         port = constants["syslog_ports"][port_name]
-        assert check_port_tcp(haproxy_host, port), (
-            f"HAProxy syslog port {port} ({port_name}) is not accepting "
-            f"connections on {haproxy_host}"
+        assert check_port_udp(haproxy_host, port), (
+            f"HAProxy syslog port {port} ({port_name}) is not reachable "
+            f"via UDP on {haproxy_host}"
         )
 
     def test_haproxy_stats(self, haproxy_host, constants):
@@ -109,11 +109,11 @@ class TestSplunk:
         opener = urllib.request.build_opener(handler)
 
         try:
-            response = opener.open(req, timeout=10)
-            assert response.status == 200, (
-                f"Splunk HEC health endpoint returned {response.status}, "
-                f"expected 200"
-            )
+            with opener.open(req, timeout=10) as response:
+                assert response.status == 200, (
+                    f"Splunk HEC health endpoint returned {response.status}, "
+                    f"expected 200"
+                )
         except urllib.error.URLError as exc:
             pytest.fail(
                 f"Splunk HEC health endpoint unreachable at {url}: {exc}"

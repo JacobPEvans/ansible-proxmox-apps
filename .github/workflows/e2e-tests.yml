@@ -20,8 +20,10 @@ jobs:
   e2e:
     name: Pipeline E2E Tests
     if: >-
-      !(startsWith(github.head_ref, 'release-please--branches--')
-      && github.event.pull_request.user.login == 'github-actions[bot]')
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.head.repo.full_name == github.repository
+      && !(startsWith(github.head_ref, 'release-please--branches--')
+      && github.event.pull_request.user.login == 'github-actions[bot]'))
     runs-on: [self-hosted, Linux]
     steps:
       - name: Checkout code
