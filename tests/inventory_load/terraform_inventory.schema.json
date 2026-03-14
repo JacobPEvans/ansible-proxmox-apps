@@ -37,6 +37,27 @@
     },
     "constants": {
       "$ref": "#/definitions/constants"
+    },
+    "domain": {
+      "type": "string",
+      "description": "Internal DNS domain from terraform variable"
+    },
+    "host_services": {
+      "type": "object",
+      "description": "Host-level NAS service config consumed by ansible-proxmox",
+      "properties": {
+        "nas": {
+          "type": "object",
+          "properties": {
+            "zfs_dataset": { "type": "string" },
+            "zfs_quota": { "type": "string" },
+            "mount_point": { "type": "string" },
+            "smb_share_name": { "type": "string" },
+            "directories": { "type": "array", "items": { "type": "string" } },
+            "description": { "type": "string" }
+          }
+        }
+      }
     }
   },
   "definitions": {

@@ -55,13 +55,11 @@ haproxy_netflow_port:
   frontend: 2055
   backend: 2055
 
-# Backend servers - Cribl Edge nodes
-# IP addresses derived from inventory (NEVER hardcoded)
+# Backend server - Docker Swarm host (Swarm ingress handles internal LB)
+# IP address derived from inventory (NEVER hardcoded)
 haproxy_backend_servers:
-  - name: cribl-edge-01
-    ip: "{{ hostvars['cribl_edge_01'].ansible_host }}"
-  - name: cribl-edge-02
-    ip: "{{ hostvars['cribl_edge_02'].ansible_host }}"
+  - name: docker-host
+    ip: "{{ hostvars['docker-host']['ansible_host'] }}"
 
 # Legacy variables for backwards compatibility (derived from mappings)
 haproxy_listen_ports: >-

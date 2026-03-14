@@ -9,14 +9,18 @@ readonly GREEN='\033[0;32m'
 readonly YELLOW='\033[1;33m'
 readonly NC='\033[0m' # No Color
 
-# Configuration - sourced from environment variables for flexibility
-# Users can override these before running the script:
-#   export HAPROXY_HOST=10.0.1.175
-#   export CRIBL_EDGE_HOSTS="10.0.1.180 10.0.1.181"
-#   export SPLUNK_HOST=10.0.1.200
-read -r -a CRIBL_EDGE_HOSTS <<< "${CRIBL_EDGE_HOSTS:-10.0.1.180 10.0.1.181}"
-HAPROXY_HOST="${HAPROXY_HOST:-10.0.1.175}"
-SPLUNK_HOST="${SPLUNK_HOST:-10.0.1.200}"
+# Derive IPs from terraform inventory (override with env vars if needed)
+INVENTORY_FILE="${INVENTORY_FILE:-inventory/terraform_inventory.json}"
+
+if [ ! -f "$INVENTORY_FILE" ]; then
+    echo -e "${RED}ERROR: $INVENTORY_FILE not found${NC}"
+    echo "Generate it with: terragrunt output -json ansible_inventory > $INVENTORY_FILE"
+    exit 1
+fi
+
+HAPROXY_HOST="${HAPROXY_HOST:-$(jq -r '.containers.haproxy.ip' "$INVENTORY_FILE")}"
+DOCKER_HOST_IP="${DOCKER_HOST_IP:-$(jq -r '.docker_vms["docker-host"].ip' "$INVENTORY_FILE")}"
+SPLUNK_HOST="${SPLUNK_HOST:-$(jq -r '.splunk_vm.splunk.ip' "$INVENTORY_FILE")}"
 
 PASSED=0
 FAILED=0
@@ -53,11 +57,15 @@ check "Port 1518 (Windows)" nc -z -w2 "$HAPROXY_HOST" 1518
 check "Stats page (8404)" nc -z -w2 "$HAPROXY_HOST" 8404
 echo ""
 
-# Cribl Edge checks - iterate over array safely
-echo -e "${YELLOW}Cribl Edge Nodes${NC}"
-for host in "${CRIBL_EDGE_HOSTS[@]}"; do
-    check "Cribl Edge $host:1514" nc -z -w2 "$host" 1514
-done
+# Docker Swarm Host checks (Cribl Edge via Swarm ingress)
+echo -e "${YELLOW}Docker Swarm Host ($DOCKER_HOST_IP)${NC}"
+check "Syslog 1514 (UniFi)" nc -z -w2 "$DOCKER_HOST_IP" 1514
+check "Syslog 1515 (Palo Alto)" nc -z -w2 "$DOCKER_HOST_IP" 1515
+check "Syslog 1516 (Cisco)" nc -z -w2 "$DOCKER_HOST_IP" 1516
+check "Syslog 1517 (Linux)" nc -z -w2 "$DOCKER_HOST_IP" 1517
+check "Syslog 1518 (Windows)" nc -z -w2 "$DOCKER_HOST_IP" 1518
+check "NetFlow 2055 (UDP)" nc -z -u -w2 "$DOCKER_HOST_IP" 2055
+check "Cribl Edge API (9000)" nc -z -w2 "$DOCKER_HOST_IP" 9000
 echo ""
 
 # Splunk checks

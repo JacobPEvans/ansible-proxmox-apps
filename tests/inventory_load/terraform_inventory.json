@@ -1,28 +1,38 @@
 {
   "containers": {
     "haproxy": {
-      "vmid": 190,
-      "ip": "192.168.0.190",
+      "vmid": 175,
+      "ip": "10.0.1.175",
       "hostname": "haproxy",
       "ansible_connection": "community.proxmox.proxmox_pct_remote",
-      "ansible_pct_vmid": 190,
-      "tags": ["loadbalancer"],
+      "ansible_pct_vmid": 175,
+      "tags": ["terraform", "container", "haproxy", "pipeline", "infrastructure"],
       "node": "pve",
       "pool_id": "homelab"
     },
     "cribl-edge-01": {
-      "vmid": 181,
-      "ip": "192.168.0.181",
+      "vmid": 180,
+      "ip": "10.0.1.180",
       "hostname": "cribl-edge-01",
       "ansible_connection": "community.proxmox.proxmox_pct_remote",
+      "ansible_pct_vmid": 180,
+      "tags": ["terraform", "container", "cribl", "edge", "pipeline", "logging"],
+      "node": "pve",
+      "pool_id": "homelab"
+    },
+    "cribl-edge-02": {
+      "vmid": 181,
+      "ip": "10.0.1.181",
+      "hostname": "cribl-edge-02",
+      "ansible_connection": "community.proxmox.proxmox_pct_remote",
       "ansible_pct_vmid": 181,
-      "tags": ["cribl", "edge"],
+      "tags": ["terraform", "container", "cribl", "edge", "pipeline", "logging"],
       "node": "pve",
       "pool_id": "homelab"
     },
     "mssql": {
       "vmid": 210,
-      "ip": "192.168.0.210",
+      "ip": "10.0.1.210",
       "hostname": "mssql",
       "ansible_connection": "community.proxmox.proxmox_pct_remote",
       "ansible_pct_vmid": 210,
@@ -32,7 +42,7 @@
     },
     "apt-cacher-ng": {
       "vmid": 106,
-      "ip": "192.168.0.106",
+      "ip": "10.0.1.106",
       "hostname": "apt-cacher-ng",
       "ansible_connection": "community.proxmox.proxmox_pct_remote",
       "ansible_pct_vmid": 106,
@@ -44,11 +54,11 @@
   "vms": {},
   "docker_vms": {
     "docker-host": {
-      "vmid": 180,
-      "ip": "192.168.0.180",
+      "vmid": 250,
+      "ip": "10.0.1.250",
       "hostname": "docker-host",
       "ansible_connection": "ssh",
-      "tags": ["docker", "cribl"],
+      "tags": ["terraform", "cribl", "docker", "logging", "swarm"],
       "node": "pve",
       "pool_id": "homelab"
     }
@@ -56,7 +66,7 @@
   "splunk_vm": {
     "splunk": {
       "vmid": 200,
-      "ip": "192.168.0.200",
+      "ip": "10.0.1.200",
       "hostname": "splunk",
       "ansible_connection": "ssh",
       "node": "pve"
@@ -87,5 +97,7 @@
       "mailpit_web": 8025,
       "ntfy_http": 8080
     }
-  }
+  },
+  "domain": "jacobpevans.com",
+  "host_services": {}
 }

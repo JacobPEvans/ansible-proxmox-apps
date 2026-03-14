@@ -7,7 +7,7 @@ this repo handles app config only.
 ## This Repo Owns
 
 - **Cribl Edge/Stream** (Docker Swarm on docker-host VM)
-- **HAProxy** (LXC container, legacy syslog load balancer)
+- **HAProxy** (LXC container, syslog/netflow VIP forwarding to Docker Swarm)
 - **Technitium DNS** (LXC container)
 - **apt-cacher-ng** (LXC container)
 - **Mailpit** (LXC container, SMTP relay with web UI)
@@ -18,13 +18,15 @@ this repo handles app config only.
 ## Pipeline Data Flow
 
 ```text
-Source -> Docker Swarm Host (syslog:1514-1518/udp)
+Source -> HAProxy LXC (175, TCP+UDP 1514-1518, 2055)
            |
-       Cribl Edge (2 replicas, Swarm ingress LB)
+       Docker Swarm Host (250, Swarm ingress)
+           |
+       Cribl Edge (2 replicas)
          - Pipeline: sets index + sourcetype by port
          - Output: Splunk HEC (http, port 8088)
            |
-       Splunk Enterprise (managed by ansible-splunk)
+       Splunk Enterprise (200, managed by ansible-splunk)
 ```
 
 ### Syslog Port Assignments (from terraform pipeline_constants)
