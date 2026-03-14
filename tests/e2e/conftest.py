@@ -78,21 +78,27 @@ def splunk_creds(terraform_inventory, constants):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def infrastructure_reachable(docker_host_ip):
-    """Skip all tests if the Docker Swarm host is unreachable.
+def infrastructure_reachable(docker_host_ip, haproxy_host):
+    """Skip all tests if pipeline infrastructure is unreachable.
 
-    Attempts a TCP connection to port 22 (SSH) on the docker-host with
-    a 5-second timeout. If the host is unreachable, all E2E tests are
-    skipped since the pipeline infrastructure is not available.
+    Attempts a TCP connection to port 22 (SSH) on both the docker-host
+    and haproxy with a 5-second timeout each. If either host is
+    unreachable, all E2E tests are skipped since the pipeline
+    infrastructure is not available.
     """
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.settimeout(5)
-    try:
-        sock.connect((docker_host_ip, 22))
-    except (socket.timeout, ConnectionRefusedError, OSError):
-        pytest.skip(
-            f"Infrastructure unreachable: cannot connect to "
-            f"{docker_host_ip}:22 (docker-host SSH)"
-        )
-    finally:
-        sock.close()
+    hosts = [
+        (docker_host_ip, "docker-host"),
+        (haproxy_host, "haproxy"),
+    ]
+    for host_ip, label in hosts:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(5)
+        try:
+            sock.connect((host_ip, 22))
+        except (socket.timeout, ConnectionRefusedError, OSError):
+            pytest.skip(
+                f"Infrastructure unreachable: cannot connect to "
+                f"{host_ip}:22 ({label} SSH)"
+            )
+        finally:
+            sock.close()
