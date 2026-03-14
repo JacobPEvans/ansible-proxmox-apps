@@ -19,7 +19,7 @@ jobs:
       # Runner prerequisites: self-hosted runner is pre-baked with
       # Python 3, SOPS, age keys, and pytest. No setup steps needed.
       - name: Mask secrets
-        uses: JacobPEvans/.github/actions/mask-secrets@233a4fa6955cab5c7929e887abe7972633453851  # pin to main SHA
+        uses: JacobPEvans/.github/actions/mask-secrets@3364c2e4d32c18d377e08f8e93a40a1721aff2d6  # pin to main SHA
         with:
           sops-file: secrets.enc.yaml
 
