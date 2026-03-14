@@ -49,7 +49,7 @@ def query_splunk(mgmt_url, user, password, search_str, timeout=120):
     """Execute a oneshot search against Splunk REST API.
 
     Args:
-        mgmt_url: Splunk management URL (e.g., https://10.0.1.200:8089).
+        mgmt_url: Splunk management URL (e.g., https://192.168.0.200:8089).
         user: Splunk username.
         password: Splunk password.
         search_str: SPL search string (must start with 'search').
@@ -152,8 +152,8 @@ def send_netflow_v5(host, port):
     # src_as(2), dst_as(2), src_mask(1), dst_mask(1), pad2(2)
     flow_record = struct.pack(
         "!IIIHHIIIIHHBBBBHHBBH",
-        0x0A000101,  # src_addr: 10.0.1.1
-        0x0A000102,  # dst_addr: 10.0.1.2
+        0xC0A800C9,  # src_addr: 192.168.0.201
+        0xC0A800CA,  # dst_addr: 192.168.0.202
         0,           # nexthop
         0,           # input interface
         0,           # output interface
