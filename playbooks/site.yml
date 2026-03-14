@@ -30,20 +30,31 @@
   tags:
     - apt_proxy
     - lxc
-  vars:
-    apt_cacher_ip: "{{ hostvars['apt-cacher-ng']['container_ip'] }}"
-    apt_cacher_port: >-
-      {{ hostvars['localhost']['terraform_data']['constants']['service_ports']['apt_cacher_ng']
-      | default(3142) }}
   tasks:
     - name: Configure apt proxy
+      when: "'apt-cacher-ng' in hostvars"
+      vars:
+        _apt_cache_ip: >-
+          {{ hostvars['apt-cacher-ng']['container_ip'] }}
+        _apt_cache_port: >-
+          {{ hostvars['localhost']['terraform_data']
+             ['constants']['service_ports']['apt_cacher_ng']
+             | default(3142) }}
       ansible.builtin.copy:
         dest: /etc/apt/apt.conf.d/00proxy
         content: |
-          Acquire::http::Proxy "http://{{ apt_cacher_ip }}:{{ apt_cacher_port }}";
+          Acquire::http::Proxy
+            "http://{{ _apt_cache_ip }}:{{ _apt_cache_port }}";
         owner: root
         group: root
         mode: '0644'
+
+    - name: Skip apt proxy configuration
+      when: "'apt-cacher-ng' not in hostvars"
+      ansible.builtin.debug:
+        msg: >-
+          apt-cacher-ng not in inventory,
+          skipping proxy configuration
 
 # =============================================================================
 # Phase 1: DNS Configuration

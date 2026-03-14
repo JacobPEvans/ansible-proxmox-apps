@@ -4,15 +4,16 @@
 
 inputs:
 {% for port in cribl_docker_stack_syslog_ports %}
-  # Syslog TCP listener on port {{ port }}
-  syslog:in_syslog_{{ port }}_tcp:
-    id: in_syslog_{{ port }}_tcp
+  # Syslog listener on port {{ port }} (TCP + UDP)
+  in_syslog_{{ port }}:
+    id: in_syslog_{{ port }}
     type: syslog
     disabled: false
     pipeline: syslog
-    sendToRoutes: true
+    sendToRoutes: false
     host: "0.0.0.0"
-    port: {{ port }}
+    tcpPort: {{ port }}
+    udpPort: {{ port }}
     tls:
       disabled: true
     maxActiveCxn: 100
@@ -21,31 +22,21 @@ inputs:
     activityLogSampleRate: 100
     enableMultiline: false
     pqEnabled: true
-
-  # Syslog UDP listener on port {{ port }}
-  syslog:in_syslog_{{ port }}_udp:
-    id: in_syslog_{{ port }}_udp
-    type: syslog
-    disabled: false
-    pipeline: syslog
-    sendToRoutes: true
-    host: "0.0.0.0"
-    port: {{ port }}
-    udpMode: true
-    enableProxyHeader: false
-    captureHeaders: false
-    activityLogSampleRate: 100
-    enableMultiline: false
-    pqEnabled: true
+    connections:
+      - output: splunk_hec
+        pipeline: syslog
 
 {% endfor %}
   # NetFlow UDP listener on port {{ cribl_docker_stack_netflow_port }}
-  netflow:in_netflow:
+  in_netflow:
     id: in_netflow
     type: netflow
     disabled: false
     pipeline: syslog
-    sendToRoutes: true
+    sendToRoutes: false
     host: "0.0.0.0"
     port: {{ cribl_docker_stack_netflow_port }}
     pqEnabled: true
+    connections:
+      - output: splunk_hec
+        pipeline: syslog

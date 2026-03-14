@@ -3,7 +3,9 @@
 
 # Package management
 haproxy_package_name: haproxy
-haproxy_nginx_package_name: nginx
+haproxy_nginx_package_name:
+  - nginx
+  - libnginx-mod-stream
 
 # Service configuration
 haproxy_service_name: haproxy
@@ -63,8 +65,7 @@ haproxy_backend_servers:
 
 # Legacy variables for backwards compatibility (derived from mappings)
 haproxy_listen_ports: >-
-  {{ haproxy_syslog_port_mappings | map(attribute='frontend') | list
-     + [haproxy_netflow_port.frontend] }}
+  {{ haproxy_syslog_port_mappings | map(attribute='frontend') | list }}
 haproxy_nginx_udp_ports: >-
   {{ haproxy_syslog_port_mappings | map(attribute='frontend') | list
      + [haproxy_netflow_port.frontend] }}

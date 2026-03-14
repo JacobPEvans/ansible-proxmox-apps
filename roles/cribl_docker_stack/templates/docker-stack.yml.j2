@@ -36,10 +36,10 @@ services:
         mode: ingress
     # Bind mount config files from host (deployed by Ansible)
     volumes:
-      - {{ cribl_docker_stack_config_dir }}/inputs.yml:/opt/cribl/local/cribl/inputs.yml:ro
-      - {{ cribl_docker_stack_config_dir }}/outputs.yml:/opt/cribl/local/cribl/outputs.yml:ro
-      - {{ cribl_docker_stack_config_dir }}/routes.yml:/opt/cribl/local/cribl/routes.yml:ro
-      - {{ cribl_docker_stack_config_dir }}/pipelines:/opt/cribl/local/cribl/pipelines:ro
+      - {{ cribl_docker_stack_config_dir }}/inputs.yml:/opt/cribl/local/edge/inputs.yml:ro
+      - {{ cribl_docker_stack_config_dir }}/outputs.yml:/opt/cribl/local/edge/outputs.yml:ro
+      - {{ cribl_docker_stack_config_dir }}/routes.yml:/opt/cribl/local/edge/routes.yml:ro
+      - {{ cribl_docker_stack_config_dir }}/pipelines:/opt/cribl/local/edge/pipelines:ro
     deploy:
       mode: replicated
       replicas: {{ cribl_docker_stack_edge_replicas }}
