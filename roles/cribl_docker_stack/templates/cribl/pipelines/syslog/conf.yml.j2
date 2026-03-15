@@ -21,7 +21,7 @@ functions:
             __inputId.includes('1516') ? 'firewall' :
             __inputId.includes('1517') ? 'os' :
             __inputId.includes('1518') ? 'os' :
-            __inputId.includes('netflow') ? 'network' :
+            __inputId.includes('ipfix') ? 'network' :
             'main'
         - name: sourcetype
           value: >-
@@ -30,16 +30,16 @@ functions:
             __inputId.includes('1516') ? 'cisco:asa' :
             __inputId.includes('1517') ? 'syslog' :
             __inputId.includes('1518') ? 'syslog' :
-            __inputId.includes('netflow') ? 'netflow' :
+            __inputId.includes('ipfix') ? 'ipfix' :
             'syslog'
         - name: source
           value: >-
-            __inputId.includes('netflow') ? 'netflow:2055' :
+            __inputId.includes('ipfix') ? 'ipfix:2055' :
             'syslog:' + ((__inputId.match(/\d{4}/) || ['0000'])[0])
 
   # Extract host from syslog message if available
   - id: regex_extract
-    filter: "!__inputId.includes('netflow')"
+    filter: "!__inputId.includes('ipfix')"
     disabled: false
     conf:
       source: _raw

@@ -24,11 +24,6 @@ services:
         protocol: udp
         mode: ingress
 {% endfor %}
-      # NetFlow port {{ cribl_docker_stack_netflow_port }} (UDP)
-      - target: {{ cribl_docker_stack_netflow_port }}
-        published: {{ cribl_docker_stack_netflow_port }}
-        protocol: udp
-        mode: ingress
       # Cribl Edge Web UI (Edge API is on port 9420 internally)
       - target: 9420
         published: {{ cribl_docker_stack_edge_web_port }}
@@ -36,10 +31,10 @@ services:
         mode: ingress
     # Bind mount config files from host (deployed by Ansible)
     volumes:
-      - {{ cribl_docker_stack_config_dir }}/inputs.yml:/opt/cribl/local/edge/inputs.yml:ro
-      - {{ cribl_docker_stack_config_dir }}/outputs.yml:/opt/cribl/local/edge/outputs.yml:ro
-      - {{ cribl_docker_stack_config_dir }}/routes.yml:/opt/cribl/local/edge/routes.yml:ro
-      - {{ cribl_docker_stack_config_dir }}/pipelines:/opt/cribl/local/edge/pipelines:ro
+      - {{ cribl_docker_stack_config_dir }}/inputs.yml:/opt/cribl/local/edge/inputs.yml
+      - {{ cribl_docker_stack_config_dir }}/outputs.yml:/opt/cribl/local/edge/outputs.yml
+      - {{ cribl_docker_stack_config_dir }}/routes.yml:/opt/cribl/local/edge/routes.yml
+      - {{ cribl_docker_stack_config_dir }}/pipelines:/opt/cribl/local/edge/pipelines
     deploy:
       mode: replicated
       replicas: {{ cribl_docker_stack_edge_replicas }}
@@ -81,9 +76,16 @@ services:
         published: {{ cribl_docker_stack_stream_web_port }}
         protocol: tcp
         mode: ingress
+      # IPFIX/NetFlow port {{ cribl_docker_stack_netflow_port }} (UDP)
+      - target: {{ cribl_docker_stack_netflow_port }}
+        published: {{ cribl_docker_stack_netflow_port }}
+        protocol: udp
+        mode: ingress
     volumes:
       - cribl-stream-state:/opt/cribl/state
-      - cribl-stream-config:/opt/cribl/local
+      - {{ cribl_docker_stack_config_dir }}/stream/inputs.yml:/opt/cribl/local/cribl/inputs.yml
+      - {{ cribl_docker_stack_config_dir }}/stream/outputs.yml:/opt/cribl/local/cribl/outputs.yml
+      - {{ cribl_docker_stack_config_dir }}/stream/pipelines:/opt/cribl/local/cribl/pipelines
     deploy:
       mode: replicated
       replicas: {{ cribl_docker_stack_stream_replicas }}
@@ -118,8 +120,5 @@ networks:
     attachable: true
 
 volumes:
-  # Note: Edge volumes removed - replicas are ephemeral
   cribl-stream-state:
-    driver: local
-  cribl-stream-config:
     driver: local

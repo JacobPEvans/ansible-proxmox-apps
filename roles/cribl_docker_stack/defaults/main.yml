@@ -8,8 +8,8 @@ cribl_docker_stack_name: cribl
 # Docker Swarm initialization
 cribl_docker_stack_swarm_advertise_addr: "{{ ansible_default_ipv4.address }}"
 
-# Cribl image settings - pinned to specific version for reproducibility
-cribl_docker_stack_image: "cribl/cribl:4.10.1"
+# Cribl image settings
+cribl_docker_stack_image: "cribl/cribl:latest"
 
 # Cribl Edge configuration
 # Note: Sized for 4GB VM with 4 total replicas (2 Edge + 2 Stream)

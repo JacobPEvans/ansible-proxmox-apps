@@ -140,7 +140,7 @@
   register: cribl_docker_stack_routes_config
   notify: restart cribl services
 
-- name: Deploy Cribl syslog pipeline configuration
+- name: Deploy Cribl Edge syslog pipeline configuration
   ansible.builtin.template:
     src: cribl/pipelines/syslog/conf.yml.j2
     dest: "{{ cribl_docker_stack_config_dir }}/pipelines/syslog/conf.yml"
@@ -148,6 +148,47 @@
     group: root
     mode: "0644"
   register: cribl_docker_stack_pipeline_config
+  notify: restart cribl services
+
+# =============================================================================
+# Cribl Stream Configuration (IPFIX/NetFlow)
+# =============================================================================
+
+- name: Create Stream config directories
+  ansible.builtin.file:
+    path: "{{ cribl_docker_stack_config_dir }}/stream/pipelines/ipfix"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+    recurse: true
+
+- name: Deploy Stream inputs configuration
+  ansible.builtin.template:
+    src: stream/inputs.yml.j2
+    dest: "{{ cribl_docker_stack_config_dir }}/stream/inputs.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart cribl services
+
+- name: Deploy Stream outputs configuration
+  ansible.builtin.template:
+    src: stream/outputs.yml.j2
+    dest: "{{ cribl_docker_stack_config_dir }}/stream/outputs.yml"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  notify: restart cribl services
+
+- name: Deploy Stream IPFIX pipeline configuration
+  ansible.builtin.template:
+    src: stream/pipelines/ipfix/conf.yml.j2
+    dest: "{{ cribl_docker_stack_config_dir }}/stream/pipelines/ipfix/conf.yml"
+    owner: root
+    group: root
+    mode: "0644"
   notify: restart cribl services
 
 # =============================================================================
