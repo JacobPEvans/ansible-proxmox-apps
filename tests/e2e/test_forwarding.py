@@ -26,7 +26,7 @@ class TestIndexRouting:
     """Verify syslog ports route to the correct Splunk indexes."""
 
     def test_unifi_index_routing(
-        self, docker_host_ip, constants, splunk_creds
+        self, haproxy_host, constants, splunk_creds
     ):
         """Verify port 1514 (UniFi) routes to index=unifi.
 
@@ -43,7 +43,7 @@ class TestIndexRouting:
             f"e2e-test - - - {sentinel}"
         )
 
-        send_udp_syslog(docker_host_ip, port, message)
+        send_udp_syslog(haproxy_host, port, message)
 
         results = wait_for_event(
             mgmt_url, user, password, sentinel, index="unifi", timeout=120
@@ -54,7 +54,7 @@ class TestIndexRouting:
         )
 
     def test_firewall_index_routing(
-        self, docker_host_ip, constants, splunk_creds
+        self, haproxy_host, constants, splunk_creds
     ):
         """Verify port 1515 (Palo Alto) routes to index=firewall.
 
@@ -71,7 +71,7 @@ class TestIndexRouting:
             f"e2e-test - - - {sentinel}"
         )
 
-        send_udp_syslog(docker_host_ip, port, message)
+        send_udp_syslog(haproxy_host, port, message)
 
         results = wait_for_event(
             mgmt_url, user, password, sentinel, index="firewall", timeout=120
@@ -86,19 +86,19 @@ class TestNetFlow:
     """Verify NetFlow v5 data is routed to the correct index."""
 
     def test_netflow_routing(
-        self, docker_host_ip, constants, splunk_creds
+        self, haproxy_host, constants, splunk_creds
     ):
         """Verify NetFlow v5 UDP traffic routes to index=network.
 
         Sends a minimal NetFlow v5 packet to the NetFlow port on the
-        Docker Swarm host and verifies data appears in the network index.
+        HAProxy host and verifies data appears in the network index.
         """
         mgmt_url, user, password = splunk_creds
         port = constants["netflow_ports"]["unifi"]
 
         # Use a unique src_port as a sentinel to correlate the test packet
         sentinel_port = 40000 + (int(time.time()) % 25000)
-        send_netflow_v5(docker_host_ip, port, src_port=sentinel_port)
+        send_netflow_v5(haproxy_host, port, src_port=sentinel_port)
 
         # Filter by the sentinel src_port to avoid matching pre-existing traffic
         search_str = (

@@ -52,8 +52,9 @@ def haproxy_host(terraform_inventory):
 def cribl_edge_ips(terraform_inventory):
     """Return list of Cribl Edge LXC IPs from inventory.
 
-    Discovers Edge containers by matching the 'edge' tag in the
-    containers section of the terraform inventory.
+    Discovers Edge containers by matching both 'edge' and 'cribl' tags
+    in the containers section of the terraform inventory, matching the
+    predicate used in inventory/load_terraform.yml.
     """
     containers = terraform_inventory.get("containers", {})
     ips = [
@@ -71,14 +72,16 @@ def cribl_edge_ips(terraform_inventory):
 def cribl_stream_ips(terraform_inventory):
     """Return list of Cribl Stream LXC IPs from inventory.
 
-    Discovers Stream containers by matching the 'stream' tag in the
-    containers section of the terraform inventory.
+    Discovers Stream containers by matching both 'stream' and 'cribl' tags
+    in the containers section of the terraform inventory, matching the
+    predicate used in inventory/load_terraform.yml.
     """
     containers = terraform_inventory.get("containers", {})
     ips = [
         info["ip"]
         for info in containers.values()
         if "stream" in info.get("tags", [])
+        and "cribl" in info.get("tags", [])
     ]
     if not ips:
         pytest.skip("No Cribl Stream LXC containers found in inventory")
@@ -109,17 +112,22 @@ def splunk_creds(terraform_inventory, constants):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def infrastructure_reachable(cribl_edge_ips, cribl_stream_ips, haproxy_host):
+def infrastructure_reachable(
+    cribl_edge_ips, cribl_stream_ips, haproxy_host, constants
+):
     """Skip all tests if pipeline infrastructure is unreachable.
 
-    Attempts a TCP connection to the Cribl Edge API port (9000) on the
-    first Edge LXC, the Cribl Stream API port (9100) on the first
-    Stream LXC, and port 22 (SSH) on HAProxy with a 5-second timeout
-    each. If any host is unreachable, all E2E tests are skipped.
+    Attempts a TCP connection to the Cribl Edge API port on the first
+    Edge LXC, the Cribl Stream API port on the first Stream LXC, and
+    port 22 (SSH) on HAProxy with a 5-second timeout each. Ports are
+    read from terraform constants. If any host is unreachable, all E2E
+    tests are skipped.
     """
+    edge_api_port = constants["service_ports"]["cribl_edge_api"]
+    stream_api_port = constants["service_ports"]["cribl_stream_api"]
     hosts = [
-        (cribl_edge_ips[0], 9000, "cribl-edge"),
-        (cribl_stream_ips[0], 9100, "cribl-stream"),
+        (cribl_edge_ips[0], edge_api_port, "cribl-edge"),
+        (cribl_stream_ips[0], stream_api_port, "cribl-stream"),
         (haproxy_host, 22, "haproxy"),
     ]
     for host_ip, port, label in hosts:
