@@ -71,11 +71,7 @@ jobs:
               - 'roles/**/*.yaml'
               - 'roles/**/*.j2'
             e2e:
-              - 'roles/**'
-              - 'playbooks/**'
               - 'tests/e2e/**'
-              - 'scripts/**'
-              - 'inventory/**'
 
   # ==========================================================================
   # CONDITIONAL CHECKS (call reusable workflows)
