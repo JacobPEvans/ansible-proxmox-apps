@@ -13,7 +13,7 @@ NetFlow Sources -> HAProxy LXC --> Cribl Stream LXCs --> Splunk HEC
 - **Syslog Sources**: Network devices, hosts, and applications sending syslog
 - **NetFlow Sources**: Network devices sending IPFIX/NetFlow data
 - **HAProxy**: Load balances syslog traffic to Cribl Edge LXCs and netflow traffic to Cribl Stream LXCs
-- **Cribl Edge**: Native install on LXC containers (cribl_edge_group) for syslog ingestion and processing
+- **Cribl Edge**: Native install on LXC containers (cribl_edge) for syslog ingestion and processing
 - **Cribl Stream**: Native install on LXC containers (cribl_stream_group) for netflow/IPFIX processing
 - **Splunk HEC**: Receives processed events via HTTP Event Collector
 

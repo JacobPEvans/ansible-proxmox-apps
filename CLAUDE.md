@@ -78,7 +78,7 @@ Port constants come from `terraform_data.constants`
 ### Groups (from terraform inventory)
 
 - `lxc_containers`: All LXC containers (`proxmox_pct_remote` connection)
-- `cribl_edge_group`: Cribl Edge LXC containers (syslog processing)
+- `cribl_edge`: Cribl Edge LXC containers (syslog processing)
 - `cribl_stream_group`: Cribl Stream LXC containers (netflow/IPFIX processing)
 - `docker_vms` / `cribl_docker_group`: Docker Swarm hosts (SSH, testing/dev only)
 - `mailpit_group`: Containers tagged `smtp` (Mailpit SMTP relay)

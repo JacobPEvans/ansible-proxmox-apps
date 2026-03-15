@@ -14,9 +14,25 @@ Molecule tests, and non-production workflows.
 For production syslog and netflow processing, use:
 
 - **`cribl_edge` role**: Native Cribl Edge on LXC containers
-  (`cribl_edge_group`) for syslog ingestion and processing
+  (`cribl_edge`) for syslog ingestion and processing
 - **`cribl_stream` role**: Native Cribl Stream on LXC containers
   (`cribl_stream_group`) for netflow/IPFIX processing
+
+## Installation
+
+This role is included in the `ansible-proxmox-apps` repository. No
+separate installation is required. Ensure Docker and Docker Swarm are
+configured on the target VM before running.
+
+## Usage
+
+Run the role against the `cribl_docker_group` inventory group:
+
+```bash
+doppler run -- uv run ansible-playbook \
+  -i inventory/hosts.yml playbooks/site.yml \
+  --limit cribl_docker_group
+```
 
 ## Architecture
 
