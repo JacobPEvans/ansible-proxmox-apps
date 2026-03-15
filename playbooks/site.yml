@@ -191,7 +191,7 @@
 - name: Deploy GitHub Actions runners
   hosts: docker_vms
   become: true
-  gather_facts: true
+  gather_facts: false
   tags:
     - github_runner
     - ci

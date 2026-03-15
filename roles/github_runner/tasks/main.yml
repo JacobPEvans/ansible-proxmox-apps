@@ -15,23 +15,17 @@
 # Build Files
 # =============================================================================
 
-- name: Copy Dockerfile
+- name: Copy build files
   ansible.builtin.copy:
-    src: Dockerfile
-    dest: "{{ github_runner_work_dir }}/Dockerfile"
+    src: "{{ item.src }}"
+    dest: "{{ github_runner_work_dir }}/{{ item.src }}"
     owner: root
     group: root
-    mode: "0644"
-  register: github_runner_dockerfile
-
-- name: Copy entrypoint script
-  ansible.builtin.copy:
-    src: entrypoint.sh
-    dest: "{{ github_runner_work_dir }}/entrypoint.sh"
-    owner: root
-    group: root
-    mode: "0755"
-  register: github_runner_entrypoint
+    mode: "{{ item.mode }}"
+  loop:
+    - { src: Dockerfile, mode: "0644" }
+    - { src: entrypoint.sh, mode: "0755" }
+  register: github_runner_build_files
 
 # =============================================================================
 # Docker Compose Deployment
@@ -55,7 +49,7 @@
     build:
       path: "{{ github_runner_work_dir }}"
       pull: true
-    force_source: "{{ github_runner_dockerfile.changed or github_runner_entrypoint.changed }}"
+    force_source: "{{ github_runner_build_files.changed }}"
 
 # =============================================================================
 # Python venv for Ansible Docker modules
@@ -102,9 +96,11 @@
   changed_when: false
 
 - name: Assert all runner replicas are running
+  vars:
+    _runner_count: "{{ github_runner_ps.stdout | from_json | length }}"
   ansible.builtin.assert:
     that:
-      - github_runner_ps.stdout | from_json | length >= github_runner_replicas
+      - _runner_count | int >= github_runner_replicas | int
     fail_msg: >-
       Expected {{ github_runner_replicas }} runner containers but found
-      {{ github_runner_ps.stdout | from_json | length }}
+      {{ _runner_count }}
