@@ -182,3 +182,19 @@
     - ai
   roles:
     - role: qdrant_docker
+
+# =============================================================================
+# Phase 7: GitHub Actions Runners
+# CI runners on docker-host VM — isolated from dev/test workloads
+# =============================================================================
+
+- name: Deploy GitHub Actions runners
+  hosts: docker_vms
+  become: true
+  gather_facts: true
+  tags:
+    - github_runner
+    - ci
+  roles:
+    - role: github_runner
+      when: github_runner_token is defined

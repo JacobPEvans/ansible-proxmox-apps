@@ -13,6 +13,7 @@ this repo handles app config only.
 - **apt-cacher-ng** (LXC container)
 - **Mailpit** (LXC container, SMTP relay with web UI)
 - **ntfy** (LXC container, push notification server)
+- **GitHub Actions Runners** (`github_runner` role — Docker Compose on docker-host VM)
 
 **This repo does NOT own Splunk.** Splunk is managed by `ansible-splunk`.
 
@@ -43,6 +44,16 @@ Source -> HAProxy LXC (175, TCP+UDP 514-518, 1514-1518, 2055)
 Docker Swarm on docker-host (250) is the non-production zone for development
 and testing only. High-volume network traffic must never flow through
 Docker's virtualized networking stack.
+
+### docker-host VM (250) — Workload Classes
+
+| Class | Services | Network | Ansible Tags |
+| --- | --- | --- | --- |
+| **CI (production)** | GitHub Actions runners | `ci_runners` bridge | `github_runner` |
+| **Dev/Test** | Cribl Docker Stack, mssql, etc. | Swarm overlay / default bridge | `cribl_docker_stack`, `mssql_docker` |
+
+These workload classes are isolated by Docker network and Compose project.
+CI runners MUST NOT share Docker networks with dev/test services.
 
 ### Syslog Port Assignments (from terraform pipeline_constants)
 
@@ -80,7 +91,7 @@ Port constants come from `terraform_data.constants`
 - `lxc_containers`: All LXC containers (`proxmox_pct_remote` connection)
 - `cribl_edge`: Cribl Edge LXC containers (syslog processing)
 - `cribl_stream_group`: Cribl Stream LXC containers (netflow/IPFIX processing)
-- `docker_vms` / `cribl_docker_group`: Docker Swarm hosts (SSH, testing/dev only)
+- `docker_vms` / `cribl_docker_group`: Docker Swarm hosts (SSH, testing/dev + CI runners)
 - `mailpit_group`: Containers tagged `smtp` (Mailpit SMTP relay)
 - `ntfy_group`: Containers tagged `push` (ntfy push notifications)
 
@@ -102,6 +113,7 @@ Port constants come from `terraform_data.constants`
 | `MAILPIT_RELAY_USERNAME` | SMTP relay username | SOPS |
 | `MAILPIT_RELAY_PASSWORD` | SMTP relay password / app password | Doppler / SOPS |
 | `MSSQL_SA_PASSWORD` | SQL Server SA password (for mssql_docker role) | SOPS |
+| `GITHUB_RUNNER_TOKEN` | GitHub Actions runner registration token (1h expiry) | SOPS |
 
 ## Secrets Management
 

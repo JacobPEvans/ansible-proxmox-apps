@@ -1,0 +1,26 @@
+---
+services:
+  runner:
+    image: "{{ github_runner_image_name }}:{{ github_runner_image_tag }}"
+    deploy:
+      replicas: {{ github_runner_replicas }}
+      resources:
+        limits:
+          cpus: "{{ github_runner_cpu_limit }}"
+          memory: "{{ github_runner_memory_limit }}"
+    environment:
+      GITHUB_REPOSITORY: "{{ github_runner_repository }}"
+      RUNNER_TOKEN: "{{ github_runner_token }}"
+      RUNNER_LABELS: "{{ github_runner_labels }}"
+      RUNNER_NAME_PREFIX: "{{ github_runner_name_prefix }}"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    networks:
+      - ci_runners
+
+networks:
+  ci_runners:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.enable_ip_masquerade: "true"

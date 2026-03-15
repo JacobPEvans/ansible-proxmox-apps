@@ -1,0 +1,11 @@
+---
+github_runner_image_name: "github-runner"
+github_runner_image_tag: "latest"
+github_runner_replicas: 2
+github_runner_repository: "JacobPEvans/ansible-proxmox-apps"
+github_runner_labels: "self-hosted,Linux,X64,proxmox"
+github_runner_name_prefix: "proxmox-runner"
+github_runner_work_dir: "/opt/github-runner"
+# Resource limits per runner container
+github_runner_cpu_limit: "2.0"
+github_runner_memory_limit: "3g"

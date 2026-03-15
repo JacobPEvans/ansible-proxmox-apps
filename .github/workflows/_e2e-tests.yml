@@ -2,6 +2,7 @@
 name: E2E Pipeline Tests
 
 on:
+  workflow_call:
   workflow_dispatch:
 
 permissions:
@@ -10,7 +11,6 @@ permissions:
 jobs:
   e2e:
     name: Pipeline E2E Tests
-    if: github.event_name == 'workflow_dispatch'
     runs-on: [self-hosted, Linux]
     steps:
       - name: Checkout code

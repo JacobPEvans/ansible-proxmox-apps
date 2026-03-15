@@ -1,0 +1,83 @@
+---
+# =============================================================================
+# Work Directory Setup
+# =============================================================================
+
+- name: Create GitHub runner work directory
+  ansible.builtin.file:
+    path: "{{ github_runner_work_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+# =============================================================================
+# Build Files
+# =============================================================================
+
+- name: Copy Dockerfile
+  ansible.builtin.copy:
+    src: Dockerfile
+    dest: "{{ github_runner_work_dir }}/Dockerfile"
+    owner: root
+    group: root
+    mode: "0644"
+  register: github_runner_dockerfile
+
+- name: Copy entrypoint script
+  ansible.builtin.copy:
+    src: entrypoint.sh
+    dest: "{{ github_runner_work_dir }}/entrypoint.sh"
+    owner: root
+    group: root
+    mode: "0755"
+  register: github_runner_entrypoint
+
+# =============================================================================
+# Docker Compose Deployment
+# =============================================================================
+
+- name: Deploy docker-compose template
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ github_runner_work_dir }}/docker-compose.yml"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  register: github_runner_compose
+
+- name: Build runner image
+  community.docker.docker_image:
+    name: "{{ github_runner_image_name }}"
+    tag: "{{ github_runner_image_tag }}"
+    source: build
+    build:
+      path: "{{ github_runner_work_dir }}"
+      pull: true
+    force_source: "{{ github_runner_dockerfile.changed or github_runner_entrypoint.changed }}"
+
+- name: Deploy GitHub Actions runners via docker compose
+  ansible.builtin.command:
+    cmd: docker compose -p github-runner up -d
+    chdir: "{{ github_runner_work_dir }}"
+  changed_when: github_runner_compose.changed or github_runner_dockerfile.changed or github_runner_entrypoint.changed
+
+# =============================================================================
+# Health Check
+# =============================================================================
+
+- name: Verify runner containers are running
+  ansible.builtin.command:
+    cmd: docker compose -p github-runner ps --format json
+    chdir: "{{ github_runner_work_dir }}"
+  register: github_runner_ps
+  changed_when: false
+
+- name: Assert all runner replicas are running
+  ansible.builtin.assert:
+    that:
+      - github_runner_ps.stdout | from_json | length >= github_runner_replicas
+    fail_msg: >-
+      Expected {{ github_runner_replicas }} runner containers but found
+      {{ github_runner_ps.stdout | from_json | length }}

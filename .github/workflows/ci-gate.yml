@@ -49,6 +49,7 @@ jobs:
     outputs:
       ansible: ${{ steps.filter.outputs.ansible }}
       molecule: ${{ steps.filter.outputs.molecule }}
+      e2e: ${{ steps.filter.outputs.e2e }}
     steps:
       - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v4
@@ -69,6 +70,12 @@ jobs:
               - 'roles/**/*.yml'
               - 'roles/**/*.yaml'
               - 'roles/**/*.j2'
+            e2e:
+              - 'roles/**'
+              - 'playbooks/**'
+              - 'tests/e2e/**'
+              - 'scripts/**'
+              - 'inventory/**'
 
   # ==========================================================================
   # CONDITIONAL CHECKS (call reusable workflows)
@@ -85,17 +92,23 @@ jobs:
     if: needs.changes.outputs.molecule == 'true'
     uses: ./.github/workflows/_molecule.yml
 
+  e2e:
+    name: E2E Tests
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true'
+    uses: ./.github/workflows/_e2e-tests.yml
+
   # ==========================================================================
   # MERGE GATE - The ONLY required check in branch protection
   # ==========================================================================
   gate:
     name: Merge Gate
-    needs: [changes, ansible-lint, molecule]
+    needs: [changes, ansible-lint, molecule, e2e]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - name: Check all results
         uses: re-actors/alls-green@release/v1
         with:
-          allowed-skips: ansible-lint, molecule
+          allowed-skips: ansible-lint, molecule, e2e
           jobs: ${{ toJSON(needs) }}
