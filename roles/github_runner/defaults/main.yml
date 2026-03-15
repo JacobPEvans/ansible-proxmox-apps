@@ -6,6 +6,13 @@ github_runner_repository: "JacobPEvans/ansible-proxmox-apps"
 github_runner_labels: "self-hosted,Linux,X64,proxmox"
 github_runner_name_prefix: "proxmox-runner"
 github_runner_work_dir: "/opt/github-runner"
+
+# Runner registration token from SOPS secrets (via env var).
+# Uses default(omit) so the variable stays undefined when the env var is
+# absent, allowing the `when: github_runner_token is defined` guard in
+# site.yml to skip the role gracefully.
+github_runner_token: "{{ lookup('env', 'GITHUB_RUNNER_TOKEN') | default(omit) }}"
+
 # Resource limits per runner container
 github_runner_cpu_limit: "2.0"
 github_runner_memory_limit: "3g"

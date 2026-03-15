@@ -14,9 +14,11 @@ if [ ! -f .runner ]; then
     --replace
 fi
 
-# Clear the registration token from the environment after config completes.
-# The token is single-use and expires in 1h, but no reason to leave it visible
-# via /proc/*/environ or docker inspect longer than necessary.
+# Clear the registration token from the process environment after config
+# completes.  The token is single-use and expires in 1h, but unsetting it
+# removes it from /proc/*/environ at runtime.  Note: docker inspect still
+# shows the original container env config — for that threat model, use
+# Docker secrets or a file-based approach instead.
 unset RUNNER_TOKEN
 
 cleanup() {
