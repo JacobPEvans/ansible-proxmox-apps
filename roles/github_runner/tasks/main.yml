@@ -41,16 +41,6 @@
   no_log: true
   register: github_runner_compose
 
-- name: Build runner image
-  community.docker.docker_image:
-    name: "{{ github_runner_image_name }}"
-    tag: "{{ github_runner_image_tag }}"
-    source: build
-    build:
-      path: "{{ github_runner_work_dir }}"
-      pull: true
-    force_source: "{{ github_runner_build_files.changed }}"
-
 # =============================================================================
 # Python venv for Ansible Docker modules
 # =============================================================================
@@ -76,6 +66,16 @@
   ansible.builtin.set_fact:
     ansible_python_interpreter: /opt/ansible-venv/bin/python
 
+- name: Build runner image
+  community.docker.docker_image:
+    name: "{{ github_runner_image_name }}"
+    tag: "{{ github_runner_image_tag }}"
+    source: build
+    build:
+      path: "{{ github_runner_work_dir }}"
+      pull: true
+    force_source: "{{ github_runner_build_files.changed }}"
+
 - name: Deploy GitHub Actions runners via docker compose
   community.docker.docker_compose_v2:
     project_src: "{{ github_runner_work_dir }}"
@@ -97,7 +97,7 @@
 
 - name: Assert all runner replicas are running
   vars:
-    _runner_count: "{{ github_runner_ps.stdout | from_json | length }}"
+    _runner_count: "{{ github_runner_ps.stdout_lines | map('from_json') | list | length }}"
   ansible.builtin.assert:
     that:
       - _runner_count | int >= github_runner_replicas | int

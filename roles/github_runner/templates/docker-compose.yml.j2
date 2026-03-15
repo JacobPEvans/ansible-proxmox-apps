@@ -9,6 +9,9 @@ services:
       RUNNER_TOKEN: "{{ github_runner_token }}"
       RUNNER_LABELS: "{{ github_runner_labels }}"
       RUNNER_NAME_PREFIX: "{{ github_runner_name_prefix }}"
+{% if github_runner_admin_token is defined %}
+      GH_TOKEN: "{{ github_runner_admin_token }}"
+{% endif %}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped

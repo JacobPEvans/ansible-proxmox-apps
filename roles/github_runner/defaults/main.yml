@@ -11,7 +11,12 @@ github_runner_work_dir: "/opt/github-runner"
 # Uses default(omit) so the variable stays undefined when the env var is
 # absent, allowing the `when: github_runner_token is defined` guard in
 # site.yml to skip the role gracefully.
-github_runner_token: "{{ lookup('env', 'GITHUB_RUNNER_TOKEN') | default(omit) }}"
+github_runner_token: "{{ lookup('env', 'GITHUB_RUNNER_TOKEN') | default(omit, true) }}"
+
+# Optional admin token for runner deregistration on container stop.
+# Requires a fine-grained PAT with admin:org or repo admin scope.
+# If unset, runners must be removed manually via GitHub UI.
+github_runner_admin_token: "{{ lookup('env', 'GITHUB_RUNNER_ADMIN_TOKEN') | default(omit, true) }}"
 
 # Resource limits per runner container
 github_runner_cpu_limit: "2.0"

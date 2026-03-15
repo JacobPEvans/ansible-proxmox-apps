@@ -6,14 +6,18 @@ ARG YQ_VERSION=4.44.1
 ARG TARGETARCH=amd64
 ARG RUNNER_ARCH=x64
 
-# System packages + gh CLI (single apt layer to reduce image size)
+# Install curl first (not in ubuntu:24.04 base image)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      curl ca-certificates gnupg apt-transport-https \
+    && rm -rf /var/lib/apt/lists/*
+
+# Add gh CLI repo + install remaining packages
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
       | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
     && echo "deb [arch=${TARGETARCH} signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
       > /etc/apt/sources.list.d/github-cli.list \
     && apt-get update && apt-get install -y --no-install-recommends \
-      curl ca-certificates git jq make python3 python3-pip python3-venv \
-      gnupg apt-transport-https libicu74 gh \
+      git jq make python3 python3-pip python3-venv libicu74 gh \
     && rm -rf /var/lib/apt/lists/*
 
 # sops
