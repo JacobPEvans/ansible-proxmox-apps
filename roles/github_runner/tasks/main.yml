@@ -57,11 +57,38 @@
       pull: true
     force_source: "{{ github_runner_dockerfile.changed or github_runner_entrypoint.changed }}"
 
+# =============================================================================
+# Python venv for Ansible Docker modules
+# =============================================================================
+
+- name: Install Python venv and pip for dependencies
+  ansible.builtin.apt:
+    name:
+      - python3-pip
+      - python3-venv
+      - python3-full
+    state: present
+    update_cache: true
+
+- name: Create virtualenv for Ansible Python dependencies
+  ansible.builtin.pip:
+    name:
+      - docker
+    state: present
+    virtualenv: /opt/ansible-venv
+    virtualenv_command: python3 -m venv
+
+- name: Set Python interpreter to use venv for subsequent tasks
+  ansible.builtin.set_fact:
+    ansible_python_interpreter: /opt/ansible-venv/bin/python
+
 - name: Deploy GitHub Actions runners via docker compose
-  ansible.builtin.command:
-    cmd: docker compose -p github-runner up -d
-    chdir: "{{ github_runner_work_dir }}"
-  changed_when: github_runner_compose.changed or github_runner_dockerfile.changed or github_runner_entrypoint.changed
+  community.docker.docker_compose_v2:
+    project_src: "{{ github_runner_work_dir }}"
+    project_name: github-runner
+    state: present
+    scale:
+      runner: "{{ github_runner_replicas }}"
 
 # =============================================================================
 # Health Check
