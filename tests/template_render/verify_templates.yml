@@ -46,8 +46,9 @@
     cribl_docker_stack_config_dir: /opt/cribl/config
     # Test values for HEC output — splunk host and token
     cribl_docker_stack_splunk_host: "192.168.0.200"
-    cribl_docker_stack_hec_url: "http://192.168.0.200:8088"
+    cribl_docker_stack_hec_url: "https://192.168.0.200:8088"
     cribl_docker_stack_hec_token: "test-hec-token-12345"
+    cribl_docker_stack_hec_tls_verify: false
     # Template source root — relative to playbook location, role is at repo root
     _template_dir: "../../roles/cribl_docker_stack/templates"
 
