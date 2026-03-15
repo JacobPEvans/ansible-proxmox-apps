@@ -58,6 +58,8 @@ cribl_docker_stack_healthcheck_start_period: "120s"
 cribl_docker_stack_splunk_host: "{{ hostvars['splunk']['ansible_host'] }}"
 cribl_docker_stack_hec_url: "https://{{ cribl_docker_stack_splunk_host }}:8088"
 cribl_docker_stack_hec_token: "{{ lookup('env', 'SPLUNK_HEC_TOKEN') }}"
+# TLS verification for HEC endpoint (disable for self-signed certs)
+cribl_docker_stack_hec_tls_verify: false
 
 # Config directory on host for bind mounts
 cribl_docker_stack_config_dir: /opt/cribl/config

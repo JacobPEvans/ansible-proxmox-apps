@@ -14,7 +14,7 @@ outputs:
     maxPayloadSizeKB: 4096
     maxPayloadEvents: 0
     compress: true
-    rejectUnauthorized: false
+    rejectUnauthorized: {{ cribl_docker_stack_hec_tls_verify | lower }}
     timeoutSec: 30
     flushPeriodSec: 1
     useRoundRobinDns: false

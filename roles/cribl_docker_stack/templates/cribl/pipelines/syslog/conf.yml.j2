@@ -17,10 +17,8 @@ functions:
         - name: index
           value: >-
             __inputId.includes('1514') ? 'unifi' :
-            __inputId.includes('1515') ? 'firewall' :
-            __inputId.includes('1516') ? 'firewall' :
-            __inputId.includes('1517') ? 'os' :
-            __inputId.includes('1518') ? 'os' :
+            (__inputId.includes('1515') || __inputId.includes('1516')) ? 'firewall' :
+            (__inputId.includes('1517') || __inputId.includes('1518')) ? 'os' :
             __inputId.includes('ipfix') ? 'network' :
             'main'
         - name: sourcetype
@@ -28,8 +26,7 @@ functions:
             __inputId.includes('1514') ? 'ubiquiti:unifi' :
             __inputId.includes('1515') ? 'pan:firewall' :
             __inputId.includes('1516') ? 'cisco:asa' :
-            __inputId.includes('1517') ? 'syslog' :
-            __inputId.includes('1518') ? 'syslog' :
+            (__inputId.includes('1517') || __inputId.includes('1518')) ? 'syslog' :
             __inputId.includes('ipfix') ? 'ipfix' :
             'syslog'
         - name: source

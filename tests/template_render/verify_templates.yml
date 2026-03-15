@@ -8,8 +8,8 @@
 # Covers:
 #   - docker-stack.yml.j2 publishes syslog ports 1514-1518 (TCP + UDP each)
 #   - docker-stack.yml.j2 publishes netflow port 2055 (UDP)
-#   - inputs.yml.j2 renders TCP + UDP syslog listeners for each port
-#   - inputs.yml.j2 renders netflow UDP listener on port 2055
+#   - cribl/inputs.yml.j2 renders combined syslog listeners (TCP+UDP) for each port
+#   - stream/inputs.yml.j2 renders IPFIX/NetFlow UDP listener on port 2055
 #   - outputs.yml.j2 renders HEC URL with correct splunk host
 
 - name: Render and verify cribl_docker_stack templates
@@ -114,27 +114,40 @@
       ansible.builtin.set_fact:
         _inputs: "{{ _inputs_raw.content | b64decode }}"
 
-    - name: Assert inputs.yml has TCP syslog listener for each port
+    - name: Assert inputs.yml has combined syslog listener for each port
       ansible.builtin.assert:
         that:
-          - "'in_syslog_' ~ item ~ '_tcp' in _inputs"
-        fail_msg: "inputs.yml.j2 is missing TCP syslog listener for port {{ item }}"
+          - "'in_syslog_' ~ item in _inputs"
+          - "'tcpPort: ' ~ item in _inputs"
+          - "'udpPort: ' ~ item in _inputs"
+        fail_msg: "inputs.yml.j2 is missing syslog listener for port {{ item }}"
       loop: "{{ cribl_docker_stack_syslog_ports }}"
 
-    - name: Assert inputs.yml has UDP syslog listener for each port
-      ansible.builtin.assert:
-        that:
-          - "'in_syslog_' ~ item ~ '_udp' in _inputs"
-        fail_msg: "inputs.yml.j2 is missing UDP syslog listener for port {{ item }}"
-      loop: "{{ cribl_docker_stack_syslog_ports }}"
+    # -------------------------------------------------------------------------
+    # stream/inputs.yml.j2 (IPFIX/NetFlow handled by Cribl Stream, not Edge)
+    # -------------------------------------------------------------------------
+    - name: Render stream/inputs.yml.j2 to /tmp
+      ansible.builtin.template:
+        src: "{{ _template_dir }}/stream/inputs.yml.j2"
+        dest: /tmp/test_stream_inputs.yml
+        mode: "0644"
 
-    - name: Assert inputs.yml has netflow UDP listener on port 2055
+    - name: Read rendered stream/inputs.yml
+      ansible.builtin.slurp:
+        src: /tmp/test_stream_inputs.yml
+      register: _stream_inputs_raw
+
+    - name: Decode stream inputs content
+      ansible.builtin.set_fact:
+        _stream_inputs: "{{ _stream_inputs_raw.content | b64decode }}"
+
+    - name: Assert stream/inputs.yml has IPFIX/NetFlow UDP listener on port 2055
       ansible.builtin.assert:
         that:
-          - "'in_netflow' in _inputs"
-          - "'port: 2055' in _inputs"
-          - "'type: netflow' in _inputs"
-        fail_msg: "inputs.yml.j2 is missing netflow UDP listener on port 2055"
+          - "'in_ipfix' in _stream_inputs"
+          - "'port: 2055' in _stream_inputs"
+          - "'type: netflow' in _stream_inputs"
+        fail_msg: "stream/inputs.yml.j2 is missing IPFIX/NetFlow UDP listener on port 2055"
 
     # -------------------------------------------------------------------------
     # outputs.yml.j2
@@ -182,5 +195,6 @@
         msg: |
           All template rendering assertions passed:
           - docker-stack.yml.j2: syslog ports 1514-1518 published (TCP+UDP), netflow 2055 (UDP)
-          - inputs.yml.j2: TCP+UDP listeners for ports 1514-1518, netflow on 2055
+          - cribl/inputs.yml.j2: combined syslog listeners (TCP+UDP) for ports 1514-1518
+          - stream/inputs.yml.j2: IPFIX/NetFlow on port 2055
           - outputs.yml.j2: HEC URL -> http://192.168.0.200:8088, type: splunk_hec

@@ -5,9 +5,9 @@
     state: present
     update_cache: true
 
-- name: Install Nginx package
+- name: Install Nginx packages
   ansible.builtin.apt:
-    name: "{{ haproxy_nginx_package_name }}"
+    name: "{{ haproxy_nginx_packages }}"
     state: present
 
 - name: Ensure Nginx streams.d directory exists

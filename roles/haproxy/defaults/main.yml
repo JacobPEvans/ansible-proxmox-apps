@@ -3,7 +3,7 @@
 
 # Package management
 haproxy_package_name: haproxy
-haproxy_nginx_package_name:
+haproxy_nginx_packages:
   - nginx
   - libnginx-mod-stream
 
