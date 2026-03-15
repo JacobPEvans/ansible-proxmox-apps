@@ -14,8 +14,10 @@ Deploy and configure the following application stacks:
 - **Cribl Stream**: Central processing node for log pipeline
 - **HAProxy**: Syslog load balancer distributing logs to Cribl Edge nodes
 
-All applications run on Proxmox VMs. VMs and storage are provisioned by
-`terraform-proxmox`. This repository handles application configuration only.
+Cribl Edge, Cribl Stream, and HAProxy run natively on Proxmox LXC
+containers. Splunk runs on a Proxmox VM. All infrastructure is provisioned
+by `terraform-proxmox`. This repository handles application configuration
+only.
 
 ## Dependencies
 
@@ -24,55 +26,46 @@ All applications run on Proxmox VMs. VMs and storage are provisioned by
 - Ansible 2.12+
 - Python 3.12+
 
-## Quick Start
-
-### 1. Clone Repository
+## Installation
 
 ```bash
+# Clone repository
 cd ~/git
 git clone <repo-url> ansible-proxmox-apps
 cd ansible-proxmox-apps
-```
 
-### 2. Install Dependencies
-
-```bash
 # Install Ansible via uv (recommended)
 uv tool install ansible
 
 # Install required collections
 uv tool run ansible-galaxy collection install -r requirements.yml
-```
 
-### 3. Configure Doppler
-
-```bash
-# Set Doppler project
+# Configure Doppler
 doppler configure set project ansible-proxmox-apps
 doppler configure set config prd
 ```
 
-### 4. Set Environment Variables
+Set the required environment variables for Proxmox LXC connection:
 
 ```bash
-# Export hosts from Proxmox
-export CRIBL_EDGE_1="192.168.1.100"
-export CRIBL_EDGE_2="192.168.1.101"
-export CRIBL_STREAM="192.168.1.102"
-export HAPROXY="192.168.1.103"
-export SPLUNK_VM="192.168.1.104"
+export PROXMOX_VE_HOSTNAME="<proxmox-host>"
+export PROXMOX_SSH_KEY_PATH="<path-to-ssh-key>"
 ```
 
-### 5. Run Playbooks
+## Usage
 
 ```bash
-# Deploy Cribl Docker Swarm stack
+# Deploy Cribl Edge (syslog processing on LXC containers)
 doppler run -- uv tool run ansible-playbook \
-  -i inventory/hosts.yml playbooks/site.yml --tags cribl_docker_stack
+  -i inventory/hosts.yml playbooks/site.yml --tags cribl_edge
 
-# Deploy Splunk
+# Deploy Cribl Stream (netflow/IPFIX processing on LXC containers)
 doppler run -- uv tool run ansible-playbook \
-  -i inventory/hosts.yml playbooks/site.yml --tags splunk_docker
+  -i inventory/hosts.yml playbooks/site.yml --tags cribl_stream
+
+# Deploy HAProxy (load balancer on LXC container)
+doppler run -- uv tool run ansible-playbook \
+  -i inventory/hosts.yml playbooks/site.yml --tags haproxy
 
 # Deploy all applications
 doppler run -- uv tool run ansible-playbook \
@@ -81,28 +74,22 @@ doppler run -- uv tool run ansible-playbook \
 
 ## Inventory
 
-Inventory is built from environment variables. Define these in your Doppler
-project:
+Inventory is loaded dynamically from `terraform_inventory.json` via
+`inventory/load_terraform.yml`. IPs are derived from terraform state and
+accessed via `hostvars`. Port constants come from
+`terraform_data.constants` (defined in `terraform-proxmox`).
 
-```text
-CRIBL_EDGE_1: 192.168.1.100
-CRIBL_EDGE_2: 192.168.1.101
-CRIBL_STREAM: 192.168.1.102
-HAPROXY: 192.168.1.103
-SPLUNK_VM: 192.168.1.104
+To regenerate the inventory from terraform:
+
+```bash
+./scripts/sync-terraform-inventory.sh
 ```
-
-Override locally with `doppler secrets download --no-file` or environment
-variables.
 
 ## Port Assignments
 
-| Application | Protocol | Port Range | Nodes | Purpose |
-| --- | --- | --- | --- | --- |
-| Syslog Input | UDP/TCP | 1514-1518 | Cribl Edge | Log ingestion |
-| Syslog HEC | TCP | 8088 | Cribl Edge | Splunk HEC output |
-| HAProxy Frontend | UDP/TCP | 1514-1518 | HAProxy | Load balance input |
-| HAProxy Stats | TCP | 8404 | HAProxy | Admin interface |
+All port assignments are defined in `inventory/pipeline_constants.json`
+and merged into `terraform_data.constants`. See that file for current
+values. Do not hardcode ports in playbooks or roles.
 
 ## Roles
 
@@ -129,15 +116,14 @@ See `roles/cribl_stream/README.md` for configuration options.
 
 ### haproxy
 
-Deploy HAProxy configured for syslog load balancing.
+Production load balancer on a dedicated LXC container.
 
-- Installs HAProxy and configures syslog frontend
-- Frontend: UDP/TCP ports 1514-1518
-- Backend: Cribl Edge nodes (cribl-edge-01, cribl-edge-02)
-- Health checks on TCP port 1514
-- Syslog statistics available on port 8404
+- Installs HAProxy and Nginx Stream on the HAProxy LXC container
+- Forwards syslog traffic (TCP/UDP) to Cribl Edge LXC containers
+- Forwards netflow/IPFIX traffic (TCP/UDP) to Cribl Stream LXC containers
+- HAProxy stats dashboard available (port from `terraform_data.constants`)
 
-See `roles/haproxy/README.md` for customization.
+See `roles/haproxy/README.md` for details.
 
 ### apt_cacher_ng
 
@@ -145,9 +131,11 @@ APT package caching proxy to reduce bandwidth usage across containers and VMs.
 
 See `roles/apt_cacher_ng/README.md` for configuration.
 
-### cribl_docker_stack
+### cribl_docker_stack (testing/dev only)
 
-Deploy Cribl Stream and Cribl Edge as Docker containers.
+Deploy Cribl Stream and Cribl Edge as Docker containers on the docker-host
+VM. This role is for testing and development only. Production pipelines use
+the `cribl_edge` and `cribl_stream` roles on native LXC containers.
 
 ### mailpit_docker
 
@@ -167,36 +155,41 @@ Deploy Technitium DNS server container for local DNS resolution and blocking.
 
 ## Architecture
 
+All production components run on LXC containers (Cribl Edge, Cribl Stream,
+HAProxy) or VMs (Splunk), provisioned by `terraform-proxmox`.
+
 ```text
-┌──────────────────┐
-│  Syslog Sources  │
-└────────┬─────────┘
-         │
-    (UDP/TCP 1514-1518)
-         │
-         ▼
-┌──────────────────┐
-│     HAProxy      │
-│  Load Balancer   │
-└────────┬─────────┘
-         │
-         ├─────────────────┬──────────────────┐
-         │                 │                  │
-         ▼                 ▼                  ▼
-    ┌─────────┐      ┌─────────┐       ┌──────────┐
-    │Cribl    │      │Cribl    │       │Cribl     │
-    │Edge 01  │      │Edge 02  │       │Stream    │
-    └────┬────┘      └────┬────┘       └────┬─────┘
-         │                │                 │
-         └────────────────┼─────────────────┘
-                          │
-                    (Splunk HEC)
-                          │
-                          ▼
-                   ┌──────────────┐
-                   │    Splunk    │
-                   │      VM      │
-                   └──────────────┘
+┌──────────────────┐    ┌──────────────────┐
+│  Syslog Sources  │    │ NetFlow Sources   │
+└────────┬─────────┘    └────────┬─────────┘
+         │                       │
+    (UDP/TCP syslog)        (UDP IPFIX)
+         │                       │
+         ▼                       ▼
+┌────────────────────────────────────────┐
+│         HAProxy LXC                    │
+│         (Load Balancer)                │
+└───────┬────────────────────┬───────────┘
+        │                    │
+   (syslog)             (netflow)
+        │                    │
+        ▼                    ▼
+   ┌─────────┐         ┌──────────┐
+   │Cribl    │         │Cribl     │
+   │Edge LXCs│         │Stream    │
+   │(syslog) │         │LXCs     │
+   └────┬────┘         │(IPFIX)  │
+        │              └────┬─────┘
+        │                   │
+        └─────────┬─────────┘
+                  │
+            (Splunk HEC)
+                  │
+                  ▼
+           ┌──────────────┐
+           │    Splunk    │
+           │      VM      │
+           └──────────────┘
 ```
 
 ## File Layout

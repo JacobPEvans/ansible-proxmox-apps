@@ -1,31 +1,30 @@
 # haproxy
 
-> **DEPRECATED**: This role is deprecated in favor of `cribl_docker_stack`.
-> Docker Swarm's ingress network provides native load balancing, eliminating
-> the need for a separate HAProxy/Nginx layer. Use the `cribl_docker_stack`
-> role for new deployments. This role will be removed in a future release.
-
-Deploy HAProxy (TCP/HTTP) and Nginx Stream (UDP) for protocol-specific load balancing.
+Production load balancer for the Cribl pipeline. HAProxy and Nginx Stream
+run on a dedicated LXC container, forwarding syslog traffic to Cribl Edge
+LXCs and netflow/IPFIX traffic to Cribl Stream LXCs.
 
 ## Purpose
 
-Installs and configures two complementary load balancers:
+Installs and configures two complementary load balancers on the HAProxy
+LXC container:
 
-- **HAProxy**: Load balances TCP and HTTP traffic to Cribl Edge nodes
+- **HAProxy**: Load balances TCP syslog traffic to Cribl Edge LXC
+  containers, and TCP netflow to Cribl Stream LXC containers
 - **Nginx Stream Module**: Load balances UDP traffic (syslog, NetFlow) to
-  Cribl Edge nodes
-
-This architecture follows proper separation of concerns - each service
-handles the protocols it's designed for.
+  the appropriate Cribl LXC containers
 
 ## Architecture
 
 ```text
-UDP (syslog/NetFlow) → Nginx stream → UDP load balance → Cribl Edge
-TCP/HTTP             → HAProxy      → TCP load balance → Cribl Edge
+UDP syslog   → Nginx stream → Cribl Edge LXCs (syslog processing)
+TCP syslog   → HAProxy      → Cribl Edge LXCs (syslog processing)
+UDP NetFlow  → Nginx stream → Cribl Stream LXCs (IPFIX processing)
+TCP NetFlow  → HAProxy      → Cribl Stream LXCs (IPFIX processing)
 ```
 
-Both services run on the same container (10.0.1.175) but handle different protocols.
+Both services run on the same HAProxy LXC container. The container IP is
+derived from terraform inventory (see `hostvars` in playbooks).
 
 ## Requirements
 
@@ -65,7 +64,8 @@ All variables in `defaults/main.yml` are user-configurable.
 
 HAProxy statistics dashboard:
 
-- URL: `http://10.0.1.175:8404/stats`
+- URL: `http://<haproxy-ip>:<stats-port>/stats` (IP from terraform
+  inventory, port from `terraform_data.constants.service_ports.haproxy_stats`)
 - Username: admin
 - Password: (set via `HAPROXY_STATS_PASSWORD` environment variable)
 

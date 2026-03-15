@@ -157,7 +157,10 @@
         vmid: "{{ terraform_data.splunk_vm.splunk.vmid }}"
       when: terraform_data.splunk_vm.splunk is defined
 
-    - name: Add Docker VMs to inventory (SSH connection for Cribl Swarm hosts)
+    # NOTE: Docker VMs (docker-host) are for TESTING/DEV ONLY.
+    # Production syslog/netflow pipelines use native Cribl Edge/Stream
+    # on LXC containers (cribl_edge, cribl_stream_group).
+    - name: Add Docker VMs to inventory (SSH connection — testing/dev only)
       ansible.builtin.add_host:
         name: "{{ item.key }}"
         groups:

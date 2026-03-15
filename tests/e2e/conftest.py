@@ -49,9 +49,39 @@ def haproxy_host(terraform_inventory):
 
 
 @pytest.fixture(scope="session")
-def docker_host_ip(terraform_inventory):
-    """Return the Docker Swarm host IP from inventory."""
-    return terraform_inventory["docker_vms"]["docker-host"]["ip"]
+def cribl_edge_ips(terraform_inventory):
+    """Return list of Cribl Edge LXC IPs from inventory.
+
+    Discovers Edge containers by matching the 'edge' tag in the
+    containers section of the terraform inventory.
+    """
+    containers = terraform_inventory.get("containers", {})
+    ips = [
+        info["ip"]
+        for info in containers.values()
+        if "edge" in info.get("tags", [])
+    ]
+    if not ips:
+        pytest.skip("No Cribl Edge LXC containers found in inventory")
+    return ips
+
+
+@pytest.fixture(scope="session")
+def cribl_stream_ips(terraform_inventory):
+    """Return list of Cribl Stream LXC IPs from inventory.
+
+    Discovers Stream containers by matching the 'stream' tag in the
+    containers section of the terraform inventory.
+    """
+    containers = terraform_inventory.get("containers", {})
+    ips = [
+        info["ip"]
+        for info in containers.values()
+        if "stream" in info.get("tags", [])
+    ]
+    if not ips:
+        pytest.skip("No Cribl Stream LXC containers found in inventory")
+    return ips
 
 
 @pytest.fixture(scope="session")
@@ -78,27 +108,28 @@ def splunk_creds(terraform_inventory, constants):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def infrastructure_reachable(docker_host_ip, haproxy_host):
+def infrastructure_reachable(cribl_edge_ips, cribl_stream_ips, haproxy_host):
     """Skip all tests if pipeline infrastructure is unreachable.
 
-    Attempts a TCP connection to port 22 (SSH) on both the docker-host
-    and haproxy with a 5-second timeout each. If either host is
-    unreachable, all E2E tests are skipped since the pipeline
-    infrastructure is not available.
+    Attempts a TCP connection to the Cribl Edge API port (9000) on the
+    first Edge LXC, the Cribl Stream API port (9100) on the first
+    Stream LXC, and port 22 (SSH) on HAProxy with a 5-second timeout
+    each. If any host is unreachable, all E2E tests are skipped.
     """
     hosts = [
-        (docker_host_ip, "docker-host"),
-        (haproxy_host, "haproxy"),
+        (cribl_edge_ips[0], 9000, "cribl-edge"),
+        (cribl_stream_ips[0], 9100, "cribl-stream"),
+        (haproxy_host, 22, "haproxy"),
     ]
-    for host_ip, label in hosts:
+    for host_ip, port, label in hosts:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(5)
         try:
-            sock.connect((host_ip, 22))
+            sock.connect((host_ip, port))
         except (socket.timeout, ConnectionRefusedError, OSError):
             pytest.skip(
                 f"Infrastructure unreachable: cannot connect to "
-                f"{host_ip}:22 ({label} SSH)"
+                f"{host_ip}:{port} ({label})"
             )
         finally:
             sock.close()

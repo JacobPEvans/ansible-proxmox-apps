@@ -2,6 +2,12 @@
 # Logging Pipeline Validation Playbook
 # Validates connectivity, service health, and data flow across the pipeline
 #
+# Production pipeline uses native Cribl on LXC containers:
+#   - Cribl Edge (cribl_edge group): syslog processing
+#   - Cribl Stream (cribl_stream_group): netflow/IPFIX processing
+#   - HAProxy (haproxy_group): load balancing to Cribl LXCs
+#   - Splunk (splunk_vms): search head and indexer
+#
 # Usage:
 #   doppler run -- uv run ansible-playbook \
 #     -i inventory/hosts.yml playbooks/validate-pipeline.yml
@@ -10,7 +16,7 @@
   import_playbook: ../inventory/load_terraform.yml
 
 - name: Validate HAProxy Load Balancer
-  hosts: lxc_containers
+  hosts: haproxy_group
   become: true
   gather_facts: false
   tags:
@@ -20,97 +26,73 @@
   vars:
     constants: "{{ hostvars['localhost']['terraform_data']['constants'] }}"
 
-  pre_tasks:
-    - name: Check if host is haproxy
-      ansible.builtin.set_fact:
-        is_haproxy: "{{ 'haproxy' in (host_tags | default([])) or 'loadbalancer' in (host_tags | default([])) }}"
-
   tasks:
-    - name: HAProxy validation tasks
-      when: is_haproxy | default(false)
-      block:
-        - name: Verify HAProxy service is running
-          ansible.builtin.systemd:
-            name: haproxy
-            state: started
-          check_mode: true
-          register: haproxy_status
+    - name: Verify HAProxy service is running
+      ansible.builtin.systemd:
+        name: haproxy
+        state: started
+      check_mode: true
+      register: haproxy_status
 
-        - name: Check HAProxy configuration validity
-          ansible.builtin.command:
-            cmd: haproxy -c -f /etc/haproxy/haproxy.cfg
-          register: haproxy_config_check
-          changed_when: false
-          failed_when: haproxy_config_check.rc != 0
+    - name: Check HAProxy configuration validity
+      ansible.builtin.command:
+        cmd: haproxy -c -f /etc/haproxy/haproxy.cfg
+      register: haproxy_config_check
+      changed_when: false
+      failed_when: haproxy_config_check.rc != 0
 
-        - name: Verify syslog ports are listening
-          ansible.builtin.wait_for:
-            port: "{{ item }}"
-            timeout: 5
-          loop: "{{ constants.syslog_ports.values() | list | sort }}"
+    - name: Verify syslog ports are listening
+      ansible.builtin.wait_for:
+        port: "{{ item }}"
+        timeout: 5
+      loop: "{{ constants.syslog_ports.values() | list | sort }}"
 
-        - name: Verify stats page is accessible
-          ansible.builtin.wait_for:
-            port: "{{ constants.service_ports.haproxy_stats }}"
-            timeout: 5
+    - name: Verify netflow port is listening
+      ansible.builtin.wait_for:
+        port: "{{ constants.netflow_ports.unifi }}"
+        timeout: 5
 
-        - name: Get HAProxy backend status via stats socket
-          ansible.builtin.command:
-            cmd: >-
-              socat - UNIX-CONNECT:/run/haproxy/admin.sock
-            stdin: "show servers state\n"
-          register: haproxy_backend
-          changed_when: false
-          failed_when: false
+    - name: Verify stats page is accessible
+      ansible.builtin.wait_for:
+        port: "{{ constants.service_ports.haproxy_stats }}"
+        timeout: 5
 
-        - name: Display HAProxy validation results
-          ansible.builtin.debug:
-            msg: |
-              HAProxy validation passed: config valid, all ports listening
-              Backend status:
-              {{ haproxy_backend.stdout | default('Socket not available') }}
+    - name: Get HAProxy backend status via stats socket
+      ansible.builtin.command:
+        cmd: >-
+          socat - UNIX-CONNECT:/run/haproxy/admin.sock
+        stdin: "show servers state\n"
+      register: haproxy_backend
+      changed_when: false
+      failed_when: false
 
-# NOTE: Legacy Cribl Edge LXC validation removed - Cribl Edge now runs
-# as a Docker Swarm service on docker-host VM. See "Validate Cribl Docker
-# Swarm Stack" play below for current validation.
+    - name: Display HAProxy validation results
+      ansible.builtin.debug:
+        msg: |
+          HAProxy validation passed: config valid, all ports listening
+          Backend status:
+          {{ haproxy_backend.stdout | default('Socket not available') }}
 
-- name: Validate Cribl Docker Swarm Stack
-  hosts: cribl_docker_group
+- name: Validate Cribl Edge LXC Containers
+  hosts: cribl_edge
   become: true
-  gather_facts: true
+  gather_facts: false
   tags:
-    - cribl_docker_stack
-    - swarm
+    - cribl_edge
     - validation
 
   vars:
     constants: "{{ hostvars['localhost']['terraform_data']['constants'] }}"
-    cribl_docker_stack_name: cribl
-    cribl_docker_stack_edge_replicas: 2
-    cribl_docker_stack_stream_replicas: 1
 
   tasks:
-    - name: Check Edge service replicas
-      ansible.builtin.command: >
-        docker service ls --filter name={{ cribl_docker_stack_name }}_cribl-edge
-        --format '{{ '{{' }} .Replicas {{ '}}' }}'
-      register: edge_replicas
-      changed_when: false
-      failed_when: >-
-        edge_replicas.stdout !=
-        "{{ cribl_docker_stack_edge_replicas }}/{{ cribl_docker_stack_edge_replicas }}"
+    - name: Verify Cribl Edge service is running
+      ansible.builtin.systemd:
+        name: cribl
+        state: started
+      check_mode: true
+      register: cribl_edge_service
 
-    - name: Check Stream service replicas
-      ansible.builtin.command: >
-        docker service ls --filter name={{ cribl_docker_stack_name }}_cribl-stream
-        --format '{{ '{{' }} .Replicas {{ '}}' }}'
-      register: stream_replicas
-      changed_when: false
-      failed_when: >-
-        stream_replicas.stdout !=
-        "{{ cribl_docker_stack_stream_replicas }}/{{ cribl_docker_stack_stream_replicas }}"
-
-    - name: Verify Edge health endpoint
+    - name: Verify Cribl Edge API health endpoint
       ansible.builtin.uri:
         url: >-
           http://127.0.0.1:{{ constants.service_ports.cribl_edge_api
@@ -120,7 +102,53 @@
         status_code: 200
       register: edge_health
 
-    - name: Verify Stream health endpoint
+    - name: Verify syslog ports are listening on Cribl Edge
+      ansible.builtin.wait_for:
+        port: "{{ item }}"
+        timeout: 5
+      loop: "{{ constants.syslog_ports.values() | list | sort }}"
+
+    - name: Check Cribl Edge config directory exists
+      ansible.builtin.stat:
+        path: /opt/cribl/local/cribl
+      register: cribl_edge_config_dir
+
+    - name: Fail if Cribl Edge config directory is missing
+      ansible.builtin.fail:
+        msg: >-
+          Cribl Edge config directory /opt/cribl/local/cribl not found
+          on {{ inventory_hostname }}
+      when: not cribl_edge_config_dir.stat.exists
+
+    - name: Display Cribl Edge validation results
+      ansible.builtin.debug:
+        msg: |
+          Cribl Edge validation passed on {{ inventory_hostname }}:
+          - Service: running
+          - Health API: {{ edge_health.status }}
+          - Syslog ports: all listening
+          - Config dir: present
+
+- name: Validate Cribl Stream LXC Containers
+  hosts: cribl_stream_group
+  become: true
+  gather_facts: false
+  tags:
+    - cribl_stream
+    - validation
+
+  vars:
+    constants: "{{ hostvars['localhost']['terraform_data']['constants'] }}"
+
+  tasks:
+    - name: Verify Cribl Stream service is running
+      ansible.builtin.systemd:
+        name: cribl
+        state: started
+      check_mode: true
+      register: cribl_stream_service
+
+    - name: Verify Cribl Stream API health endpoint
       ansible.builtin.uri:
         url: >-
           http://127.0.0.1:{{ constants.service_ports.cribl_stream_api
@@ -130,46 +158,69 @@
         status_code: 200
       register: stream_health
 
-    - name: Inspect Docker network for container connectivity
-      ansible.builtin.command: >-
-        docker network inspect {{ cribl_docker_stack_name }}_default
-        --format
-        '{% raw %}{{range .Containers}}{{.Name}} {{.IPv4Address}}{{"\\n"}}{{end}}{% endraw %}'
-      register: docker_network
-      changed_when: false
-      failed_when: false
+    - name: Verify netflow port is listening on Cribl Stream
+      ansible.builtin.wait_for:
+        port: "{{ constants.netflow_ports.unifi }}"
+        timeout: 5
 
-    - name: Check Cribl Edge service logs (last 10 lines)
-      ansible.builtin.command: >-
-        docker service logs {{ cribl_docker_stack_name }}_cribl-edge
-        --tail 10 --no-trunc
-      register: edge_logs
-      changed_when: false
-      failed_when: false
+    - name: Check Cribl Stream config directory exists
+      ansible.builtin.stat:
+        path: /opt/cribl/local/cribl
+      register: cribl_stream_config_dir
 
-    - name: Check Cribl Stream service logs (last 10 lines)
-      ansible.builtin.command: >-
-        docker service logs {{ cribl_docker_stack_name }}_cribl-stream
-        --tail 10 --no-trunc
-      register: stream_logs
-      changed_when: false
-      failed_when: false
+    - name: Fail if Cribl Stream config directory is missing
+      ansible.builtin.fail:
+        msg: >-
+          Cribl Stream config directory /opt/cribl/local/cribl not found
+          on {{ inventory_hostname }}
+      when: not cribl_stream_config_dir.stat.exists
 
-    - name: Display Cribl Docker Swarm validation results
+    - name: Display Cribl Stream validation results
       ansible.builtin.debug:
         msg: |
-          Cribl Docker Swarm validation passed:
-          - Edge: {{ edge_replicas.stdout }} replicas healthy
-          - Stream: {{ stream_replicas.stdout }} replicas healthy
-          Docker network:
-          {{ docker_network.stdout | default('Unable to inspect network') }}
-          Recent Edge logs:
-          {{ edge_logs.stdout | default('No logs available') }}
-          Recent Stream logs:
-          {{ stream_logs.stdout | default('No logs available') }}
+          Cribl Stream validation passed on {{ inventory_hostname }}:
+          - Service: running
+          - Health API: {{ stream_health.status }}
+          - NetFlow port {{ constants.netflow_ports.unifi }}: listening
+          - Config dir: present
 
-- name: E2E Data Pipeline Validation
-  hosts: cribl_docker_group
+- name: Validate Cribl Edge Metrics
+  hosts: cribl_edge
+  become: true
+  gather_facts: false
+  tags:
+    - cribl_edge_metrics
+    - validation
+
+  vars:
+    constants: "{{ hostvars['localhost']['terraform_data']['constants'] }}"
+
+  tasks:
+    - name: Check Cribl Edge has active inputs
+      ansible.builtin.uri:
+        url: >-
+          http://127.0.0.1:{{ constants.service_ports.cribl_edge_api
+          }}/api/v1/system/metrics
+        method: GET
+        headers: >-
+          {{ {'Authorization': 'Bearer ' + cribl_edge_api_token}
+          if cribl_edge_api_token is defined and cribl_edge_api_token | length > 0
+          else omit }}
+        status_code:
+          - 200
+      register: cribl_metrics
+      failed_when: cribl_metrics.status != 200
+      changed_when: false
+
+    - name: Display Cribl Edge metrics validation result
+      ansible.builtin.debug:
+        msg: |
+          Cribl Edge metrics check passed on {{ inventory_hostname }}: API responded with 200
+          (auth token used: {{ (cribl_edge_api_token is defined and cribl_edge_api_token | length > 0) | string }})
+          status: {{ cribl_metrics.status }}
+
+- name: E2E Data Pipeline Validation (Syslog via Cribl Edge)
+  hosts: cribl_edge[0]
   become: true
   gather_facts: true
   tags:
@@ -217,7 +268,7 @@
       ansible.builtin.pause:
         seconds: 10
         prompt: >-
-          Waiting for test event to propagate through Cribl to Splunk...
+          Waiting for test event to propagate through Cribl Edge to Splunk...
 
     # Pipeline latency assertion: poll up to 120 seconds (retries: 12, delay: 10)
     # The loop fails the play if the event does not appear within 120 seconds.
@@ -280,10 +331,10 @@
           Splunk host: {{ splunk_host }}
           Search results (index=*): {{ splunk_search_result.json.results | length }} event(s) found
           Search results (index=unifi): {{ splunk_unifi_index_result.json.results | length }} event(s) found
-          Full pipeline verified: Source -> Cribl Edge -> Cribl Stream -> Splunk HEC -> Splunk Index (unifi)
+          Full pipeline verified: Source -> Cribl Edge LXC -> Splunk HEC -> Splunk Index (unifi)
 
 - name: E2E Validation via HAProxy (full path)
-  hosts: cribl_docker_group
+  hosts: cribl_edge[0]
   become: true
   gather_facts: true
   tags:
@@ -332,7 +383,7 @@
       ansible.builtin.pause:
         seconds: 10
         prompt: >-
-          Waiting for test event to propagate through HAProxy -> Cribl -> Splunk...
+          Waiting for test event to propagate through HAProxy -> Cribl Edge -> Splunk...
 
     # Pipeline latency assertion: poll up to 120 seconds (retries: 12, delay: 10)
     # The loop fails the play if the event does not appear within 120 seconds.
@@ -370,10 +421,10 @@
           Event ID: {{ e2e_test_event_id }}
           Splunk host: {{ splunk_host }}
           Search results (index=unifi): {{ splunk_haproxy_result.json.results | length }} event(s) found
-          Full path verified: Source -> HAProxy -> Cribl Edge -> Cribl Stream -> Splunk HEC -> Splunk Index (unifi)
+          Full path verified: Source -> HAProxy -> Cribl Edge LXC -> Splunk HEC -> Splunk Index (unifi)
 
 - name: Validate NetFlow Port
-  hosts: cribl_docker_group
+  hosts: cribl_stream_group[0]
   become: true
   gather_facts: true
   tags:
@@ -471,7 +522,7 @@
       ansible.builtin.pause:
         seconds: 10
         prompt: >-
-          Waiting for NetFlow test event to propagate through Cribl to Splunk...
+          Waiting for NetFlow test event to propagate through Cribl Stream to Splunk...
 
     # Pipeline latency assertion: poll up to 120 seconds (retries: 12, delay: 10)
     # The loop fails the play if the event does not appear within 120 seconds.
@@ -509,42 +560,7 @@
           NetFlow v5 test packet sent and event found in Splunk
           Splunk host: {{ splunk_host }}
           Search results (index=network): {{ splunk_netflow_result.json.results | length }} event(s) found
-          Full path verified: NetFlow source -> Cribl Edge -> Cribl Stream -> Splunk HEC -> Splunk Index (network)
-
-- name: Validate Cribl Edge Metrics
-  hosts: cribl_docker_group
-  become: true
-  gather_facts: false
-  tags:
-    - cribl_edge_metrics
-    - validation
-
-  vars:
-    constants: "{{ hostvars['localhost']['terraform_data']['constants'] }}"
-
-  tasks:
-    - name: Check Cribl Edge has active inputs
-      ansible.builtin.uri:
-        url: >-
-          http://127.0.0.1:{{ constants.service_ports.cribl_edge_api
-          }}/api/v1/system/metrics
-        method: GET
-        headers: >-
-          {{ {'Authorization': 'Bearer ' + cribl_edge_api_token}
-          if cribl_edge_api_token is defined and cribl_edge_api_token | length > 0
-          else omit }}
-        status_code:
-          - 200
-      register: cribl_metrics
-      failed_when: cribl_metrics.status != 200
-      changed_when: false
-
-    - name: Display Cribl Edge metrics validation result
-      ansible.builtin.debug:
-        msg: |
-          Cribl Edge metrics check passed: API responded with 200
-          (auth token used: {{ (cribl_edge_api_token is defined and cribl_edge_api_token | length > 0) | string }})
-          status: {{ cribl_metrics.status }}
+          Full path verified: NetFlow source -> Cribl Stream LXC -> Splunk HEC -> Splunk Index (network)
 
 - name: Pipeline Summary
   hosts: localhost
@@ -559,8 +575,9 @@
           ============================================
           LOGGING PIPELINE VALIDATION COMPLETE
           ============================================
-          Cribl Edge:   Docker Swarm replicas healthy
-          Cribl Stream: Docker Swarm replica healthy
+          HAProxy:      Config valid, ports listening
+          Cribl Edge:   LXC services healthy, APIs responding
+          Cribl Stream: LXC services healthy, APIs responding
           NetFlow:      Port listening + event in Splunk
           Cribl Edge:   Metrics API responding
           E2E:          Data flowing through pipeline

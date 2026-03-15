@@ -38,38 +38,54 @@ class TestHAProxy:
         )
 
 
-class TestDockerSwarm:
-    """Docker Swarm host (Cribl Edge) port checks."""
+class TestCriblEdgeLXC:
+    """Cribl Edge LXC container port checks (syslog processing)."""
 
     @pytest.mark.parametrize(
         "port_name",
         ["unifi", "palo_alto", "cisco_asa", "linux", "windows"],
     )
-    def test_docker_swarm_syslog_ports(
-        self, docker_host_ip, constants, port_name
+    def test_cribl_edge_syslog_ports(
+        self, cribl_edge_ips, constants, port_name
     ):
-        """Verify Docker Swarm is accepting syslog on each UDP port."""
+        """Verify each Cribl Edge LXC is accepting syslog on each UDP port."""
         port = constants["syslog_ports"][port_name]
-        assert check_port_udp(docker_host_ip, port), (
-            f"Docker Swarm syslog port {port} ({port_name}) is not "
-            f"reachable on {docker_host_ip}"
-        )
+        for edge_ip in cribl_edge_ips:
+            assert check_port_udp(edge_ip, port), (
+                f"Cribl Edge syslog port {port} ({port_name}) is not "
+                f"reachable on {edge_ip}"
+            )
 
-    def test_docker_swarm_netflow(self, docker_host_ip, constants):
-        """Verify Docker Swarm is accepting NetFlow UDP traffic."""
-        port = constants["netflow_ports"]["unifi"]
-        assert check_port_udp(docker_host_ip, port), (
-            f"Docker Swarm NetFlow port {port} is not "
-            f"reachable on {docker_host_ip}"
-        )
-
-    def test_docker_swarm_edge_api(self, docker_host_ip, constants):
+    def test_cribl_edge_api(self, cribl_edge_ips, constants):
         """Verify Cribl Edge API port is accepting TCP connections."""
         port = constants["service_ports"]["cribl_edge_api"]
-        assert check_port_tcp(docker_host_ip, port), (
-            f"Cribl Edge API port {port} is not accepting "
-            f"connections on {docker_host_ip}"
-        )
+        for edge_ip in cribl_edge_ips:
+            assert check_port_tcp(edge_ip, port), (
+                f"Cribl Edge API port {port} is not accepting "
+                f"connections on {edge_ip}"
+            )
+
+
+class TestCriblStreamLXC:
+    """Cribl Stream LXC container port checks (netflow/IPFIX processing)."""
+
+    def test_cribl_stream_netflow(self, cribl_stream_ips, constants):
+        """Verify each Cribl Stream LXC is accepting NetFlow UDP traffic."""
+        port = constants["netflow_ports"]["unifi"]
+        for stream_ip in cribl_stream_ips:
+            assert check_port_udp(stream_ip, port), (
+                f"Cribl Stream NetFlow port {port} is not "
+                f"reachable on {stream_ip}"
+            )
+
+    def test_cribl_stream_api(self, cribl_stream_ips, constants):
+        """Verify Cribl Stream API port is accepting TCP connections."""
+        port = constants["service_ports"]["cribl_stream_api"]
+        for stream_ip in cribl_stream_ips:
+            assert check_port_tcp(stream_ip, port), (
+                f"Cribl Stream API port {port} is not accepting "
+                f"connections on {stream_ip}"
+            )
 
 
 class TestSplunk:

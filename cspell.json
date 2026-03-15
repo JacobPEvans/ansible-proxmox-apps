@@ -12,6 +12,8 @@
     "haproxy",
     "HAPROXY",
     "homelab",
+    "hostvars",
+    "journalctl",
     "IPFIX",
     "ipfix",
     "jsondiff",

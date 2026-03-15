@@ -19,16 +19,41 @@ if [ ! -f "$INVENTORY_FILE" ]; then
 fi
 
 HAPROXY_HOST="${HAPROXY_HOST:-$(jq -r '.containers.haproxy.ip // empty' "$INVENTORY_FILE")}"
-DOCKER_HOST_IP="${DOCKER_HOST_IP:-$(jq -r '.docker_vms["docker-host"].ip // empty' "$INVENTORY_FILE")}"
 SPLUNK_HOST="${SPLUNK_HOST:-$(jq -r '.splunk_vm.splunk.ip // empty' "$INVENTORY_FILE")}"
 
-for var_name in HAPROXY_HOST DOCKER_HOST_IP SPLUNK_HOST; do
+# Cribl Edge LXC IPs (space-separated, override with CRIBL_EDGE_IPS env var)
+if [ -n "${CRIBL_EDGE_IPS:-}" ]; then
+    IFS=' ' read -ra EDGE_IPS <<< "$CRIBL_EDGE_IPS"
+else
+    mapfile -t EDGE_IPS < <(jq -r '.containers | to_entries[] | select(.value.tags | index("edge")) | .value.ip' "$INVENTORY_FILE")
+fi
+
+# Cribl Stream LXC IPs (space-separated, override with CRIBL_STREAM_IPS env var)
+if [ -n "${CRIBL_STREAM_IPS:-}" ]; then
+    IFS=' ' read -ra STREAM_IPS <<< "$CRIBL_STREAM_IPS"
+else
+    mapfile -t STREAM_IPS < <(jq -r '.containers | to_entries[] | select(.value.tags | index("stream")) | .value.ip' "$INVENTORY_FILE")
+fi
+
+for var_name in HAPROXY_HOST SPLUNK_HOST; do
     if [ -z "${!var_name}" ]; then
         echo -e "${RED}ERROR: Could not resolve $var_name from $INVENTORY_FILE${NC}"
         echo "Override with: export $var_name=<ip>"
         exit 1
     fi
 done
+
+if [ ${#EDGE_IPS[@]} -eq 0 ]; then
+    echo -e "${RED}ERROR: No Cribl Edge LXC IPs found in $INVENTORY_FILE${NC}"
+    echo "Override with: export CRIBL_EDGE_IPS='ip1 ip2'"
+    exit 1
+fi
+
+if [ ${#STREAM_IPS[@]} -eq 0 ]; then
+    echo -e "${RED}ERROR: No Cribl Stream LXC IPs found in $INVENTORY_FILE${NC}"
+    echo "Override with: export CRIBL_STREAM_IPS='ip1 ip2'"
+    exit 1
+fi
 
 PASSED=0
 FAILED=0
@@ -65,16 +90,25 @@ check "Port 1518 (Windows)" nc -z -w2 "$HAPROXY_HOST" 1518
 check "Stats page (8404)" nc -z -w2 "$HAPROXY_HOST" 8404
 echo ""
 
-# Docker Swarm Host checks (Cribl Edge via Swarm ingress)
-echo -e "${YELLOW}Docker Swarm Host ($DOCKER_HOST_IP)${NC}"
-check "Syslog 1514 (UniFi)" nc -z -w2 "$DOCKER_HOST_IP" 1514
-check "Syslog 1515 (Palo Alto)" nc -z -w2 "$DOCKER_HOST_IP" 1515
-check "Syslog 1516 (Cisco)" nc -z -w2 "$DOCKER_HOST_IP" 1516
-check "Syslog 1517 (Linux)" nc -z -w2 "$DOCKER_HOST_IP" 1517
-check "Syslog 1518 (Windows)" nc -z -w2 "$DOCKER_HOST_IP" 1518
-check "NetFlow 2055 (UDP)" nc -z -u -w2 "$DOCKER_HOST_IP" 2055
-check "Cribl Edge API (9000)" nc -z -w2 "$DOCKER_HOST_IP" 9000
-echo ""
+# Cribl Edge LXC checks (syslog processing)
+for edge_ip in "${EDGE_IPS[@]}"; do
+    echo -e "${YELLOW}Cribl Edge LXC ($edge_ip)${NC}"
+    check "Syslog 1514 (UniFi)" nc -z -w2 "$edge_ip" 1514
+    check "Syslog 1515 (Palo Alto)" nc -z -w2 "$edge_ip" 1515
+    check "Syslog 1516 (Cisco)" nc -z -w2 "$edge_ip" 1516
+    check "Syslog 1517 (Linux)" nc -z -w2 "$edge_ip" 1517
+    check "Syslog 1518 (Windows)" nc -z -w2 "$edge_ip" 1518
+    check "Cribl Edge API (9000)" nc -z -w2 "$edge_ip" 9000
+    echo ""
+done
+
+# Cribl Stream LXC checks (netflow/IPFIX processing)
+for stream_ip in "${STREAM_IPS[@]}"; do
+    echo -e "${YELLOW}Cribl Stream LXC ($stream_ip)${NC}"
+    check "NetFlow 2055 (UDP)" nc -z -u -w2 "$stream_ip" 2055
+    check "Cribl Stream API (9100)" nc -z -w2 "$stream_ip" 9100
+    echo ""
+done
 
 # Splunk checks
 echo -e "${YELLOW}Splunk ($SPLUNK_HOST)${NC}"

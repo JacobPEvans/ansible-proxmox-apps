@@ -3,13 +3,18 @@
 ## Pipeline Architecture
 
 ```text
-Syslog Sources --> HAProxy --> Docker Swarm (Cribl Edge/Stream) --> Splunk HEC
-                  (LB)        (Processing)                        (Indexing)
+Syslog Sources --> HAProxy LXC --> Cribl Edge LXCs --> Splunk HEC
+                  (LB)            (Syslog processing)   (Indexing)
+
+NetFlow Sources -> HAProxy LXC --> Cribl Stream LXCs --> Splunk HEC
+                   (LB)            (IPFIX processing)    (Indexing)
 ```
 
 - **Syslog Sources**: Network devices, hosts, and applications sending syslog
-- **HAProxy**: Load balances syslog across Cribl Edge replicas
-- **Docker Swarm**: Runs Cribl Edge (ingestion) and Cribl Stream (processing)
+- **NetFlow Sources**: Network devices sending IPFIX/NetFlow data
+- **HAProxy**: Load balances syslog traffic to Cribl Edge LXCs and netflow traffic to Cribl Stream LXCs
+- **Cribl Edge**: Native install on LXC containers (cribl_edge_group) for syslog ingestion and processing
+- **Cribl Stream**: Native install on LXC containers (cribl_stream_group) for netflow/IPFIX processing
 - **Splunk HEC**: Receives processed events via HTTP Event Collector
 
 ## IP and Port Convention
@@ -75,10 +80,10 @@ doppler run -- uv run ansible-playbook \
 
 The playbook runs these validation stages:
 
-1. **HAProxy** -- service running, config valid, syslog ports listening
-2. **Cribl Edge** -- container running, syslog listener active
-3. **Splunk** -- container running, HEC endpoint healthy, token valid
-4. **Docker Swarm** -- Edge and Stream replicas at expected count
+1. **HAProxy** -- service running, config valid, syslog and netflow ports listening
+2. **Cribl Edge** -- LXC containers running, syslog listeners active
+3. **Cribl Stream** -- LXC containers running, IPFIX listener active
+4. **Splunk** -- VM running, HEC endpoint healthy, token valid
 5. **E2E test** -- sends a tagged syslog event and queries Splunk to confirm arrival
 
 Run individual stages with tags:
@@ -97,8 +102,8 @@ doppler run -- uv run ansible-playbook \
   -i inventory/hosts.yml playbooks/validate-pipeline.yml --tags e2e
 ```
 
-Available tags: `haproxy`, `cribl_edge`, `splunk`, `cribl_docker_stack`,
-`swarm`, `e2e`, `data_validation`, `validation`, `summary`.
+Available tags: `haproxy`, `cribl_edge`, `cribl_stream`, `splunk`,
+`e2e`, `data_validation`, `validation`, `summary`.
 
 ### Required Environment Variables
 
@@ -142,11 +147,11 @@ values from terraform inventory or Doppler before running.
 HAPROXY_IP=$(jq -r '.containers.haproxy.ip' \
   inventory/terraform_inventory.json)
 
-DOCKER_VM_HOST=$(jq -r '.docker_vms | keys[0]' \
-  inventory/terraform_inventory.json)
+CRIBL_EDGE_IP=$(jq -r '.containers | to_entries[] | select(.value.tags // [] | contains(["edge"])) | .value.ip' \
+  inventory/terraform_inventory.json | head -1)
 
-DOCKER_HOST_IP=$(jq -r ".docker_vms[\"$DOCKER_VM_HOST\"].ip" \
-  inventory/terraform_inventory.json)
+CRIBL_STREAM_IP=$(jq -r '.containers | to_entries[] | select(.value.tags // [] | contains(["stream"])) | .value.ip' \
+  inventory/terraform_inventory.json | head -1)
 
 SPLUNK_IP=$(jq -r '.splunk_vm.splunk.ip' \
   inventory/terraform_inventory.json)
@@ -174,11 +179,11 @@ curl -s http://$HAPROXY_IP:$HAPROXY_STATS_PORT/stats
 ### Cribl
 
 ```bash
-# Check Cribl Edge health API
-curl -s http://$DOCKER_HOST_IP:$CRIBL_EDGE_API_PORT/api/v1/health
+# Check Cribl Edge health API (on LXC container)
+curl -s http://$CRIBL_EDGE_IP:$CRIBL_EDGE_API_PORT/api/v1/health
 
-# Check Cribl Stream health API
-curl -s http://$DOCKER_HOST_IP:$CRIBL_STREAM_API_PORT/api/v1/health
+# Check Cribl Stream health API (on LXC container)
+curl -s http://$CRIBL_STREAM_IP:$CRIBL_STREAM_API_PORT/api/v1/health
 ```
 
 ### Splunk HEC
@@ -231,31 +236,32 @@ doppler run -- uv run ansible-playbook \
 ### HAProxy Backend Down
 
 - Check the HAProxy stats page for backend status
-- Verify Docker Swarm services: `docker service ls`
-- Confirm Cribl Edge containers are healthy
+- Verify Cribl Edge LXC containers are running: `pct status <VMID>` on Proxmox host
+- Verify Cribl Stream LXC containers are running: `pct status <VMID>` on Proxmox host
+- Confirm network connectivity between HAProxy LXC and Cribl LXCs
 
 ### Cribl Not Receiving Events
 
 - Verify Cribl Edge syslog listeners are configured and bound
-- Check Docker Swarm service status: `docker service ps cribl_cribl-edge`
-- Review Cribl Edge logs: `docker service logs cribl_cribl-edge`
-- Confirm network connectivity between HAProxy and Docker host
+- Check Cribl Edge service status on LXC: `systemctl status cribl`
+- Review Cribl Edge logs: `journalctl -u cribl` or `/opt/cribl/log/`
+- For netflow issues, check Cribl Stream service status similarly
+- Confirm network connectivity between HAProxy LXC and Cribl LXCs
 
 ### Splunk Not Receiving Events
 
-- Test HEC health endpoint directly on the Splunk host
+- Test HEC health endpoint directly on the Splunk VM
 - Verify the HEC token matches the value in Doppler
-- Check Splunk container health: `docker inspect splunk --format '{{.State.Health.Status}}'`
-- Review Splunk container logs: `docker logs splunk`
+- Check Splunk service status on the VM
+- Review Splunk logs on the VM
 
 ## Verification Checklist
 
 - [ ] HAProxy listening on all syslog ports
 - [ ] HAProxy stats page accessible
-- [ ] Docker Swarm cluster healthy
-- [ ] Cribl Edge replicas at expected count
-- [ ] Cribl Stream replicas at expected count
-- [ ] Splunk container running and healthy
+- [ ] Cribl Edge LXC containers running
+- [ ] Cribl Stream LXC containers running
+- [ ] Splunk VM running and healthy
 - [ ] Splunk HEC endpoint responding
 - [ ] HEC token valid
 - [ ] E2E test event visible in Splunk index
