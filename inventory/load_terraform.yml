@@ -79,6 +79,14 @@
               else []
             ) +
             (
+              ['cribl_stream_group']
+              if (
+                'stream' in (item.value.tags | default([])) and
+                'cribl' in (item.value.tags | default([]))
+              )
+              else []
+            ) +
+            (
               ['mailpit_group']
               if 'smtp' in (item.value.tags | default([]))
               else []

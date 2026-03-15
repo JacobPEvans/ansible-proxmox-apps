@@ -77,25 +77,42 @@
     - role: technitium_dns
 
 # =============================================================================
-# Phase 2: Cribl Docker Swarm Stack
-# Deploy Cribl Edge and Stream on Docker VM using Swarm mode
-# This replaces the legacy LXC-based Cribl Edge/Stream
+# Phase 2: Cribl Edge (syslog processing)
+# Native install in LXC containers - production pipeline
 # =============================================================================
 
-- name: Configure Cribl Docker Swarm Stack
-  hosts: cribl_docker_group
+- name: Configure Cribl Edge on LXC containers
+  hosts: cribl_edge
   become: true
+  gather_facts: true
   tags:
-    - cribl_docker_stack
+    - cribl_edge
     - cribl
-    - swarm
+    - pipeline
 
   roles:
-    - role: cribl_docker_stack
+    - role: cribl_edge
+
+# =============================================================================
+# Phase 2b: Cribl Stream (IPFIX/NetFlow processing)
+# Native install in LXC containers - production pipeline
+# =============================================================================
+
+- name: Configure Cribl Stream on LXC containers
+  hosts: cribl_stream_group
+  become: true
+  gather_facts: true
+  tags:
+    - cribl_stream
+    - cribl
+    - pipeline
+
+  roles:
+    - role: cribl_stream
 
 # =============================================================================
 # Phase 3: HAProxy Syslog/NetFlow VIP
-# Forwards syslog/netflow traffic to Docker Swarm ingress on docker-host
+# Forwards syslog to Cribl Edge LXCs, IPFIX to Cribl Stream LXCs
 # =============================================================================
 
 - name: Configure HAProxy syslog/netflow VIP

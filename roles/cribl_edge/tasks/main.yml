@@ -1,100 +1,134 @@
 ---
-# Cribl Edge Docker deployment
+# Cribl Edge native installation on LXC containers
 
-- name: Ensure /tmp/.ansible-tmp directory exists
+- name: Ensure temp directories exist for Ansible
   ansible.builtin.file:
-    path: /tmp/.ansible-tmp
+    path: "{{ item }}"
     state: directory
-    mode: '1777'
+    mode: "1777"
+  loop:
+    - /tmp/.ansible-tmp
+    - /var/tmp/.ansible
 
-- name: Ensure /var/tmp/.ansible directory exists
-  ansible.builtin.file:
-    path: /var/tmp/.ansible
-    state: directory
-    mode: '1777'
-
-- name: Install required packages for Docker
+- name: Install required packages
   ansible.builtin.apt:
     name:
-      - docker.io
-      - docker-compose
       - curl
+      - tar
     state: present
     update_cache: true
 
-- name: Ensure Docker service is running
-  ansible.builtin.systemd:
-    name: docker
-    state: started
-    enabled: true
-    daemon_reload: true
+- name: Create cribl system group
+  ansible.builtin.group:
+    name: "{{ cribl_edge_group }}"
+    system: true
+    state: present
 
-- name: Ensure persistent data directory exists
+- name: Create cribl system user
+  ansible.builtin.user:
+    name: "{{ cribl_edge_user }}"
+    group: "{{ cribl_edge_group }}"
+    system: true
+    shell: /usr/sbin/nologin
+    home: "{{ cribl_edge_install_dir }}"
+    create_home: false
+    state: present
+
+- name: Check if Cribl Edge is already installed
+  ansible.builtin.stat:
+    path: "{{ cribl_edge_install_dir }}/bin/cribl"
+  register: cribl_edge_binary
+
+- name: Create install directory parent
   ansible.builtin.file:
-    path: "{{ cribl_edge_data_dir }}"
+    path: /opt
+    state: directory
+    mode: "0755"
+
+- name: Download and extract Cribl Edge tarball
+  ansible.builtin.unarchive:
+    src: "{{ cribl_edge_tarball_url }}"
+    dest: /opt
+    remote_src: true
     owner: "{{ cribl_edge_user }}"
     group: "{{ cribl_edge_group }}"
-    mode: '0755'
+  when: not cribl_edge_binary.stat.exists
+
+- name: Set ownership on Cribl Edge directory
+  ansible.builtin.file:
+    path: "{{ cribl_edge_install_dir }}"
+    owner: "{{ cribl_edge_user }}"
+    group: "{{ cribl_edge_group }}"
+    recurse: true
     state: directory
 
-- name: Ensure config directory structure exists
+- name: Set Cribl to Edge mode
+  ansible.builtin.command:
+    cmd: "{{ cribl_edge_install_dir }}/bin/cribl mode-edge"
+  become: true
+  become_user: "{{ cribl_edge_user }}"
+  register: cribl_edge_mode_result
+  changed_when: "'already' not in cribl_edge_mode_result.stdout"
+
+- name: Ensure config directory exists
   ansible.builtin.file:
-    path: "{{ cribl_edge_config_dir }}/local/cribl"
+    path: "{{ cribl_edge_install_dir }}/local/cribl"
     owner: "{{ cribl_edge_user }}"
     group: "{{ cribl_edge_group }}"
-    mode: '0755'
+    mode: "0755"
+    state: directory
+
+- name: Ensure pipeline directory exists
+  ansible.builtin.file:
+    path: "{{ cribl_edge_install_dir }}/local/cribl/pipelines/syslog"
+    owner: "{{ cribl_edge_user }}"
+    group: "{{ cribl_edge_group }}"
+    mode: "0755"
     state: directory
 
 - name: Deploy Cribl Edge outputs configuration
   ansible.builtin.template:
     src: outputs.yml.j2
-    dest: "{{ cribl_edge_config_dir }}/local/cribl/outputs.yml"
+    dest: "{{ cribl_edge_install_dir }}/local/cribl/outputs.yml"
     owner: "{{ cribl_edge_user }}"
     group: "{{ cribl_edge_group }}"
-    mode: '0600'
+    mode: "0600"
   no_log: true
   notify: Restart cribl edge
-  when: cribl_edge_hec_token != ''
 
 - name: Deploy Cribl Edge inputs configuration
   ansible.builtin.template:
     src: inputs.yml.j2
-    dest: "{{ cribl_edge_config_dir }}/local/cribl/inputs.yml"
+    dest: "{{ cribl_edge_install_dir }}/local/cribl/inputs.yml"
     owner: "{{ cribl_edge_user }}"
     group: "{{ cribl_edge_group }}"
-    mode: '0644'
+    mode: "0644"
   notify: Restart cribl edge
 
-- name: Deploy docker-compose configuration
+- name: Deploy syslog pipeline configuration
   ansible.builtin.template:
-    src: docker-compose.yml.j2
-    dest: "{{ cribl_edge_data_dir }}/docker-compose.yml"
+    src: pipelines/syslog/conf.yml.j2
+    dest: "{{ cribl_edge_install_dir }}/local/cribl/pipelines/syslog/conf.yml"
     owner: "{{ cribl_edge_user }}"
     group: "{{ cribl_edge_group }}"
-    mode: '0644'
+    mode: "0644"
   notify: Restart cribl edge
 
-- name: Pull Cribl Edge Docker image
-  community.docker.docker_image:
-    name: "{{ cribl_edge_docker_image }}"
-    source: pull
-  register: cribl_edge_image_pull
-  retries: 3
-  delay: 10
-  until: cribl_edge_image_pull is succeeded
+- name: Enable Cribl Edge systemd service
+  ansible.builtin.command:
+    cmd: "{{ cribl_edge_install_dir }}/bin/cribl boot-start enable -m systemd -u {{ cribl_edge_user }}"
+    creates: /etc/systemd/system/cribl.service
 
-- name: Start Cribl Edge container
-  community.docker.docker_compose_v2:
-    project_src: "{{ cribl_edge_data_dir }}"
-    state: present
-  register: cribl_edge_compose_result
+- name: Start Cribl Edge service
+  ansible.builtin.systemd:
+    name: "{{ cribl_edge_service_name }}"
+    state: started
+    enabled: true
+    daemon_reload: true
 
-- name: Wait for Cribl Edge to be healthy
-  ansible.builtin.uri:
-    url: "http://127.0.0.1:9000/api/v1/health"
-    status_code: 200
-  register: cribl_edge_health
-  until: cribl_edge_health.status == 200
-  retries: 30
-  delay: 5
+- name: Verify Cribl Edge service is running
+  ansible.builtin.systemd:
+    name: "{{ cribl_edge_service_name }}"
+  register: cribl_edge_status
   changed_when: false
+  failed_when: cribl_edge_status.status.ActiveState != 'active'

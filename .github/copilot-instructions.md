@@ -3,8 +3,11 @@
 ## Repository Purpose
 
 Ansible playbooks and roles for configuring applications on Proxmox VMs/containers.
-Manages: Cribl Edge, Cribl Stream, HAProxy, Technitium DNS, apt-cacher-ng, Mailpit, ntfy.
+Manages: Cribl Edge (LXC), Cribl Stream (LXC), HAProxy (LXC), Technitium DNS, apt-cacher-ng, Mailpit, ntfy.
 Does NOT manage Splunk (see ansible-splunk repo).
+
+Production pipeline uses native Cribl installed on LXC containers (not Docker).
+Docker Swarm on docker-host VM is for testing/development only.
 
 ## Build & Validate
 

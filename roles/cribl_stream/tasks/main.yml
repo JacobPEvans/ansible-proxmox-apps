@@ -1,64 +1,109 @@
 ---
-# Stream collector role - receives syslog and forwards to Splunk HEC
-# Uses rsyslog with custom HEC forwarder script for index routing
+# Cribl Stream native installation in LXC containers
 
-- name: Install required packages
-  ansible.builtin.apt:
-    name:
-      - rsyslog
-      - curl
+- name: Create cribl system group
+  ansible.builtin.group:
+    name: "{{ cribl_stream_group }}"
+    system: true
     state: present
-    update_cache: true
 
-- name: Ensure persistent queue directory exists
+- name: Create cribl system user
+  ansible.builtin.user:
+    name: "{{ cribl_stream_user }}"
+    group: "{{ cribl_stream_group }}"
+    system: true
+    create_home: false
+    home: "{{ cribl_stream_install_dir }}"
+    shell: /usr/sbin/nologin
+    state: present
+
+- name: Check if Cribl Stream is already installed
+  ansible.builtin.stat:
+    path: "{{ cribl_stream_install_dir }}/bin/cribl"
+  register: cribl_stream_binary
+
+- name: Download Cribl Stream tarball
+  ansible.builtin.get_url:
+    url: "{{ cribl_stream_tarball_url }}"
+    dest: /tmp/cribl-stream.tgz
+    mode: "0644"
+  when: not cribl_stream_binary.stat.exists
+
+- name: Create install directory
   ansible.builtin.file:
-    path: "{{ cribl_stream_queue_dir }}"
+    path: "{{ cribl_stream_install_dir }}"
+    state: directory
     owner: "{{ cribl_stream_user }}"
     group: "{{ cribl_stream_group }}"
-    mode: '0755'
+    mode: "0755"
+
+- name: Extract Cribl Stream tarball
+  ansible.builtin.unarchive:
+    src: /tmp/cribl-stream.tgz
+    dest: /opt
+    remote_src: true
+    owner: "{{ cribl_stream_user }}"
+    group: "{{ cribl_stream_group }}"
+  when: not cribl_stream_binary.stat.exists
+
+- name: Remove downloaded tarball
+  ansible.builtin.file:
+    path: /tmp/cribl-stream.tgz
+    state: absent
+
+- name: Set Cribl Stream to single-instance mode
+  ansible.builtin.command:
+    cmd: "{{ cribl_stream_install_dir }}/bin/cribl mode-single"
+  become: true
+  become_user: "{{ cribl_stream_user }}"
+  changed_when: true
+  when: not cribl_stream_binary.stat.exists
+
+- name: Ensure local config directory exists
+  ansible.builtin.file:
+    path: "{{ cribl_stream_install_dir }}/local/cribl/pipelines/ipfix"
     state: directory
+    owner: "{{ cribl_stream_user }}"
+    group: "{{ cribl_stream_group }}"
+    mode: "0755"
 
-- name: Deploy Splunk HEC forwarder script
+- name: Deploy Cribl Stream inputs configuration
   ansible.builtin.template:
-    src: splunk-hec-forwarder.sh.j2
-    dest: /usr/local/bin/splunk-hec-forwarder.sh
-    owner: root
-    group: root
-    mode: '0755'
-  notify: Restart rsyslog
-  # Note: Template contains sensitive HEC token, but failures should be visible for debugging
+    src: inputs.yml.j2
+    dest: "{{ cribl_stream_install_dir }}/local/cribl/inputs.yml"
+    owner: "{{ cribl_stream_user }}"
+    group: "{{ cribl_stream_group }}"
+    mode: "0644"
+  notify: Restart cribl stream
 
-- name: Deploy rsyslog syslog-to-HEC configuration
+- name: Deploy Cribl Stream outputs configuration
   ansible.builtin.template:
-    src: rsyslog-syslog-hec.conf.j2
-    dest: /etc/rsyslog.d/60-syslog-hec.conf
-    owner: root
-    group: root
-    mode: '0644'
-  notify: Restart rsyslog
+    src: outputs.yml.j2
+    dest: "{{ cribl_stream_install_dir }}/local/cribl/outputs.yml"
+    owner: "{{ cribl_stream_user }}"
+    group: "{{ cribl_stream_group }}"
+    mode: "0600"
+  no_log: true
+  notify: Restart cribl stream
+  when: cribl_stream_splunk_hec_token != ''
 
-- name: Start rsyslog service
+- name: Deploy IPFIX pipeline configuration
+  ansible.builtin.template:
+    src: pipelines/ipfix/conf.yml.j2
+    dest: "{{ cribl_stream_install_dir }}/local/cribl/pipelines/ipfix/conf.yml"
+    owner: "{{ cribl_stream_user }}"
+    group: "{{ cribl_stream_group }}"
+    mode: "0644"
+  notify: Restart cribl stream
+
+- name: Enable Cribl Stream boot-start via systemd
+  ansible.builtin.command:
+    cmd: "{{ cribl_stream_install_dir }}/bin/cribl boot-start enable -m systemd -u {{ cribl_stream_user }}"
+    creates: /etc/systemd/system/cribl.service
+
+- name: Ensure Cribl Stream service is running
   ansible.builtin.systemd:
-    name: rsyslog
-    state: started
-    enabled: true
+    name: "{{ cribl_stream_service_name }}"
+    state: "{{ cribl_stream_service_state }}"
+    enabled: "{{ cribl_stream_service_enabled }}"
     daemon_reload: true
-
-- name: Verify rsyslog is running
-  ansible.builtin.systemd:
-    name: rsyslog
-  register: cribl_stream_rsyslog_status
-  changed_when: false
-  failed_when: cribl_stream_rsyslog_status.status.ActiveState != 'active'
-
-- name: Verify rsyslog has TCP/UDP syslog port listening
-  ansible.builtin.shell: |
-    set -o pipefail
-    ss -tulpn | grep -E ":({{ cribl_stream_syslog_port }})\s" || exit 1
-  changed_when: false
-  retries: 3
-  delay: 2
-  register: cribl_stream_port_check
-  until: cribl_stream_port_check.rc == 0
-  args:
-    executable: /bin/bash

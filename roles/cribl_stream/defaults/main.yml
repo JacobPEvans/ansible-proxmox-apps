@@ -1,63 +1,33 @@
 ---
-# Cribl Stream role defaults
+# Cribl Stream native install role defaults
 
-# Package management
-cribl_stream_package_name: cribl-stream
+# Installation
 cribl_stream_version: latest
+cribl_stream_tarball_base: "https://cdn.cribl.io/dl"
+cribl_stream_tarball_url: >-
+  {{ cribl_stream_tarball_base }}/{{ cribl_stream_version }}/cribl-{{ cribl_stream_version }}-linux-x64.tgz
+cribl_stream_install_dir: /opt/cribl
+
+# Service user
+cribl_stream_user: cribl
+cribl_stream_group: cribl
 
 # Service configuration
 cribl_stream_service_name: cribl
 cribl_stream_service_state: started
 cribl_stream_service_enabled: true
 
-# Cluster mode
-cribl_stream_mode: worker
-
-# Data directory (persistent queue)
-cribl_stream_data_dir: /opt/cribl/data
-cribl_stream_queue_dir: "{{ cribl_stream_data_dir }}/queue"
-
-# Service user
-cribl_stream_user: cribl
-cribl_stream_group: cribl
+# NetFlow port from terraform constants
+cribl_stream_netflow_port: >-
+  {{ hostvars['localhost']['terraform_data']['constants']['netflow_ports']['unifi'] }}
 
 # Splunk HEC output configuration
-cribl_stream_splunk_host: "{{ hostvars['splunk'].ansible_host | default('10.0.1.200') }}"
-cribl_stream_splunk_hec_port: 8088
-cribl_stream_splunk_hec_token: "{{ lookup('env', 'SPLUNK_HEC_TOKEN', default='') }}"
+cribl_stream_splunk_host: "{{ hostvars['splunk']['ansible_host'] }}"
+cribl_stream_splunk_hec_port: >-
+  {{ hostvars['localhost']['terraform_data']['constants']['service_ports']['splunk_hec'] }}
+cribl_stream_splunk_hec_token: "{{ lookup('env', 'SPLUNK_HEC_TOKEN') }}"
 cribl_stream_splunk_hec_tls: true
 cribl_stream_splunk_hec_tls_verify: false  # Self-signed cert in lab
 
-# Index routing configuration - maps hostname patterns to Splunk indexes
-cribl_stream_index_routing:
-  - hostname_pattern: "UDW"
-    index: unifi
-    sourcetype: ubiquiti:unifi
-  - hostname_pattern: "USG"
-    index: unifi
-    sourcetype: ubiquiti:unifi
-  - hostname_pattern: "paloalto"
-    index: firewall
-    sourcetype: pan:log
-  - hostname_pattern: "cisco"
-    index: firewall
-    sourcetype: cisco:asa
-  - hostname_pattern: "cribl"
-    index: os
-    sourcetype: syslog
-  - hostname_pattern: "haproxy"
-    index: os
-    sourcetype: syslog
-  - hostname_pattern: "splunk"
-    index: os
-    sourcetype: syslog
-
-# Default index for unmatched logs
-cribl_stream_default_index: os
-cribl_stream_default_sourcetype: syslog
-
-# Syslog listener configuration
-cribl_stream_syslog_port: 1514
-cribl_stream_syslog_protocols:
-  - tcp
-  - udp
+# Persistent queue
+cribl_stream_pq_enabled: true

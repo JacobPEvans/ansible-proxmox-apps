@@ -6,8 +6,9 @@ this repo handles app config only.
 
 ## This Repo Owns
 
-- **Cribl Edge/Stream** (Docker Swarm on docker-host VM)
-- **HAProxy** (LXC container, syslog/netflow VIP forwarding to Docker Swarm)
+- **Cribl Edge** (`cribl_edge` role — native install on LXC containers)
+- **Cribl Stream** (`cribl_stream` role — native install on LXC containers)
+- **HAProxy** (LXC container, syslog/netflow VIP forwarding to Cribl LXCs)
 - **Technitium DNS** (LXC container)
 - **apt-cacher-ng** (LXC container)
 - **Mailpit** (LXC container, SMTP relay with web UI)
@@ -18,16 +19,30 @@ this repo handles app config only.
 ## Pipeline Data Flow
 
 ```text
-Source -> HAProxy LXC (175, TCP+UDP 1514-1518, 2055)
+Source -> HAProxy LXC (175, TCP+UDP 514-518, 1514-1518, 2055)
            |
-       Docker Swarm Host (250, Swarm ingress)
-           |
-       Cribl Edge (2 replicas)
+       Cribl Edge LXCs (180, 181) [syslog ports 1514-1518]
          - Pipeline: sets index + sourcetype by port
-         - Output: Splunk HEC (http, port 8088)
+         - Output: Splunk HEC (https, port 8088)
+           |
+       Cribl Stream LXCs (182, 183) [IPFIX port 2055]
+         - Pipeline: sets index=network, sourcetype=ipfix
+         - Output: Splunk HEC (https, port 8088)
            |
        Splunk Enterprise (200, managed by ansible-splunk)
 ```
+
+## Production vs Testing Environments
+
+| Environment | Infrastructure | Purpose |
+| --- | --- | --- |
+| **Production** | LXC containers, Proxmox VMs | Real pipeline workflows, production data |
+| **Testing/Dev** | Docker Swarm on docker-host VM | Non-production experiments, Molecule tests |
+
+**Rule:** ALL production log/network pipelines flow through LXC containers.
+Docker Swarm on docker-host (250) is the non-production zone for development
+and testing only. High-volume network traffic must never flow through
+Docker's virtualized networking stack.
 
 ### Syslog Port Assignments (from terraform pipeline_constants)
 
@@ -63,7 +78,9 @@ Port constants come from `terraform_data.constants`
 ### Groups (from terraform inventory)
 
 - `lxc_containers`: All LXC containers (`proxmox_pct_remote` connection)
-- `docker_vms` / `cribl_docker_group`: Docker Swarm hosts (SSH)
+- `cribl_edge_group`: Cribl Edge LXC containers (syslog processing)
+- `cribl_stream_group`: Cribl Stream LXC containers (netflow/IPFIX processing)
+- `docker_vms` / `cribl_docker_group`: Docker Swarm hosts (SSH, testing/dev only)
 - `mailpit_group`: Containers tagged `smtp` (Mailpit SMTP relay)
 - `ntfy_group`: Containers tagged `push` (ntfy push notifications)
 
@@ -99,14 +116,12 @@ Template: `secrets.enc.yaml.example` — copy, fill in real values, then encrypt
 ## Commands
 
 ```bash
-# Deploy all apps (SOPS + Doppler — required for full site.yml run)
-# Use this for any run that touches technitium_dns or other SOPS-only secrets
+# Deploy all apps (Doppler — main pipeline does not require SOPS)
+doppler run -- uv run ansible-playbook -i inventory/hosts.yml playbooks/site.yml
+
+# Deploy all apps including SOPS-only roles (e.g., technitium_dns)
 sops exec-env secrets.enc.yaml 'doppler run -- uv run ansible-playbook \
   -i inventory/hosts.yml playbooks/site.yml'
-
-# Deploy all apps (Doppler-only — skip SOPS-only roles like technitium_dns)
-doppler run -- uv run ansible-playbook -i inventory/hosts.yml playbooks/site.yml \
-  --skip-tags technitium_dns
 
 # Edit encrypted secrets
 sops secrets.enc.yaml

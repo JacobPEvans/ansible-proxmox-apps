@@ -15,18 +15,29 @@ stream {
   error_log /var/log/nginx/stream-error.log;
 
   # ==========================================================================
-  # Upstream backends - one per destination port
+  # Syslog upstream backends - Cribl Edge nodes (one per destination port)
   # ==========================================================================
-{% set unique_backend_ports = (haproxy_syslog_port_mappings | map(attribute='backend') | list + [haproxy_netflow_port.backend]) | unique %}
-{% for backend_port in unique_backend_ports %}
+{% set unique_syslog_backend_ports = (haproxy_syslog_port_mappings | map(attribute='backend') | list) | unique %}
+{% for backend_port in unique_syslog_backend_ports %}
 
-  # Upstream for backend port {{ backend_port }}
+  # Syslog upstream for backend port {{ backend_port }}
   upstream cribl_edge_udp_{{ backend_port }} {
-{% for server in haproxy_backend_servers %}
-    server {{ server.ip }}:{{ backend_port }};
+{% for server in haproxy_syslog_backend_servers %}
+    server {{ server.container_ip }}:{{ backend_port }};
 {% endfor %}
   }
 {% endfor %}
+
+  # ==========================================================================
+  # IPFIX upstream backend - Cribl Stream nodes
+  # ==========================================================================
+
+  # IPFIX upstream for backend port {{ haproxy_netflow_port.backend }}
+  upstream cribl_stream_udp_{{ haproxy_netflow_port.backend }} {
+{% for server in haproxy_ipfix_backend_servers %}
+    server {{ server.container_ip }}:{{ haproxy_netflow_port.backend }};
+{% endfor %}
+  }
 
   # ==========================================================================
   # UDP listeners for syslog ports
@@ -45,7 +56,7 @@ stream {
   # NetFlow - Port {{ haproxy_netflow_port.frontend }} -> {{ haproxy_netflow_port.backend }}
   server {
     listen {{ haproxy_netflow_port.frontend }} udp;
-    proxy_pass cribl_edge_udp_{{ haproxy_netflow_port.backend }};
+    proxy_pass cribl_stream_udp_{{ haproxy_netflow_port.backend }};
     proxy_timeout 1s;
     proxy_responses 0;
   }

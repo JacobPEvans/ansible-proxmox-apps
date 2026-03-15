@@ -57,11 +57,12 @@ haproxy_netflow_port:
   frontend: 2055
   backend: 2055
 
-# Backend server - Docker Swarm host (Swarm ingress handles internal LB)
-# IP address derived from inventory (NEVER hardcoded)
-haproxy_backend_servers:
-  - name: docker-host
-    ip: "{{ hostvars['docker-host']['ansible_host'] }}"
+# Backend servers - Cribl Edge LXC containers (syslog traffic)
+# IP addresses derived from inventory (NEVER hardcoded)
+haproxy_syslog_backend_servers: "{{ groups['cribl_edge'] | default([]) | map('extract', hostvars) | list }}"
+
+# Backend servers - Cribl Stream LXC containers (IPFIX/NetFlow traffic)
+haproxy_ipfix_backend_servers: "{{ groups['cribl_stream_group'] | default([]) | map('extract', hostvars) | list }}"
 
 # Legacy variables for backwards compatibility (derived from mappings)
 haproxy_listen_ports: >-
@@ -69,7 +70,8 @@ haproxy_listen_ports: >-
 haproxy_nginx_udp_ports: >-
   {{ haproxy_syslog_port_mappings | map(attribute='frontend') | list
      + [haproxy_netflow_port.frontend] }}
-haproxy_backends: "{{ haproxy_backend_servers }}"
+haproxy_backend_servers: "{{ haproxy_syslog_backend_servers }}"
+haproxy_backends: "{{ haproxy_syslog_backend_servers }}"
 
 # Health check configuration
 haproxy_health_check_interval: 5000

@@ -9,9 +9,10 @@
 #     -i inventory/hosts.yml -c local
 #
 # Covers:
-#   - haproxy_group assigned for 'haproxy' tagged containers        (PR #117)
-#   - cribl_edge group assigned for 'cribl'+'edge' tagged containers (PR #36)
-#   - mssql_group assigned for 'database' tagged containers          (PR #72)
+#   - haproxy_group assigned for 'haproxy' tagged containers              (PR #117)
+#   - cribl_edge group assigned for 'cribl'+'edge' tagged containers     (PR #36)
+#   - cribl_stream_group assigned for 'cribl'+'stream' tagged containers
+#   - mssql_group assigned for 'database' tagged containers              (PR #72)
 #   - apt_cacher_group assigned for 'apt-cache' tagged containers
 #   - lxc_containers populated for all terraform containers
 #   - splunk_group / cribl_docker_group populated from their sections
@@ -67,6 +68,8 @@
           - "'haproxy' in groups['lxc_containers']"
           - "'cribl-edge-01' in groups['lxc_containers']"
           - "'cribl-edge-02' in groups['lxc_containers']"
+          - "'cribl-stream-01' in groups['lxc_containers']"
+          - "'cribl-stream-02' in groups['lxc_containers']"
           - "'mssql' in groups['lxc_containers']"
           - "'apt-cacher-ng' in groups['lxc_containers']"
         fail_msg: >-
@@ -90,6 +93,24 @@
           - "'cribl-edge-02' in groups['cribl_edge']"
         fail_msg: >-
           cribl_edge should contain 'cribl-edge-01' and 'cribl-edge-02' (cribl+edge tags);
+          got {{ groups['cribl_edge'] | default([]) }}
+
+    - name: Verify cribl_stream_group contains terraform 'cribl'+'stream' tagged containers
+      ansible.builtin.assert:
+        that:
+          - groups['cribl_stream_group'] is defined
+          - "'cribl-stream-01' in groups['cribl_stream_group']"
+          - "'cribl-stream-02' in groups['cribl_stream_group']"
+        fail_msg: >-
+          cribl_stream_group should contain 'cribl-stream-01' and 'cribl-stream-02' (cribl+stream tags);
+          got {{ groups['cribl_stream_group'] | default([]) }}
+
+    - name: Verify cribl-stream-01 is NOT in cribl_edge group
+      ansible.builtin.assert:
+        that:
+          - "'cribl-stream-01' not in groups['cribl_edge']"
+        fail_msg: >-
+          cribl-stream-01 should NOT be in cribl_edge (has stream tag, not edge tag);
           got {{ groups['cribl_edge'] | default([]) }}
 
     - name: Verify mssql_group contains 'database'-tagged container
@@ -130,10 +151,11 @@
       ansible.builtin.debug:
         msg: |
           Inventory group verification PASSED:
-          - lxc_containers:     {{ groups['lxc_containers'] | default([]) | join(', ') }}
-          - haproxy_group:      {{ groups['haproxy_group'] | default([]) | join(', ') }}
-          - cribl_edge:         {{ groups['cribl_edge'] | default([]) | join(', ') }}
-          - mssql_group:        {{ groups['mssql_group'] | default([]) | join(', ') }}
-          - splunk_group:       {{ groups['splunk_group'] | default([]) | join(', ') }}
-          - cribl_docker_group: {{ groups['cribl_docker_group'] | default([]) | join(', ') }}
-          - apt_cacher_group:   {{ groups['apt_cacher_group'] | default([]) | join(', ') }}
+          - lxc_containers:      {{ groups['lxc_containers'] | default([]) | join(', ') }}
+          - haproxy_group:       {{ groups['haproxy_group'] | default([]) | join(', ') }}
+          - cribl_edge:          {{ groups['cribl_edge'] | default([]) | join(', ') }}
+          - cribl_stream_group:  {{ groups['cribl_stream_group'] | default([]) | join(', ') }}
+          - mssql_group:         {{ groups['mssql_group'] | default([]) | join(', ') }}
+          - splunk_group:        {{ groups['splunk_group'] | default([]) | join(', ') }}
+          - cribl_docker_group:  {{ groups['cribl_docker_group'] | default([]) | join(', ') }}
+          - apt_cacher_group:    {{ groups['apt_cacher_group'] | default([]) | join(', ') }}

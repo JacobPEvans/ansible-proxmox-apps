@@ -40,6 +40,26 @@
       "node": "pve",
       "pool_id": "homelab"
     },
+    "cribl-stream-01": {
+      "vmid": 182,
+      "ip": "192.168.0.182",
+      "hostname": "cribl-stream-01",
+      "ansible_connection": "community.proxmox.proxmox_pct_remote",
+      "ansible_pct_vmid": 182,
+      "tags": ["terraform", "container", "cribl", "stream", "pipeline", "logging"],
+      "node": "pve",
+      "pool_id": "homelab"
+    },
+    "cribl-stream-02": {
+      "vmid": 183,
+      "ip": "192.168.0.183",
+      "hostname": "cribl-stream-02",
+      "ansible_connection": "community.proxmox.proxmox_pct_remote",
+      "ansible_pct_vmid": 183,
+      "tags": ["terraform", "container", "cribl", "stream", "pipeline", "logging"],
+      "node": "pve",
+      "pool_id": "homelab"
+    },
     "apt-cacher-ng": {
       "vmid": 106,
       "ip": "192.168.0.106",
