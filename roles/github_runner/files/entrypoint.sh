@@ -1,6 +1,21 @@
 #!/bin/bash
 set -e
 
+# Auto-generate a registration token from admin PAT if no explicit token.
+# GH_TOKEN is a fine-grained PAT with Administration:Read&Write scope.
+if [ -z "${RUNNER_TOKEN:-}" ] && [ -n "${GH_TOKEN:-}" ]; then
+  echo "Generating registration token from admin PAT for ${GITHUB_REPOSITORY}..."
+  RUNNER_TOKEN=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runners/registration-token" \
+    --method POST --jq '.token') || {
+    echo "ERROR: Failed to generate registration token. Check that GH_TOKEN has Administration:Read&Write scope and GITHUB_REPOSITORY is set correctly."
+    exit 1
+  }
+  if [ -z "${RUNNER_TOKEN}" ]; then
+    echo "ERROR: Registration token is empty — API returned no token."
+    exit 1
+  fi
+fi
+
 # Generate a unique runner name from prefix + hostname
 RUNNER_NAME="${RUNNER_NAME_PREFIX:-proxmox-runner}-${HOSTNAME}"
 

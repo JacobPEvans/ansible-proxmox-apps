@@ -1,0 +1,17 @@
+---
+# GitHub Actions self-hosted runners — multi-repo configuration
+# Each entry generates a Compose service with its own replicas.
+# docker-host VM (250): 4 CPU, 8GB RAM — per-container limits are ceilings.
+github_runner_repositories:
+  - repo: "JacobPEvans/ansible-proxmox-apps"
+    replicas: 2
+    labels: "self-hosted,Linux,X64,proxmox"
+  - repo: "JacobPEvans/terraform-proxmox"
+    replicas: 1
+    labels: "self-hosted,Linux,X64,proxmox,terraform"
+  - repo: "JacobPEvans/ansible-splunk"
+    replicas: 1
+    labels: "self-hosted,Linux,X64,proxmox"
+  - repo: "JacobPEvans/ansible-proxmox"
+    replicas: 1
+    labels: "self-hosted,Linux,X64,proxmox"
