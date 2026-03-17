@@ -14,6 +14,8 @@ this repo handles app config only.
 - **Mailpit** (LXC container, SMTP relay with web UI)
 - **ntfy** (LXC container, push notification server)
 - **GitHub Actions Runners** (`github_runner` role — Docker Compose on docker-host VM)
+- **Qdrant** (`qdrant_docker` role — Docker in LXC container)
+- **LlamaIndex** (`llamaindex` role — Python + Ollama CPU-only embeddings on LXC container)
 
 **This repo does NOT own Splunk.** Splunk is managed by `ansible-splunk`.
 
@@ -78,6 +80,8 @@ CI runners MUST NOT share Docker networks with dev/test services.
 | 1025 | Mailpit SMTP |
 | 8025 | Mailpit Web UI |
 | 8080 | ntfy HTTP |
+| 6333 | Qdrant HTTP (from terraform `vector_db_ports`) |
+| 6334 | Qdrant gRPC (from terraform `vector_db_ports`) |
 
 ## Inventory
 
@@ -94,6 +98,8 @@ Port constants come from `terraform_data.constants`
 - `docker_vms` / `cribl_docker_group`: Docker Swarm hosts (SSH, testing/dev + CI runners)
 - `mailpit_group`: Containers tagged `smtp` (Mailpit SMTP relay)
 - `ntfy_group`: Containers tagged `push` (ntfy push notifications)
+- `qdrant_group`: Containers tagged `vectordb` (Qdrant vector database)
+- `llamaindex_group`: Containers tagged `rag` (LlamaIndex RAG engine)
 
 ### Environment Variables
 
@@ -117,6 +123,7 @@ Port constants come from `terraform_data.constants`
 | `GH_PAT_RUNNER_TOKEN` | Fine-grained PAT for runner auto-registration (multi-repo) | Doppler (`gh-workflow-tokens`) |
 | `SOPS_AGE_KEY` | Age private key content for SOPS decryption in runner containers | Doppler |
 | `GITHUB_RUNNER_TOKEN` | (deprecated) Single-repo registration token (1h expiry) | SOPS |
+| `QDRANT_API_KEY` | Qdrant vector database API key | SOPS |
 
 ## Secrets Management
 

@@ -69,6 +69,26 @@
       "tags": ["apt-cache", "container", "infrastructure", "terraform"],
       "node": "pve",
       "pool_id": "infrastructure"
+    },
+    "qdrant": {
+      "vmid": 165,
+      "ip": "192.168.0.165",
+      "hostname": "qdrant",
+      "ansible_connection": "community.proxmox.proxmox_pct_remote",
+      "ansible_pct_vmid": 165,
+      "tags": ["terraform", "container", "vectordb", "ai", "docker"],
+      "node": "pve",
+      "pool_id": "ai"
+    },
+    "llamaindex": {
+      "vmid": 166,
+      "ip": "192.168.0.166",
+      "hostname": "llamaindex",
+      "ansible_connection": "community.proxmox.proxmox_pct_remote",
+      "ansible_pct_vmid": 166,
+      "tags": ["terraform", "container", "ai", "rag"],
+      "node": "pve",
+      "pool_id": "ai"
     }
   },
   "vms": {},
@@ -116,6 +136,10 @@
       "mailpit_smtp": 1025,
       "mailpit_web": 8025,
       "ntfy_http": 8080
+    },
+    "vector_db_ports": {
+      "qdrant_http": 6333,
+      "qdrant_grpc": 6334
     }
   },
   "domain": "jacobpevans.com",

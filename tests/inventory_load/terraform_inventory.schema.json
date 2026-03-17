@@ -168,7 +168,7 @@
     },
     "constants": {
       "type": "object",
-      "required": ["service_ports", "syslog_ports", "netflow_ports", "notification_ports"],
+      "required": ["service_ports", "syslog_ports", "netflow_ports", "notification_ports", "vector_db_ports"],
       "additionalProperties": false,
       "properties": {
         "service_ports": {
@@ -213,6 +213,15 @@
             "ntfy_http": {"type": "integer", "minimum": 1, "maximum": 65535}
           },
           "required": ["mailpit_smtp", "mailpit_web", "ntfy_http"],
+          "additionalProperties": false
+        },
+        "vector_db_ports": {
+          "type": "object",
+          "properties": {
+            "qdrant_http": {"type": "integer", "minimum": 1, "maximum": 65535},
+            "qdrant_grpc": {"type": "integer", "minimum": 1, "maximum": 65535}
+          },
+          "required": ["qdrant_http", "qdrant_grpc"],
           "additionalProperties": false
         }
       }
