@@ -32,7 +32,7 @@ provisioner:
       interpreter_python: auto_silent
       roles_path: ${MOLECULE_PROJECT_DIRECTORY}/roles
   env:
-    MSSQL_SA_PASSWORD: "Molecule-Test-P@ssw0rd123"
+    MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD}"
 
 verifier:
   name: ansible
