@@ -13,6 +13,7 @@
     # Provide port variables normally injected from terraform_data.constants
     qdrant_docker_http_port: 6333
     qdrant_docker_grpc_port: 6334
+    qdrant_docker_api_key: molecule-test-key
 
   tasks:
     - name: Include qdrant_docker role

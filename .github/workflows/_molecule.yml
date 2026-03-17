@@ -47,7 +47,6 @@ jobs:
           PY_COLORS: "1"
           ANSIBLE_FORCE_COLOR: "1"
           MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD }}
-          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
           MOLECULE_SCENARIO: ${{ matrix.scenario }}
         run: molecule test -s "$MOLECULE_SCENARIO"
 
