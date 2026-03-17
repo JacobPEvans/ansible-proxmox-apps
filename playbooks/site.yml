@@ -169,7 +169,7 @@
 
 # =============================================================================
 # Phase 6: Qdrant Vector Database
-# AI RAG memory store for DGX Spark
+# AI RAG vector database -- Docker in LXC container
 # =============================================================================
 
 - name: Configure Qdrant vector database
@@ -180,6 +180,11 @@
     - qdrant_docker
     - vectordb
     - ai
+  vars:
+    _vdb_ports: >-
+      {{ hostvars['localhost']['terraform_data']['constants']['vector_db_ports'] }}
+    qdrant_docker_http_port: "{{ _vdb_ports.qdrant_http }}"
+    qdrant_docker_grpc_port: "{{ _vdb_ports.qdrant_grpc }}"
   roles:
     - role: qdrant_docker
 
@@ -198,3 +203,24 @@
   roles:
     - role: github_runner
       when: github_runner_admin_token is defined or github_runner_token is defined
+
+# =============================================================================
+# Phase 8: LlamaIndex RAG Engine
+# CPU-only embeddings via Ollama + LlamaIndex orchestration
+# =============================================================================
+
+- name: Configure LlamaIndex RAG engine
+  hosts: llamaindex_group
+  become: true
+  gather_facts: true
+  tags:
+    - llamaindex
+    - rag
+    - ai
+  vars:
+    _vdb_ports: >-
+      {{ hostvars['localhost']['terraform_data']['constants']['vector_db_ports'] }}
+    llamaindex_qdrant_host: "{{ hostvars['qdrant']['container_ip'] }}"
+    llamaindex_qdrant_port: "{{ _vdb_ports.qdrant_http }}"
+  roles:
+    - role: llamaindex

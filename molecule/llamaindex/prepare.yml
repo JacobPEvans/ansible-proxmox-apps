@@ -1,6 +1,6 @@
 ---
 # Molecule preparation playbook
-# Sets up the test container before running the mssql_docker role
+# Sets up the test container before running the llamaindex role
 
 - name: Prepare
   hosts: all
@@ -21,7 +21,7 @@
         cache_valid_time: 3600
       when: ansible_facts['os_family'] == 'Debian'
 
-    - name: Install base packages for Docker role
+    - name: Install base packages for LlamaIndex role
       ansible.builtin.apt:
         name:
           - curl
@@ -29,24 +29,6 @@
           - ca-certificates
           - procps
           - systemd
-          - iptables
-          - python3-pip
-          - python3-venv
-          - python3-full
+          - zstd
         state: present
       when: ansible_facts['os_family'] == 'Debian'
-
-    - name: Create Docker config directory
-      ansible.builtin.file:
-        path: /etc/docker
-        state: directory
-        mode: "0755"
-
-    - name: Configure Docker vfs storage driver for Docker-in-Docker
-      ansible.builtin.copy:
-        dest: /etc/docker/daemon.json
-        content: |
-          {
-            "storage-driver": "vfs"
-          }
-        mode: "0644"

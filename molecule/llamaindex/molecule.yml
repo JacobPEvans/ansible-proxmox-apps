@@ -8,7 +8,7 @@ driver:
   name: docker
 
 platforms:
-  - name: mssql-test
+  - name: llamaindex-test
     # No stable version tags available; geerlingguy only publishes :latest
     image: geerlingguy/docker-debian12-ansible:latest
     privileged: true
@@ -16,13 +16,12 @@ platforms:
     pre_build_image: true
     tmpfs:
       - /run
-      - /tmp
       - /run/lock
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
     cgroupns_mode: host
     groups:
-      - mssql_group
+      - llamaindex_group
       - lxc_containers
 
 provisioner:
@@ -32,13 +31,13 @@ provisioner:
       interpreter_python: auto_silent
       roles_path: ${MOLECULE_PROJECT_DIRECTORY}/roles
   env:
-    MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD}"
+    QDRANT_API_KEY: "${QDRANT_API_KEY}"
 
 verifier:
   name: ansible
 
 scenario:
-  name: default
+  name: llamaindex
   test_sequence:
     - dependency
     - cleanup

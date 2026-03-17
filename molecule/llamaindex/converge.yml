@@ -1,0 +1,18 @@
+---
+# Molecule converge playbook
+# Tests the llamaindex role against the test container
+
+- name: Converge
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    # Provide variables normally injected from terraform_data.constants at playbook level
+    llamaindex_qdrant_host: "192.168.0.165"
+    llamaindex_qdrant_port: 6333
+
+  tasks:
+    - name: Include llamaindex role
+      ansible.builtin.include_role:
+        name: llamaindex

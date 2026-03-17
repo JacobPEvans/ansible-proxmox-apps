@@ -1,0 +1,11 @@
+---
+qdrant:
+  host: "{{ llamaindex_qdrant_host }}"
+  port: {{ llamaindex_qdrant_port }}
+  api_key: "{{ llamaindex_qdrant_api_key }}"
+
+ollama:
+  model: "{{ llamaindex_ollama_model }}"
+  base_url: "http://localhost:11434"
+
+data_dir: "{{ llamaindex_data_dir }}"
