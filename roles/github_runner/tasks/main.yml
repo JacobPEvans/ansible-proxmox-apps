@@ -22,6 +22,17 @@
       github_runner_repositories must be a non-empty list of dicts with
       'repo' keys in 'Owner/repo' format.
 
+- name: Validate token usage for multi-repo
+  ansible.builtin.assert:
+    that:
+      - not (_github_runner_repos | length > 1
+        and github_runner_token is defined
+        and github_runner_admin_token is not defined)
+    fail_msg: >-
+      Using a single GITHUB_RUNNER_TOKEN with multiple repositories is not
+      supported. Please use GH_PAT_RUNNER_TOKEN (github_runner_admin_token)
+      for multi-repo setups.
+
 # =============================================================================
 # Work Directory Setup
 # =============================================================================
