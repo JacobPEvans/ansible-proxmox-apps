@@ -1,4 +1,10 @@
 ---
+# Docker VM connection settings
+# docker-host uses a dedicated SSH key separate from the Proxmox host key
+ansible_ssh_private_key_file: >-
+  {{ lookup('env', 'PROXMOX_DKR_SSH_KEY_PATH')
+  | mandatory('PROXMOX_DKR_SSH_KEY_PATH environment variable is required') }}
+
 # GitHub Actions self-hosted runners — multi-repo configuration
 # Each entry generates a Compose service with its own replicas.
 # docker-host VM (250): 4 CPU, 8GB RAM — per-container limits are ceilings.
