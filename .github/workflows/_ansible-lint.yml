@@ -120,4 +120,5 @@ jobs:
         env:
           PROXMOX_VE_HOSTNAME: test-pve
           PROXMOX_SSH_KEY_PATH: /dev/null
+          PROXMOX_DKR_SSH_KEY_PATH: /dev/null
           ANSIBLE_HOST_KEY_CHECKING: 'false'
