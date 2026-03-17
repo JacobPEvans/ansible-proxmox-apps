@@ -73,20 +73,21 @@
   ansible.builtin.apt:
     name: fuse-overlayfs
     state: present
+  when: qdrant_docker_storage_driver == 'fuse-overlayfs'
 
-- name: Configure Docker to use fuse-overlayfs storage driver (required for ZFS-backed LXC)
+- name: Configure Docker storage driver
   ansible.builtin.copy:
     dest: /etc/docker/daemon.json
     content: |
       {
-        "storage-driver": "fuse-overlayfs"
+        "storage-driver": "{{ qdrant_docker_storage_driver }}"
       }
     owner: root
     group: root
     mode: "0644"
   register: qdrant_docker_daemon_config
 
-- name: Restart Docker to apply fuse-overlayfs configuration
+- name: Restart Docker to apply storage driver configuration
   ansible.builtin.systemd:  # noqa: no-handler
     name: docker
     state: restarted

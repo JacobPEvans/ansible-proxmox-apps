@@ -1,6 +1,6 @@
 ---
 # Molecule preparation playbook
-# Sets up the test container before running the mssql_docker role
+# Sets up the test container before running the qdrant_docker role
 
 - name: Prepare
   hosts: all

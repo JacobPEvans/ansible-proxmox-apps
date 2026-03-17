@@ -9,8 +9,12 @@ permissions:
 
 jobs:
   test:
-    name: Molecule Tests
+    name: Molecule (${{ matrix.scenario }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [default, qdrant, llamaindex]
 
     steps:
       - name: Checkout code
@@ -39,11 +43,13 @@ jobs:
         run: ansible-galaxy collection install -r requirements.yml --force
 
       - name: Run molecule tests
-        run: molecule test
         env:
           PY_COLORS: "1"
           ANSIBLE_FORCE_COLOR: "1"
           MSSQL_SA_PASSWORD: "Molecule-Test-P@ssw0rd123"
+          QDRANT_API_KEY: "molecule-test-api-key-12345"
+          MOLECULE_SCENARIO: ${{ matrix.scenario }}
+        run: molecule test -s "$MOLECULE_SCENARIO"
 
   template-render:
     name: Template Rendering Tests
