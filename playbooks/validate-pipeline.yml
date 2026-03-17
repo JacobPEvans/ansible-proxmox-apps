@@ -636,6 +636,8 @@
       ansible.builtin.set_fact:
         _qdrant_http_port: >-
           {{ hostvars['localhost']['terraform_data']['constants']['vector_db_ports']['qdrant_http'] }}
+        _qdrant_grpc_port: >-
+          {{ hostvars['localhost']['terraform_data']['constants']['vector_db_ports']['qdrant_grpc'] }}
 
     - name: Wait for Qdrant HTTP health endpoint
       ansible.builtin.uri:
@@ -651,7 +653,7 @@
     - name: Wait for Qdrant gRPC port
       ansible.builtin.wait_for:
         host: 127.0.0.1
-        port: "{{ hostvars['localhost']['terraform_data']['constants']['vector_db_ports']['qdrant_grpc'] }}"
+        port: "{{ _qdrant_grpc_port }}"
         timeout: 30
 
     - name: Display Qdrant validation results
@@ -713,13 +715,13 @@
 
     - name: Set Qdrant connection facts
       ansible.builtin.set_fact:
-        _qdrant_host: "{{ hostvars['qdrant']['ansible_host'] }}"
-        _qdrant_port: >-
+        _qdrant_host: "{{ hostvars['qdrant']['container_ip'] }}"
+        _qdrant_http_port: >-
           {{ hostvars['localhost']['terraform_data']['constants']['vector_db_ports']['qdrant_http'] }}
 
     - name: Verify connectivity to Qdrant health endpoint
       ansible.builtin.uri:
-        url: "http://{{ _qdrant_host }}:{{ _qdrant_port }}/healthz"
+        url: "http://{{ _qdrant_host }}:{{ _qdrant_http_port }}/healthz"
         method: GET
         status_code: 200
       register: llamaindex_qdrant_check

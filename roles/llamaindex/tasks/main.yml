@@ -38,11 +38,18 @@
     enabled: true
     daemon_reload: true
 
+- name: Check if embedding model is already present
+  ansible.builtin.command:
+    cmd: "ollama list"
+  register: llamaindex_ollama_list
+  changed_when: false
+
 - name: Pull embedding model
   ansible.builtin.command:
     cmd: "ollama pull {{ llamaindex_ollama_model }}"
   register: llamaindex_ollama_pull
-  changed_when: "'pulling' in llamaindex_ollama_pull.stdout"
+  changed_when: true
+  when: llamaindex_ollama_model not in llamaindex_ollama_list.stdout
 
 # =============================================================================
 # LlamaIndex Application Directory
