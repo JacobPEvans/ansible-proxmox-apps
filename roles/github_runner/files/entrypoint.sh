@@ -1,6 +1,13 @@
 #!/bin/bash
 set -e
 
+# Auto-generate a registration token from admin PAT if no explicit token.
+# GH_TOKEN is a fine-grained PAT with Administration:Read&Write scope.
+if [ -z "${RUNNER_TOKEN:-}" ] && [ -n "${GH_TOKEN:-}" ]; then
+  RUNNER_TOKEN=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runners/registration-token" \
+    --method POST --jq '.token')
+fi
+
 # Generate a unique runner name from prefix + hostname
 RUNNER_NAME="${RUNNER_NAME_PREFIX:-proxmox-runner}-${HOSTNAME}"
 

@@ -113,7 +113,9 @@ Port constants come from `terraform_data.constants`
 | `MAILPIT_RELAY_USERNAME` | SMTP relay username | SOPS |
 | `MAILPIT_RELAY_PASSWORD` | SMTP relay password / app password | Doppler / SOPS |
 | `MSSQL_SA_PASSWORD` | SQL Server SA password (for mssql_docker role) | SOPS |
-| `GITHUB_RUNNER_TOKEN` | GitHub Actions runner registration token (1h expiry) | SOPS |
+| `GH_PAT_RUNNER_TOKEN` | Fine-grained PAT for runner auto-registration (multi-repo) | Doppler (`gh-workflow-tokens`) |
+| `SOPS_AGE_KEY` | Age private key content for SOPS decryption in runner containers | Doppler |
+| `GITHUB_RUNNER_TOKEN` | (deprecated) Single-repo registration token (1h expiry) | SOPS |
 
 ## Secrets Management
 
@@ -134,6 +136,11 @@ doppler run -- uv run ansible-playbook -i inventory/hosts.yml playbooks/site.yml
 # Deploy all apps including SOPS-only roles (e.g., technitium_dns)
 sops exec-env secrets.enc.yaml 'doppler run -- uv run ansible-playbook \
   -i inventory/hosts.yml playbooks/site.yml'
+
+# Deploy GitHub runners (requires token from gh-workflow-tokens Doppler project)
+doppler run -p gh-workflow-tokens -c prd -- \
+  doppler run -- ansible-playbook -i inventory/hosts.yml playbooks/site.yml \
+  --tags github_runner
 
 # Edit encrypted secrets
 sops secrets.enc.yaml

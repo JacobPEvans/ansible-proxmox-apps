@@ -197,4 +197,4 @@
     - ci
   roles:
     - role: github_runner
-      when: github_runner_token is defined
+      when: github_runner_admin_token is defined or github_runner_token is defined

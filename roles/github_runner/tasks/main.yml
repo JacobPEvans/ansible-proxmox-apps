@@ -1,5 +1,28 @@
 ---
 # =============================================================================
+# Resolve repository list
+# =============================================================================
+
+- name: Resolve runner repository list
+  ansible.builtin.set_fact:
+    _github_runner_repos: >-
+      {{
+        github_runner_repositories
+        if (github_runner_repositories is defined and github_runner_repositories | length > 0)
+        else [{'repo': github_runner_repository}]
+      }}
+
+- name: Validate runner repository list
+  ansible.builtin.assert:
+    that:
+      - _github_runner_repos | length > 0
+      - _github_runner_repos | map(attribute='repo') | select('match', '.+/.+') | list | length
+        == _github_runner_repos | length
+    fail_msg: >-
+      github_runner_repositories must be a non-empty list of dicts with
+      'repo' keys in 'Owner/repo' format.
+
+# =============================================================================
 # Work Directory Setup
 # =============================================================================
 
@@ -81,8 +104,6 @@
     project_src: "{{ github_runner_work_dir }}"
     project_name: github-runner
     state: present
-    scale:
-      runner: "{{ github_runner_replicas }}"
 
 # =============================================================================
 # Health Check
@@ -95,12 +116,20 @@
   register: github_runner_ps
   changed_when: false
 
+- name: Calculate expected total replicas
+  ansible.builtin.set_fact:
+    github_runner_expected_replicas: >-
+      {{ _github_runner_repos
+         | map(attribute='replicas', default=github_runner_default_replicas)
+         | map('int')
+         | sum }}
+
 - name: Assert all runner replicas are running
   vars:
     _runner_count: "{{ github_runner_ps.stdout_lines | map('from_json') | list | length }}"
   ansible.builtin.assert:
     that:
-      - _runner_count | int >= github_runner_replicas | int
+      - _runner_count | int >= github_runner_expected_replicas | int
     fail_msg: >-
-      Expected {{ github_runner_replicas }} runner containers but found
+      Expected {{ github_runner_expected_replicas }} runner containers but found
       {{ _runner_count }}
