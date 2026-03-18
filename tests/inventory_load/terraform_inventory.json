@@ -89,6 +89,26 @@
       "tags": ["terraform", "container", "ai", "rag"],
       "node": "pve",
       "pool_id": "ai"
+    },
+    "mailpit": {
+      "vmid": 110,
+      "ip": "192.168.0.110",
+      "hostname": "mailpit",
+      "ansible_connection": "community.proxmox.proxmox_pct_remote",
+      "ansible_pct_vmid": 110,
+      "tags": ["terraform", "container", "smtp", "notifications"],
+      "node": "pve",
+      "pool_id": "homelab"
+    },
+    "ntfy": {
+      "vmid": 111,
+      "ip": "192.168.0.111",
+      "hostname": "ntfy",
+      "ansible_connection": "community.proxmox.proxmox_pct_remote",
+      "ansible_pct_vmid": 111,
+      "tags": ["terraform", "container", "push", "notifications"],
+      "node": "pve",
+      "pool_id": "homelab"
     }
   },
   "vms": {},

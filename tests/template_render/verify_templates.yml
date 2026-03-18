@@ -199,3 +199,151 @@
           - cribl/inputs.yml.j2: combined syslog listeners (TCP+UDP) for ports 1514-1518
           - stream/inputs.yml.j2: IPFIX/NetFlow on port 2055
           - outputs.yml.j2: HEC URL -> https://192.168.0.200:8088, type: splunk_hec
+
+- name: Render and verify mailpit_docker templates
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    # Mirror roles/mailpit_docker/defaults/main.yml
+    mailpit_docker_image: "axllent/mailpit:v1.29.2"
+    mailpit_docker_container_name: mailpit
+    mailpit_docker_smtp_port: 1025
+    mailpit_docker_web_port: 8025
+    mailpit_docker_data_dir: /opt/mailpit
+    mailpit_docker_relay_starttls: true
+    mailpit_docker_relay_all: false
+    mailpit_docker_relay_host: "smtp.test.example.com"
+    mailpit_docker_relay_port: "587"
+    mailpit_docker_relay_username: "testuser"
+    mailpit_docker_relay_password: "test-placeholder"
+    _template_dir: "../../roles/mailpit_docker/templates"
+
+  tasks:
+    - name: Render mailpit docker-compose.yml.j2 to /tmp
+      ansible.builtin.template:
+        src: "{{ _template_dir }}/docker-compose.yml.j2"
+        dest: /tmp/test_mailpit_compose.yml
+        mode: "0644"
+
+    - name: Read rendered mailpit docker-compose.yml
+      ansible.builtin.slurp:
+        src: /tmp/test_mailpit_compose.yml
+      register: _mailpit_compose_raw
+
+    - name: Decode mailpit compose content
+      ansible.builtin.set_fact:
+        _mailpit_compose: "{{ _mailpit_compose_raw.content | b64decode }}"
+
+    - name: Assert mailpit compose has expected ports
+      ansible.builtin.assert:
+        that:
+          - "'1025:1025' in _mailpit_compose"
+          - "'8025:8025' in _mailpit_compose"
+        fail_msg: >-
+          mailpit docker-compose.yml.j2 missing expected port mappings;
+          rendered content: {{ _mailpit_compose }}
+
+    - name: Assert mailpit compose has expected image
+      ansible.builtin.assert:
+        that:
+          - "'axllent/mailpit:v1.29.2' in _mailpit_compose"
+        fail_msg: "mailpit docker-compose.yml.j2 does not reference expected image"
+
+    - name: Assert mailpit compose has relay env vars
+      ansible.builtin.assert:
+        that:
+          - "'MP_SMTP_RELAY_HOST' in _mailpit_compose"
+          - "'MP_SMTP_RELAY_STARTTLS' in _mailpit_compose"
+        fail_msg: "mailpit docker-compose.yml.j2 missing relay environment variables"
+
+    - name: Mailpit template rendering PASSED
+      ansible.builtin.debug:
+        msg: |
+          Mailpit template assertions passed:
+          - docker-compose.yml.j2: SMTP port 1025, web port 8025, image, relay env vars
+
+- name: Render and verify ntfy_docker templates
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    # Mirror roles/ntfy_docker/defaults/main.yml
+    ntfy_docker_image: "binwiederhier/ntfy:v2.17.0"
+    ntfy_docker_container_name: ntfy
+    ntfy_docker_http_port: 8080
+    ntfy_docker_data_dir: /opt/ntfy
+    ntfy_docker_cache_duration: "12h"
+    ntfy_docker_attachment_cache_dir: /var/cache/ntfy/attachments
+    ansible_host: "192.168.0.111"
+    _template_dir: "../../roles/ntfy_docker/templates"
+
+  tasks:
+    - name: Render ntfy docker-compose.yml.j2 to /tmp
+      ansible.builtin.template:
+        src: "{{ _template_dir }}/docker-compose.yml.j2"
+        dest: /tmp/test_ntfy_compose.yml
+        mode: "0644"
+
+    - name: Read rendered ntfy docker-compose.yml
+      ansible.builtin.slurp:
+        src: /tmp/test_ntfy_compose.yml
+      register: _ntfy_compose_raw
+
+    - name: Decode ntfy compose content
+      ansible.builtin.set_fact:
+        _ntfy_compose: "{{ _ntfy_compose_raw.content | b64decode }}"
+
+    - name: Assert ntfy compose has expected port mapping
+      ansible.builtin.assert:
+        that:
+          - "'8080:80' in _ntfy_compose"
+        fail_msg: >-
+          ntfy docker-compose.yml.j2 missing expected port mapping 8080:80;
+          rendered content: {{ _ntfy_compose }}
+
+    - name: Assert ntfy compose has expected image
+      ansible.builtin.assert:
+        that:
+          - "'binwiederhier/ntfy:v2.17.0' in _ntfy_compose"
+        fail_msg: "ntfy docker-compose.yml.j2 does not reference expected image"
+
+    - name: Assert ntfy compose mounts server.yml config
+      ansible.builtin.assert:
+        that:
+          - "'server.yml:ro' in _ntfy_compose"
+        fail_msg: "ntfy docker-compose.yml.j2 missing server.yml config mount"
+
+    - name: Render ntfy server.yml.j2 to /tmp
+      ansible.builtin.template:
+        src: "{{ _template_dir }}/server.yml.j2"
+        dest: /tmp/test_ntfy_server.yml
+        mode: "0644"
+
+    - name: Read rendered ntfy server.yml
+      ansible.builtin.slurp:
+        src: /tmp/test_ntfy_server.yml
+      register: _ntfy_server_raw
+
+    - name: Decode ntfy server content
+      ansible.builtin.set_fact:
+        _ntfy_server: "{{ _ntfy_server_raw.content | b64decode }}"
+
+    - name: Assert ntfy server.yml has expected configuration
+      ansible.builtin.assert:
+        that:
+          - "'cache-file' in _ntfy_server"
+          - "'listen-http: \":80\"' in _ntfy_server"
+          - "'cache-duration' in _ntfy_server"
+        fail_msg: >-
+          ntfy server.yml.j2 missing expected configuration;
+          rendered content: {{ _ntfy_server }}
+
+    - name: Ntfy template rendering PASSED
+      ansible.builtin.debug:
+        msg: |
+          Ntfy template assertions passed:
+          - docker-compose.yml.j2: HTTP port 8080:80, image, config mount
+          - server.yml.j2: cache-file, listen-http, cache-duration

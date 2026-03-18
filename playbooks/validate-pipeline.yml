@@ -739,6 +739,183 @@
           - Ollama API: responding
           - Qdrant connectivity: healthy
 
+- name: Validate Mailpit Notification Service
+  hosts: mailpit_group
+  become: true
+  gather_facts: false
+  tags:
+    - mailpit
+    - validation
+
+  tasks:
+    - name: Load terraform data for Mailpit validation
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../inventory/terraform_inventory.json"
+        name: terraform_data
+      delegate_to: localhost
+      run_once: true
+
+    - name: Gather service facts for Mailpit validation
+      ansible.builtin.service_facts:
+
+    - name: Assert Docker service is running
+      ansible.builtin.assert:
+        that:
+          - >-
+            ansible_facts.services['docker.service'] is defined
+          - >-
+            ansible_facts.services['docker.service'].state == 'running'
+        fail_msg: >-
+          Docker service is not running on {{ inventory_hostname }}
+        quiet: true
+
+    - name: Verify mailpit container is running
+      ansible.builtin.command:
+        cmd: docker ps --filter name=mailpit --filter status=running --format {% raw %}"{{ .Names }}"{% endraw %}
+      register: mailpit_container_check
+      changed_when: false
+      failed_when: "'mailpit' not in mailpit_container_check.stdout"
+
+    - name: Set Mailpit port facts
+      ansible.builtin.set_fact:
+        _mailpit_smtp_port: >-
+          {{ hostvars['localhost']['terraform_data']['constants']['notification_ports']['mailpit_smtp'] }}
+        _mailpit_web_port: >-
+          {{ hostvars['localhost']['terraform_data']['constants']['notification_ports']['mailpit_web'] }}
+
+    - name: Wait for Mailpit SMTP port
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: "{{ _mailpit_smtp_port }}"
+        timeout: 30
+
+    - name: Verify Mailpit web UI is responding
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ _mailpit_web_port }}"
+        method: GET
+        status_code: 200
+      register: mailpit_web_check
+      retries: 3
+      delay: 5
+      until: mailpit_web_check.status == 200
+      changed_when: false
+
+    - name: Display Mailpit validation results
+      ansible.builtin.debug:
+        msg: |
+          Mailpit validation passed on {{ inventory_hostname }}:
+          - Docker: running
+          - Container: mailpit running
+          - SMTP port {{ _mailpit_smtp_port }}: listening
+          - Web UI port {{ _mailpit_web_port }}: responding
+
+- name: Validate ntfy Push Notification Service
+  hosts: ntfy_group
+  become: true
+  gather_facts: false
+  tags:
+    - ntfy
+    - validation
+
+  tasks:
+    - name: Load terraform data for ntfy validation
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../inventory/terraform_inventory.json"
+        name: terraform_data
+      delegate_to: localhost
+      run_once: true
+
+    - name: Gather service facts for ntfy validation
+      ansible.builtin.service_facts:
+
+    - name: Assert Docker service is running
+      ansible.builtin.assert:
+        that:
+          - >-
+            ansible_facts.services['docker.service'] is defined
+          - >-
+            ansible_facts.services['docker.service'].state == 'running'
+        fail_msg: >-
+          Docker service is not running on {{ inventory_hostname }}
+        quiet: true
+
+    - name: Verify ntfy container is running
+      ansible.builtin.command:
+        cmd: docker ps --filter name=ntfy --filter status=running --format {% raw %}"{{ .Names }}"{% endraw %}
+      register: ntfy_container_check
+      changed_when: false
+      failed_when: "'ntfy' not in ntfy_container_check.stdout"
+
+    - name: Set ntfy port facts
+      ansible.builtin.set_fact:
+        _ntfy_http_port: >-
+          {{ hostvars['localhost']['terraform_data']['constants']['notification_ports']['ntfy_http'] }}
+
+    - name: Verify ntfy health endpoint
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ _ntfy_http_port }}/v1/health"
+        method: GET
+        status_code: 200
+      register: ntfy_health_check
+      retries: 3
+      delay: 5
+      until: ntfy_health_check.status == 200
+      changed_when: false
+
+    - name: Display ntfy validation results
+      ansible.builtin.debug:
+        msg: |
+          ntfy validation passed on {{ inventory_hostname }}:
+          - Docker: running
+          - Container: ntfy running
+          - Health endpoint port {{ _ntfy_http_port }}: responding
+
+- name: Validate MSSQL Docker Service
+  hosts: mssql_group
+  become: true
+  gather_facts: false
+  tags:
+    - mssql_docker
+    - validation
+
+  tasks:
+    - name: Gather service facts for MSSQL validation
+      ansible.builtin.service_facts:
+
+    - name: Assert Docker service is running
+      ansible.builtin.assert:
+        that:
+          - >-
+            ansible_facts.services['docker.service'] is defined
+          - >-
+            ansible_facts.services['docker.service'].state == 'running'
+        fail_msg: >-
+          Docker service is not running on {{ inventory_hostname }}
+        quiet: true
+
+    - name: Verify mssql container is running
+      ansible.builtin.command:
+        cmd: docker ps --filter name=mssql --filter status=running --format {% raw %}"{{ .Names }}"{% endraw %}
+      register: mssql_container_check
+      changed_when: false
+      failed_when: "'mssql' not in mssql_container_check.stdout"
+
+    # Port 1433 is the standard SQL Server port. No terraform constant exists yet;
+    # this should move to constants.service_ports.mssql when terraform-proxmox defines it.
+    - name: Wait for MSSQL port 1433
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: 1433
+        timeout: 30
+
+    - name: Display MSSQL validation results
+      ansible.builtin.debug:
+        msg: |
+          MSSQL validation passed on {{ inventory_hostname }}:
+          - Docker: running
+          - Container: mssql running
+          - Port 1433: listening
+
 - name: Pipeline Summary
   hosts: localhost
   gather_facts: false
@@ -759,6 +936,9 @@
           Cribl Edge:   Metrics API responding
           Qdrant:       Docker running, HTTP+gRPC healthy
           LlamaIndex:   Ollama running, model loaded, Qdrant reachable
+          Mailpit:      Docker running, SMTP+Web healthy
+          ntfy:         Docker running, health endpoint healthy
+          MSSQL:        Docker running, port 1433 listening
           E2E:          Data flowing through pipeline
           E2E (unifi):  Event landed in index=unifi
           E2E (HAProxy): Event via HAProxy in index=unifi

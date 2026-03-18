@@ -84,6 +84,8 @@
           - "'apt-cacher-ng' in groups['lxc_containers']"
           - "'qdrant' in groups['lxc_containers']"
           - "'llamaindex' in groups['lxc_containers']"
+          - "'mailpit' in groups['lxc_containers']"
+          - "'ntfy' in groups['lxc_containers']"
         fail_msg: >-
           lxc_containers group is missing terraform hosts;
           current members: {{ groups['lxc_containers'] | default([]) | join(', ') }}
@@ -177,6 +179,24 @@
           llamaindex_group should contain 'llamaindex' (rag tag);
           got {{ groups['llamaindex_group'] | default([]) }}
 
+    - name: Verify mailpit is in mailpit_group
+      ansible.builtin.assert:
+        that:
+          - groups['mailpit_group'] is defined
+          - "'mailpit' in groups['mailpit_group']"
+        fail_msg: >-
+          mailpit_group should contain 'mailpit' (smtp tag);
+          got {{ groups['mailpit_group'] | default([]) }}
+
+    - name: Verify ntfy is in ntfy_group
+      ansible.builtin.assert:
+        that:
+          - groups['ntfy_group'] is defined
+          - "'ntfy' in groups['ntfy_group']"
+        fail_msg: >-
+          ntfy_group should contain 'ntfy' (push tag);
+          got {{ groups['ntfy_group'] | default([]) }}
+
     - name: Display group membership summary
       ansible.builtin.debug:
         msg: |
@@ -191,3 +211,5 @@
           - apt_cacher_group:    {{ groups['apt_cacher_group'] | default([]) | join(', ') }}
           - qdrant_group:        {{ groups['qdrant_group'] | default([]) | join(', ') }}
           - llamaindex_group:    {{ groups['llamaindex_group'] | default([]) | join(', ') }}
+          - mailpit_group:      {{ groups['mailpit_group'] | default([]) | join(', ') }}
+          - ntfy_group:         {{ groups['ntfy_group'] | default([]) | join(', ') }}
