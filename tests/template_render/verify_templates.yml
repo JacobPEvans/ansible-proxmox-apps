@@ -242,8 +242,7 @@
           - "'1025:1025' in _mailpit_compose"
           - "'8025:8025' in _mailpit_compose"
         fail_msg: >-
-          mailpit docker-compose.yml.j2 missing expected port mappings;
-          rendered content: {{ _mailpit_compose }}
+          mailpit docker-compose.yml.j2 missing expected port mappings
 
     - name: Assert mailpit compose has expected image
       ansible.builtin.assert:
@@ -301,8 +300,7 @@
         that:
           - "'8080:80' in _ntfy_compose"
         fail_msg: >-
-          ntfy docker-compose.yml.j2 missing expected port mapping 8080:80;
-          rendered content: {{ _ntfy_compose }}
+          ntfy docker-compose.yml.j2 missing expected port mapping 8080:80
 
     - name: Assert ntfy compose has expected image
       ansible.builtin.assert:
