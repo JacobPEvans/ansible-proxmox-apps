@@ -21,6 +21,12 @@
 # 2. Add filter pattern under `changes.steps.filter.with.filters`
 # 3. Add job that calls the reusable workflow with appropriate `if:` condition
 # 4. Add job name to `gate.needs` array and `allowed-skips`
+#
+# E2E Runner Guard:
+# E2E tests require self-hosted runners. To prevent jobs from hanging
+# indefinitely when no runner is available, the e2e job checks the
+# repository variable `E2E_RUNNERS_ENABLED`. Set to 'true' after
+# deploying runners: `gh variable set E2E_RUNNERS_ENABLED --body true`
 
 name: CI Gate
 
@@ -96,7 +102,9 @@ jobs:
   e2e:
     name: E2E Tests
     needs: changes
-    if: needs.changes.outputs.e2e == 'true'
+    if: >-
+      needs.changes.outputs.e2e == 'true' &&
+      vars.E2E_RUNNERS_ENABLED == 'true'
     uses: ./.github/workflows/_e2e-tests.yml
 
   # ==========================================================================
