@@ -3,6 +3,10 @@ name: Molecule
 
 on:
   workflow_call:
+    secrets:
+      GH_ACTION_DOPPLER_IAC_CONF_MGMT:
+        description: Doppler service token for iac-conf-mgmt/prd
+        required: true
 
 permissions:
   contents: read
@@ -46,7 +50,7 @@ jobs:
         uses: dopplerhq/secrets-fetch-action@v1.3.0
         id: doppler
         with:
-          doppler-token: ${{ secrets.DOPPLER_TOKEN }}
+          doppler-token: ${{ secrets.GH_ACTION_DOPPLER_IAC_CONF_MGMT }}
           doppler-project: iac-conf-mgmt
           doppler-config: prd
           inject-env-vars: true
