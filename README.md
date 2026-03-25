@@ -34,11 +34,11 @@ cd ~/git
 git clone <repo-url> ansible-proxmox-apps
 cd ansible-proxmox-apps
 
-# Install Ansible via uv (recommended)
-uv tool install ansible
+# Activate Nix dev shell (provides ansible, ansible-lint, molecule, etc.)
+direnv allow    # one-time per worktree — auto-activates on cd
 
 # Install required collections
-uv tool run ansible-galaxy collection install -r requirements.yml
+ansible-galaxy collection install -r requirements.yml
 
 # Configure Doppler
 doppler configure set project ansible-proxmox-apps
@@ -56,19 +56,19 @@ export PROXMOX_SSH_KEY_PATH="<path-to-ssh-key>"
 
 ```bash
 # Deploy Cribl Edge (syslog processing on LXC containers)
-doppler run -- uv tool run ansible-playbook \
+doppler run -- ansible-playbook \
   -i inventory/hosts.yml playbooks/site.yml --tags cribl_edge
 
 # Deploy Cribl Stream (netflow/IPFIX processing on LXC containers)
-doppler run -- uv tool run ansible-playbook \
+doppler run -- ansible-playbook \
   -i inventory/hosts.yml playbooks/site.yml --tags cribl_stream
 
 # Deploy HAProxy (load balancer on LXC container)
-doppler run -- uv tool run ansible-playbook \
+doppler run -- ansible-playbook \
   -i inventory/hosts.yml playbooks/site.yml --tags haproxy
 
 # Deploy all applications
-doppler run -- uv tool run ansible-playbook \
+doppler run -- ansible-playbook \
   -i inventory/hosts.yml playbooks/site.yml
 ```
 
@@ -238,7 +238,7 @@ See `requirements.yml` for Ansible Galaxy collection dependencies.
 Run the following to install:
 
 ```bash
-uv tool run ansible-galaxy collection install -r requirements.yml
+ansible-galaxy collection install -r requirements.yml
 ```
 
 ## Linting
@@ -246,13 +246,13 @@ uv tool run ansible-galaxy collection install -r requirements.yml
 Validate code quality with ansible-lint:
 
 ```bash
-uv tool run ansible-lint
+ansible-lint
 ```
 
 Fix common issues automatically:
 
 ```bash
-uv tool run ansible-lint --fix
+ansible-lint --fix
 ```
 
 ## Development Environment

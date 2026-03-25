@@ -74,7 +74,7 @@ Validates the full pipeline by sending a test syslog message and confirming
 it arrives in Splunk.
 
 ```bash
-doppler run -- uv run ansible-playbook \
+doppler run -- ansible-playbook \
   -i inventory/hosts.yml playbooks/validate-pipeline.yml
 ```
 
@@ -90,15 +90,15 @@ Run individual stages with tags:
 
 ```bash
 # HAProxy only
-doppler run -- uv run ansible-playbook \
+doppler run -- ansible-playbook \
   -i inventory/hosts.yml playbooks/validate-pipeline.yml --tags haproxy
 
 # Splunk only
-doppler run -- uv run ansible-playbook \
+doppler run -- ansible-playbook \
   -i inventory/hosts.yml playbooks/validate-pipeline.yml --tags splunk
 
 # E2E data flow only
-doppler run -- uv run ansible-playbook \
+doppler run -- ansible-playbook \
   -i inventory/hosts.yml playbooks/validate-pipeline.yml --tags e2e
 ```
 
@@ -228,7 +228,7 @@ Run `validate-pipeline.yml` with specific tags to isolate the failing
 component. Start from HAProxy and work forward:
 
 ```bash
-doppler run -- uv run ansible-playbook \
+doppler run -- ansible-playbook \
   -i inventory/hosts.yml playbooks/validate-pipeline.yml \
   --tags haproxy,cribl_edge,splunk
 ```
