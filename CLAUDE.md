@@ -139,10 +139,10 @@ Template: `secrets.enc.yaml.example` — copy, fill in real values, then encrypt
 
 ```bash
 # Deploy all apps (Doppler — main pipeline does not require SOPS)
-doppler run -- uv run ansible-playbook -i inventory/hosts.yml playbooks/site.yml
+doppler run -- ansible-playbook -i inventory/hosts.yml playbooks/site.yml
 
 # Deploy all apps including SOPS-only roles (e.g., technitium_dns)
-sops exec-env secrets.enc.yaml 'doppler run -- uv run ansible-playbook \
+sops exec-env secrets.enc.yaml 'doppler run -- ansible-playbook \
   -i inventory/hosts.yml playbooks/site.yml'
 
 # Deploy GitHub runners (requires token from gh-workflow-tokens Doppler project)
@@ -154,10 +154,10 @@ doppler run -p gh-workflow-tokens -c prd -- \
 sops secrets.enc.yaml
 
 # Validate pipeline
-doppler run -- uv run ansible-playbook -i inventory/hosts.yml playbooks/validate-pipeline.yml
+doppler run -- ansible-playbook -i inventory/hosts.yml playbooks/validate-pipeline.yml
 
 # Lint
-uv run ansible-lint
+ansible-lint
 ```
 
 ## Testing
@@ -166,10 +166,10 @@ uv run ansible-lint
 
 | Check | Command | When |
 | --- | --- | --- |
-| Ansible lint | `uv run ansible-lint` | pre-commit, every PR |
+| Ansible lint | `ansible-lint` | pre-commit, every PR |
 | Playbook syntax | `ansible-playbook --syntax-check` | every PR (CI) |
 | Inventory group validation | see below | every PR (CI) |
-| Molecule syntax | `uv run molecule syntax` | every PR (CI, roles/molecule changes) |
+| Molecule syntax | `molecule syntax` | every PR (CI, roles/molecule changes) |
 
 **Inventory validation locally:**
 
@@ -186,17 +186,16 @@ starts SQL Server, and verifies port 1433 is accepting connections.
 Requires Docker on the local machine (~5-10 min).
 
 ```bash
-# Install Molecule dependencies (once)
-uv pip install molecule 'molecule-plugins[docker]>=23.0.0' 'docker>=7.0.0'
+# Install Ansible Galaxy dependencies (once)
 ansible-galaxy collection install -r requirements.yml
 
 # Run full test cycle (create -> converge -> idempotence -> verify -> destroy)
-uv run molecule test
+molecule test
 
 # Or step through individually for debugging
-uv run molecule converge   # deploy role into container
-uv run molecule verify     # run assertions
-uv run molecule destroy    # clean up
+molecule converge   # deploy role into container
+molecule verify     # run assertions
+molecule destroy    # clean up
 ```
 
 **When to run:** Any time you modify a role in `roles/` before opening a PR.
