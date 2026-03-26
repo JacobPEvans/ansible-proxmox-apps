@@ -224,3 +224,21 @@
     llamaindex_qdrant_port: "{{ _vdb_ports.qdrant_http }}"
   roles:
     - role: llamaindex
+
+# =============================================================================
+# Phase 9: Systemd Restart Policies
+# Apply restart-on-failure policies to all managed services
+# Each group defines its services via group_vars
+# =============================================================================
+
+- name: Apply systemd restart policies to all managed services
+  hosts: all
+  become: true
+  gather_facts: false
+  tags:
+    - restart-policy
+    - hardening
+
+  roles:
+    - role: systemd_restart_policy
+      when: systemd_restart_policy_services | default([]) | length > 0

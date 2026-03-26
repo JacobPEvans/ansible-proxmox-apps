@@ -1,0 +1,4 @@
+---
+systemd_restart_policy_services:
+  - haproxy
+  - nginx

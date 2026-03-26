@@ -1,0 +1,9 @@
+---
+# List of systemd service names to apply restart policy to
+systemd_restart_policy_services: []
+
+# Restart behavior on failure
+systemd_restart_policy_restart: "on-failure"
+
+# Delay between restart attempts
+systemd_restart_policy_restart_sec: "5s"
