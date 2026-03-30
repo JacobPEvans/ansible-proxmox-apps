@@ -210,10 +210,14 @@ This repo uses [Nix flakes](https://wiki.nixos.org/wiki/Flakes) + [direnv](https
 direnv allow    # one-time per worktree — auto-activates on cd
 ```
 
-### Manual activation
+The shell is provided by the `ansible-apps` shell in
+[nix-devenv](https://github.com/JacobPEvans/nix-devenv) via `.envrc`.
+There is no local `flake.nix` — direnv fetches and caches the remote shell automatically.
+
+To activate manually without direnv:
 
 ```sh
-nix develop
+nix develop "github:JacobPEvans/nix-devenv#ansible-apps"
 ```
 
 ### Tools provided
