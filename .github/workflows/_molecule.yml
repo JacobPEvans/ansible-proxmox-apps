@@ -47,7 +47,7 @@ jobs:
         run: ansible-galaxy collection install -r requirements.yml --force
 
       - name: Fetch secrets from Doppler
-        uses: dopplerhq/secrets-fetch-action@v2.0.0
+        uses: dopplerhq/secrets-fetch-action@451892f16195f9ac360e1a5bcbf0b5fd0e957534 # v2.0.0
         id: doppler
         with:
           doppler-token: ${{ secrets.GH_ACTION_DOPPLER_IAC_CONF_MGMT }}
