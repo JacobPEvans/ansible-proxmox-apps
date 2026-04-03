@@ -114,7 +114,7 @@ Port constants come from `terraform_data.constants`
 | `SPLUNK_HEC_TOKEN` | Splunk HEC token (for Cribl output) | Doppler / SOPS |
 | `SPLUNK_PASSWORD` | Splunk admin password (for E2E validation) | Doppler / SOPS |
 | `HAPROXY_STATS_PASSWORD` | HAProxy stats page password | SOPS |
-| `TECHNITIUM_DNS_API_TOKEN` | Technitium DNS API token | SOPS |
+| `TECHNITIUM_DNS_API_TOKEN` | Technitium DNS API token | Doppler |
 | `MAILPIT_RELAY_HOST` | SMTP relay hostname | SOPS |
 | `MAILPIT_RELAY_PORT` | SMTP relay port (default 587) | SOPS |
 | `MAILPIT_RELAY_USERNAME` | SMTP relay username | SOPS |
