@@ -134,10 +134,6 @@
         ansible_connection: "{{ item.value.ansible_connection }}"
         ansible_user: root
         ansible_ssh_private_key_file: "{{ lookup('env', 'PROXMOX_SSH_KEY_PATH') }}"
-        ansible_pct_host: "{{ lookup('env', 'PROXMOX_VE_HOSTNAME') }}"
-        ansible_pct_user: root
-        ansible_pct_private_key_file: "{{ lookup('env', 'PROXMOX_SSH_KEY_PATH') }}"
-        ansible_pct_node: "{{ lookup('env', 'PROXMOX_VE_NODE') }}"
         hostname: "{{ item.value.hostname }}"
         container_ip: "{{ item.value.ip }}"
         host_tags: "{{ item.value.tags | default([]) }}"

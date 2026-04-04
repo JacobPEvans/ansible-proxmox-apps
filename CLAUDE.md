@@ -141,7 +141,7 @@ Template: `secrets.enc.yaml.example` — copy, fill in real values, then encrypt
 # Deploy all apps (Doppler — main pipeline does not require SOPS)
 doppler run -- ansible-playbook -i inventory/hosts.yml playbooks/site.yml
 
-# Deploy all apps including SOPS-only roles (e.g., technitium_dns)
+# Deploy all apps including SOPS-only roles (e.g., haproxy, mailpit)
 sops exec-env secrets.enc.yaml 'doppler run -- ansible-playbook \
   -i inventory/hosts.yml playbooks/site.yml'
 
