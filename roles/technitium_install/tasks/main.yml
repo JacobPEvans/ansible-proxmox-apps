@@ -1,0 +1,134 @@
+---
+# Technitium DNS Server Installation
+# Installs the server and bootstraps credentials from Doppler.
+# Idempotent: skips installation if already running, skips password
+# change if default password no longer works (already changed).
+
+- name: Validate admin password is defined
+  ansible.builtin.assert:
+    that:
+      - technitium_install_admin_password | length > 0
+    fail_msg: >-
+      TECHNITIUM_DNS_ADMIN_PASSWORD must be set in Doppler before first deploy.
+      Add via: doppler secrets set TECHNITIUM_DNS_ADMIN_PASSWORD=<password> -p iac-conf-mgmt -c prd
+    quiet: true
+
+- name: Check if Technitium is already running
+  ansible.builtin.uri:
+    url: "{{ technitium_install_api_url }}/api/user/login"
+    method: GET
+    status_code: [200, 400, 405]
+    timeout: "{{ technitium_install_api_timeout }}"
+  register: technitium_install_check
+  failed_when: false
+  changed_when: false
+
+- name: Install Technitium DNS server
+  when: technitium_install_check.status == -1
+  block:
+    - name: Install dependencies
+      ansible.builtin.apt:
+        name:
+          - curl
+          - libicu-dev
+        state: present
+        update_cache: true
+
+    - name: Download and run install script
+      ansible.builtin.shell:
+        cmd: curl -sSL "{{ technitium_install_script_url }}" | bash
+      changed_when: true
+
+    - name: Wait for Technitium to start
+      ansible.builtin.uri:
+        url: "{{ technitium_install_api_url }}"
+        method: GET
+        status_code: [200, 301, 302]
+        timeout: "{{ technitium_install_api_timeout }}"
+      register: technitium_install_wait
+      retries: 12
+      delay: 5
+      until: technitium_install_wait.status in [200, 301, 302]
+
+- name: Try login with default password
+  ansible.builtin.uri:
+    url: "{{ technitium_install_api_url }}/api/user/login"
+    method: POST
+    body_format: form-urlencoded
+    body:
+      user: "{{ technitium_install_admin_user }}"
+      pass: "{{ technitium_install_default_password }}"
+    return_content: true
+    timeout: "{{ technitium_install_api_timeout }}"
+    status_code: [200]
+  register: technitium_install_default_login
+  failed_when: false
+  changed_when: false
+  no_log: true
+
+- name: Bootstrap credentials (default password still active)
+  when: >-
+    technitium_install_default_login.status == 200 and
+    (technitium_install_default_login.json.status | default('')) == 'ok'
+  block:
+    - name: Change admin password
+      ansible.builtin.uri:
+        url: "{{ technitium_install_api_url }}/api/user/changePassword"
+        method: POST
+        body_format: form-urlencoded
+        body:
+          token: "{{ technitium_install_default_login.json.token }}"
+          pass: "{{ technitium_install_admin_password }}"
+        return_content: true
+        timeout: "{{ technitium_install_api_timeout }}"
+      register: technitium_install_password_change
+      changed_when: technitium_install_password_change.json.status == "ok"
+      no_log: true
+
+- name: Login with configured password
+  ansible.builtin.uri:
+    url: "{{ technitium_install_api_url }}/api/user/login"
+    method: POST
+    body_format: form-urlencoded
+    body:
+      user: "{{ technitium_install_admin_user }}"
+      pass: "{{ technitium_install_admin_password }}"
+    return_content: true
+    timeout: "{{ technitium_install_api_timeout }}"
+  register: technitium_install_login
+  no_log: true
+
+- name: Create API token
+  ansible.builtin.uri:
+    url: "{{ technitium_install_api_url }}/api/user/createToken"
+    method: POST
+    body_format: form-urlencoded
+    body:
+      token: "{{ technitium_install_login.json.token }}"
+      user: "{{ technitium_install_admin_user }}"
+      tokenName: "{{ technitium_install_token_name }}"
+    return_content: true
+    timeout: "{{ technitium_install_api_timeout }}"
+  register: technitium_install_token_result
+  changed_when: technitium_install_token_result.json.status == "ok"
+  no_log: true
+
+- name: Display API token for Doppler storage
+  ansible.builtin.debug:
+    msg: >-
+      Technitium API token created. Add to Doppler:
+      doppler secrets set TECHNITIUM_DNS_API_TOKEN='{{ technitium_install_token_result.json.token }}'
+      -p iac-conf-mgmt -c prd
+  when: technitium_install_token_result is changed
+
+- name: Verify Technitium DNS is healthy
+  ansible.builtin.uri:
+    url: "{{ technitium_install_api_url }}/api/zones/list"
+    method: GET
+    headers:
+      X-Api-Token: "{{ technitium_install_token_result.json.token }}"
+    return_content: true
+    timeout: "{{ technitium_install_api_timeout }}"
+  register: technitium_install_health
+  changed_when: false
+  failed_when: technitium_install_health.json.status != "ok"
