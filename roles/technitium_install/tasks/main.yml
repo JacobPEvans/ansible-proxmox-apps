@@ -34,10 +34,21 @@
         state: present
         update_cache: true
 
-    - name: Download and run install script
-      ansible.builtin.shell:
-        cmd: curl -sSL "{{ technitium_install_script_url }}" | bash
+    - name: Download install script
+      ansible.builtin.get_url:
+        url: "{{ technitium_install_script_url }}"
+        dest: /tmp/technitium-install.sh
+        mode: "0755"
+
+    - name: Run install script
+      ansible.builtin.command:
+        cmd: bash /tmp/technitium-install.sh
       changed_when: true
+
+    - name: Remove install script
+      ansible.builtin.file:
+        path: /tmp/technitium-install.sh
+        state: absent
 
     - name: Wait for Technitium to start
       ansible.builtin.uri:
@@ -113,7 +124,7 @@
   changed_when: technitium_install_token_result.json.status == "ok"
   no_log: true
 
-- name: Display API token for Doppler storage
+- name: Display API token for Doppler storage  # noqa: no-handler
   ansible.builtin.debug:
     msg: >-
       Technitium API token created. Add to Doppler:
