@@ -56,7 +56,28 @@
         state: absent
 
 # =============================================================================
-# Phase 1: DNS Configuration
+# Phase 1a: DNS Installation
+# Install Technitium DNS server and bootstrap credentials from Doppler.
+# Must run BEFORE record management (Phase 1b).
+# =============================================================================
+
+- name: Install and bootstrap Technitium DNS server
+  hosts: technitium_dns_group
+  become: true
+  gather_facts: false
+  tags:
+    - technitium_install
+    - technitium_dns
+    - dns
+
+  vars:
+    technitium_dns_host: "{{ container_ip | default(ansible_host) }}"
+
+  roles:
+    - role: technitium_install
+
+# =============================================================================
+# Phase 1b: DNS Configuration
 # Technitium DNS must be configured first to enable hostname-based references
 # =============================================================================
 

@@ -9,8 +9,8 @@
       - technitium_dns_internal_domain | length > 0
       - technitium_dns_host is defined
     fail_msg: >-
-      Required variables not set. Check: (1) TECHNITIUM_DNS_API_TOKEN is a SOPS secret —
-      run with: sops exec-env secrets.enc.yaml 'doppler run -- uv run ansible-playbook ...';
+      Required variables not set. Check: (1) TECHNITIUM_DNS_API_TOKEN must be in Doppler
+      (add via: doppler secrets set TECHNITIUM_DNS_API_TOKEN='your-token-here' -p iac-conf-mgmt -c prd);
       (2) PROXMOX_DOMAIN is available via Doppler; (3) technitium_dns_host must be set in
       the play vars.
     quiet: true

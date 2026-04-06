@@ -1,0 +1,27 @@
+---
+# Technitium DNS Server installation defaults
+
+# Admin password — injected from Doppler (TECHNITIUM_DNS_ADMIN_PASSWORD)
+# Set BEFORE first deploy so the server never runs with default credentials.
+technitium_install_admin_password: "{{ lookup('env', 'TECHNITIUM_DNS_ADMIN_PASSWORD') }}"
+
+# Admin username (Technitium default)
+technitium_install_admin_user: "admin"
+
+# Default password that Technitium ships with (used only during initial setup)
+technitium_install_default_password: "admin"
+
+# Port Technitium listens on
+technitium_install_port: 5380
+
+# API base URL (constructed from inventory)
+technitium_install_api_url: "http://{{ technitium_dns_host }}:{{ technitium_install_port }}"
+
+# Token name for the API token created during bootstrap
+technitium_install_token_name: "ansible-automation"
+
+# Timeout for API calls
+technitium_install_api_timeout: 30
+
+# Install script URL
+technitium_install_script_url: "https://download.technitium.com/dns/install.sh"

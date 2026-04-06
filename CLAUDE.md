@@ -114,7 +114,7 @@ Port constants come from `terraform_data.constants`
 | `SPLUNK_HEC_TOKEN` | Splunk HEC token (for Cribl output) | Doppler / SOPS |
 | `SPLUNK_PASSWORD` | Splunk admin password (for E2E validation) | Doppler / SOPS |
 | `HAPROXY_STATS_PASSWORD` | HAProxy stats page password | SOPS |
-| `TECHNITIUM_DNS_API_TOKEN` | Technitium DNS API token | SOPS |
+| `TECHNITIUM_DNS_API_TOKEN` | Technitium DNS API token | Doppler |
 | `MAILPIT_RELAY_HOST` | SMTP relay hostname | SOPS |
 | `MAILPIT_RELAY_PORT` | SMTP relay port (default 587) | SOPS |
 | `MAILPIT_RELAY_USERNAME` | SMTP relay username | SOPS |
@@ -141,7 +141,7 @@ Template: `secrets.enc.yaml.example` — copy, fill in real values, then encrypt
 # Deploy all apps (Doppler — main pipeline does not require SOPS)
 doppler run -- ansible-playbook -i inventory/hosts.yml playbooks/site.yml
 
-# Deploy all apps including SOPS-only roles (e.g., technitium_dns)
+# Deploy all apps including SOPS-only roles (e.g., haproxy, mailpit)
 sops exec-env secrets.enc.yaml 'doppler run -- ansible-playbook \
   -i inventory/hosts.yml playbooks/site.yml'
 
