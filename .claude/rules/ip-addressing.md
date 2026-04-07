@@ -12,28 +12,29 @@ constants. This repository CONSUMES values, never DEFINES them.
 
 ## Prohibited Patterns
 
-Never use these in role defaults or tasks:
+Never hardcode IPs or port numbers in role defaults or tasks:
 
 ```yaml
-# BAD - hardcoded IP with default
-splunk_host: "{{ hostvars['splunk'].ansible_host | default('192.168.0.200') }}"
+# BAD - hardcoded IP with fallback
+splunk_host: "{{ hostvars['splunk'].ansible_host | default('<any-ip>') }}"
 
 # BAD - hardcoded port
-splunk_hec_port: 8088
+splunk_hec_port: <some-port-number>
 
 # BAD - hardcoded port list
 syslog_ports:
-  - 1514
-  - 1515
+  - <port>
+  - <port>
 ```
 
 ## Required Patterns
 
-Always reference terraform_data.constants:
+`load_terraform.yml` delegates `terraform_data` to all inventory hosts, so
+roles can reference it directly:
 
 ```yaml
-# GOOD - IP from inventory only (no fallback)
-splunk_host: "{{ hostvars['splunk']['ansible_host'] }}"
+# GOOD - IP from inventory (no fallback)
+splunk_ip: "{{ hostvars['splunk']['ansible_host'] }}"
 
 # GOOD - port from terraform constants
 splunk_hec_port: "{{ terraform_data.constants.service_ports.splunk_hec }}"
@@ -51,9 +52,7 @@ To change any port or IP:
 3. Regenerate inventory:
 
    ```bash
-   cd ~/git/terraform-proxmox/main
-   terragrunt output -json ansible_inventory > \
-     ~/git/ansible-proxmox-apps/main/inventory/terraform_inventory.json
+   ./scripts/sync-terraform-inventory.sh
    ```
 
 ## Documentation

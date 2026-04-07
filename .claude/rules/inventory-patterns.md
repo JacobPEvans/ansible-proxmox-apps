@@ -9,7 +9,8 @@ description: Terraform-driven inventory consumption
 
 Inventory is loaded dynamically from terraform state via
 `inventory/terraform_inventory.json`. The `load_terraform.yml` playbook
-must run before all other playbooks.
+must run before all other playbooks. It also delegates `terraform_data`
+to all inventory hosts so roles can access it without indirection.
 
 ## Data Structure
 
@@ -23,14 +24,13 @@ The terraform_inventory.json contains:
   "docker_vms": { ... },
   "constants": {
     "service_ports": {
-      "ssh": 22,
-      "splunk_web": 8000,
-      "splunk_hec": 8088,
+      "splunk_web": "...",
+      "splunk_hec": "...",
       ...
     },
     "syslog_ports": {
-      "unifi": 1514,
-      "paloalto": 1515,
+      "unifi": "...",
+      "palo_alto": "...",
       ...
     }
   }
@@ -41,31 +41,38 @@ The terraform_inventory.json contains:
 
 ### Host Information
 
+Host type determines which keys are available:
+
 ```yaml
-# IP address (no default fallback)
-ansible_host: "{{ hostvars['splunk']['ansible_host'] }}"
+# VMs and Splunk VM — use ansible_host for the IP
+splunk_ip: "{{ hostvars['splunk']['ansible_host'] }}"
 
-# Hostname
+# LXC containers — use container_ip for the IP
+cribl_ip: "{{ hostvars['cribl-edge-01']['container_ip'] }}"
+
+# Containers — Proxmox guest ID
+proxmox_vmid: "{{ hostvars['cribl-edge-01']['proxmox_vmid'] }}"
+
+# Hostname (all host types)
 hostname: "{{ hostvars['splunk']['hostname'] }}"
-
-# VMID
-vmid: "{{ hostvars['splunk']['vmid'] }}"
 ```
 
 ### Port Constants
 
+`terraform_data` is delegated to all hosts by `load_terraform.yml`,
+so roles access it directly:
+
 ```yaml
-# Service ports
+# Service port
 port: "{{ terraform_data.constants.service_ports.splunk_hec }}"
 
-# Syslog ports (as list)
+# Syslog ports as a list
 ports: "{{ terraform_data.constants.syslog_ports.values() | list }}"
 
-# Syslog ports (as dict for iteration)
-{% for name, port in terraform_data.constants.syslog_ports.items() %}
-  - name: {{ name }}
-    port: {{ port }}
-{% endfor %}
+# Syslog ports as key/value pairs
+ports: >-
+  {{ terraform_data.constants.syslog_ports
+     | dict2items(key_name='name', value_name='port') }}
 ```
 
 ## Validation
@@ -80,7 +87,5 @@ If validation fails, regenerate the inventory from terraform-proxmox.
 ## Regenerating Inventory
 
 ```bash
-cd ~/git/terraform-proxmox/main
-terragrunt output -json ansible_inventory > \
-  ~/git/ansible-proxmox-apps/main/inventory/terraform_inventory.json
+./scripts/sync-terraform-inventory.sh
 ```
