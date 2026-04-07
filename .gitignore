@@ -12,6 +12,7 @@ env/
 # Ansible
 *.retry
 .ansible_cache/
+.ansible/
 /roles/requirements/
 inventory/terraform_inventory.json
 
