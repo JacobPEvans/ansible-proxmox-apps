@@ -1,0 +1,29 @@
+---
+# MinIO object storage role defaults
+
+# Binary download URLs
+minio_binary_url: "https://dl.min.io/server/minio/release/linux-amd64/minio"
+minio_mc_binary_url: "https://dl.min.io/client/mc/release/linux-amd64/mc"
+
+# Installation paths
+minio_install_dir: /usr/local/bin
+minio_data_dir: /opt/minio/data
+minio_config_dir: /etc/minio
+
+# Service configuration
+minio_api_port: 9000
+minio_console_port: 9001
+
+# System user
+minio_user: minio-user
+minio_group: minio-user
+
+# Credentials (from Doppler)
+minio_root_user: "{{ lookup('env', 'MINIO_ROOT_USER') }}"
+minio_root_password: "{{ lookup('env', 'MINIO_ROOT_PASSWORD') }}"
+
+# Default buckets to create
+minio_default_buckets:
+  - name: splunk-addons
+    policy: download
+    versioning: true

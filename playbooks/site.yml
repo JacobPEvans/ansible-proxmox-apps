@@ -56,6 +56,21 @@
         state: absent
 
 # =============================================================================
+# Phase 0b: MinIO Object Storage
+# S3-compatible artifact store for Splunk add-ons and other deployment assets
+# =============================================================================
+
+- name: Deploy MinIO object storage
+  hosts: minio_group
+  become: true
+  gather_facts: false
+  tags:
+    - minio
+    - storage
+  roles:
+    - role: minio
+
+# =============================================================================
 # Phase 1a: DNS Installation
 # Install Technitium DNS server and bootstrap credentials from Doppler.
 # Must run BEFORE record management (Phase 1b).
