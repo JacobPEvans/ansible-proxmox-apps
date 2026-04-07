@@ -24,7 +24,7 @@
     system: true
     shell: /usr/sbin/nologin
     home: /opt/minio
-    create_home: false
+    create_home: true
     state: present
 
 # Phase 3: Create directories
@@ -45,11 +45,7 @@
     mode: "0750"
 
 # Phase 4: Download binaries
-- name: Check if minio binary exists
-  ansible.builtin.stat:
-    path: "{{ minio_install_dir }}/minio"
-  register: minio_binary
-
+# get_url is idempotent — skips download when dest exists and hasn't changed
 - name: Download minio server binary
   ansible.builtin.get_url:
     url: "{{ minio_binary_url }}"
@@ -57,21 +53,14 @@
     owner: root
     group: root
     mode: "0755"
-  when: not minio_binary.stat.exists
-
-- name: Check if mc binary exists
-  ansible.builtin.stat:
-    path: "{{ minio_install_dir }}/mc"
-  register: minio_mc_binary
 
 - name: Download minio client binary
   ansible.builtin.get_url:
-    url: "{{ minio_minio_mc_binary_url }}"
+    url: "{{ minio_mc_binary_url }}"
     dest: "{{ minio_install_dir }}/mc"
     owner: root
     group: root
     mode: "0755"
-  when: not minio_mc_binary.stat.exists
 
 # Phase 5: Deploy configuration
 - name: Deploy MinIO environment file
@@ -117,8 +106,8 @@
   ansible.builtin.command:
     cmd: >-
       {{ minio_install_dir }}/mc alias set local
-      http://127.0.0.1:{{ minio_api_port }}
-      {{ minio_root_user }} {{ minio_root_password }}
+      "http://127.0.0.1:{{ minio_api_port }}"
+      "{{ minio_root_user }}" "{{ minio_root_password }}"
   no_log: true
   changed_when: false
 
