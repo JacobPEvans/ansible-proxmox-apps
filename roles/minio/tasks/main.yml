@@ -48,16 +48,22 @@
 # Downloads are staged on the Ansible controller then copied to the target.
 # This supports containers with restricted outbound (e.g., outbound-internal
 # firewall group) that cannot reach dl.min.io directly.
+#
+# force: true ensures fresh binaries every run — the dl.min.io URLs point
+# to the rolling "latest" release, so any cached copy in /tmp may be stale.
+#
+# delegate_to + connection: local runs the task directly on the controller
+# via the local connection plugin (no SSH loopback). become: false is
+# required because we don't (and shouldn't) have sudo on the controller.
 - name: Download minio server binary to controller
   ansible.builtin.get_url:
     url: "{{ minio_binary_url }}"
     dest: "/tmp/minio-server"
     mode: "0755"
+    force: true
   delegate_to: localhost
+  connection: local
   become: false
-  vars:
-    ansible_become: false
-    ansible_connection: local
   run_once: true
 
 - name: Download minio client binary to controller
@@ -65,11 +71,10 @@
     url: "{{ minio_mc_binary_url }}"
     dest: "/tmp/minio-mc"
     mode: "0755"
+    force: true
   delegate_to: localhost
+  connection: local
   become: false
-  vars:
-    ansible_become: false
-    ansible_connection: local
   run_once: true
 
 - name: Copy minio server binary to target

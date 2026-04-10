@@ -24,12 +24,15 @@
     mode: '0755'
 
 - name: Deploy apt-cacher-ng configuration
+  # Mode 0640 + apt-cacher-ng group — required because AdminAuth (with
+  # credentials) is inlined into acng.conf. World-readable (0644) would
+  # expose the admin password to any local user.
   ansible.builtin.template:
     src: acng.conf.j2
     dest: /etc/apt-cacher-ng/acng.conf
     owner: root
-    group: root
-    mode: '0644'
+    group: apt-cacher-ng
+    mode: '0640'
     backup: true
   notify: Restart apt-cacher-ng
 
