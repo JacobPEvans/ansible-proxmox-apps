@@ -1,8 +1,10 @@
 # Apt-Cacher-NG configuration
 # Managed by Ansible - do not edit manually
 
-# Include security configuration (admin authentication)
-Include: /etc/apt-cacher-ng/security.conf
+# Admin authentication (apt-cacher-ng 3.x does not support Include directives)
+{% if apt_cacher_ng_admin_enabled %}
+AdminAuth: admin:{{ apt_cacher_ng_admin_password | mandatory('apt_cacher_ng_admin_password must be set via inventory or extra-vars when admin is enabled.') }}
+{% endif %}
 
 # Cache directory
 CacheDir: {{ apt_cacher_ng_cache_dir }}
@@ -61,4 +63,3 @@ FreshIndexMaxAge: 1
 # Don't serve stale data when upstream is unavailable
 OfflineMode: 0
 
-# Admin authentication is configured in security.conf
