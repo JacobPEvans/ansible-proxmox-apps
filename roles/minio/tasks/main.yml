@@ -55,6 +55,9 @@
     mode: "0755"
   delegate_to: localhost
   become: false
+  vars:
+    ansible_become: false
+    ansible_connection: local
   run_once: true
 
 - name: Download minio client binary to controller
@@ -64,6 +67,9 @@
     mode: "0755"
   delegate_to: localhost
   become: false
+  vars:
+    ansible_become: false
+    ansible_connection: local
   run_once: true
 
 - name: Copy minio server binary to target
