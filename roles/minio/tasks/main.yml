@@ -45,18 +45,36 @@
     mode: "0750"
 
 # Phase 4: Download binaries
-# get_url is idempotent — skips download when dest exists and hasn't changed
-- name: Download minio server binary
+# Downloads are staged on the Ansible controller then copied to the target.
+# This supports containers with restricted outbound (e.g., outbound-internal
+# firewall group) that cannot reach dl.min.io directly.
+- name: Download minio server binary to controller
   ansible.builtin.get_url:
     url: "{{ minio_binary_url }}"
+    dest: "/tmp/minio-server"
+    mode: "0755"
+  delegate_to: localhost
+  run_once: true
+
+- name: Download minio client binary to controller
+  ansible.builtin.get_url:
+    url: "{{ minio_mc_binary_url }}"
+    dest: "/tmp/minio-mc"
+    mode: "0755"
+  delegate_to: localhost
+  run_once: true
+
+- name: Copy minio server binary to target
+  ansible.builtin.copy:
+    src: "/tmp/minio-server"
     dest: "{{ minio_install_dir }}/minio"
     owner: root
     group: root
     mode: "0755"
 
-- name: Download minio client binary
-  ansible.builtin.get_url:
-    url: "{{ minio_mc_binary_url }}"
+- name: Copy minio client binary to target
+  ansible.builtin.copy:
+    src: "/tmp/minio-mc"
     dest: "{{ minio_install_dir }}/mc"
     owner: root
     group: root
