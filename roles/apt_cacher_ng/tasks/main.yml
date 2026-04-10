@@ -84,16 +84,14 @@
   when: apt_cacher_ng_firewall_enabled
 
 - name: Wait for apt-cacher-ng to be ready
-  # This check runs inside the container via pct_remote connection
-  # Uses 127.0.0.1 since we're executing inside the container itself
-  ansible.builtin.uri:
-    url: "http://127.0.0.1:{{ apt_cacher_ng_port }}/{{ apt_cacher_ng_report_page }}"
-    status_code: 200
-  register: apt_cacher_ng_health
-  until: apt_cacher_ng_health.status == 200
-  retries: 10
-  delay: 3
-  changed_when: false
+  # apt-cacher-ng 3.x treats HTTP paths as proxy targets, so fetching
+  # /acng-report.html locally returns 503 ("Host not found"). Use a TCP
+  # port check instead — it is unambiguous and works from inside the container.
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: "{{ apt_cacher_ng_port }}"
+    state: started
+    timeout: 30
 
 - name: Display apt-cacher-ng access information
   ansible.builtin.debug:
