@@ -4,8 +4,16 @@
 # Installation
 cribl_stream_version: latest
 cribl_stream_tarball_base: "https://cdn.cribl.io/dl"
+# Upstream release URL. Cribl's CDN uses two different filename patterns:
+#   - versioned release: https://cdn.cribl.io/dl/4.12.2/cribl-4.12.2-linux-x64.tgz
+#   - rolling "latest":  https://cdn.cribl.io/dl/latest/cribl-linux-x64.tgz    (no version in filename)
+# Group vars for the `cribl_stream_group` override this with a MinIO mirror URL
+# because the cribl-stream containers have the `outbound-internal` firewall
+# and cannot reach cdn.cribl.io directly.
 cribl_stream_tarball_url: >-
-  {{ cribl_stream_tarball_base }}/{{ cribl_stream_version }}/cribl-{{ cribl_stream_version }}-linux-x64.tgz
+  {{ cribl_stream_tarball_base }}/{{ cribl_stream_version }}/{{
+  'cribl-linux-x64.tgz' if cribl_stream_version == 'latest'
+  else 'cribl-' + cribl_stream_version + '-linux-x64.tgz' }}
 cribl_stream_install_dir: /opt/cribl
 
 # Service user

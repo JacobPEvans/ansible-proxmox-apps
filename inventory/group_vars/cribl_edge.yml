@@ -1,3 +1,15 @@
 ---
 systemd_restart_policy_services:
   - cribl
+
+# Cribl Edge containers have the `outbound-internal` firewall group applied
+# (RFC1918 only), so they cannot reach cdn.cribl.io directly. Serve the
+# tarball from the MinIO artifact store on CT 107, reusing the same
+# anonymous-read `splunk-addons` bucket already populated for Splunk.
+# The `infra/cribl-linux-x64.tgz` object is staged by the workstation
+# during initial bootstrap (upstream has no stable versioned URL for
+# "latest", so we mirror the current build rather than chasing a moving
+# target).
+cribl_edge_tarball_url: >-
+  http://{{ terraform_data.containers.minio.ip }}:{{
+  terraform_data.constants.service_ports.minio_api }}/splunk-addons/infra/cribl-linux-x64.tgz

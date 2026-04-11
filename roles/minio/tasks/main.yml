@@ -210,3 +210,71 @@
     ((item.stdout | from_json).config.Rules | default([])
      | selectattr('NoncurrentVersionExpiration', 'defined')
      | list | length) == 0
+
+# Phase 10: Mirror external infrastructure artifacts into the local bucket.
+#
+# Containers in the `outbound-internal` firewall group cannot reach public
+# CDNs, so each role that needs an upstream tarball (Cribl, Ollama, etc.)
+# pulls from MinIO instead. The controller — which has unrestricted egress —
+# stages the download, then `mc cp` uploads it to the bucket.
+#
+# Idempotent: `mc stat` determines whether the object already exists, and
+# the upload is skipped when present. Delete the bucket object manually
+# (or wait for the lifecycle rule) to force a refresh.
+- name: Check which infra artifacts are already mirrored
+  ansible.builtin.command:
+    cmd: "{{ minio_install_dir }}/mc stat --json local/{{ item.bucket }}/{{ item.key }}"
+  loop: "{{ minio_infra_mirrors }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: minio_infra_stat
+  changed_when: false
+  failed_when: false
+
+- name: Stage missing infra artifacts on controller
+  ansible.builtin.get_url:
+    url: "{{ item.item.url }}"
+    dest: "/tmp/minio-mirror-{{ item.item.name }}"
+    mode: "0644"
+    force: false
+  loop: "{{ minio_infra_stat.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  delegate_to: localhost
+  connection: local
+  become: false
+  vars:
+    ansible_become: false
+  run_once: true
+  when: item.rc != 0
+
+- name: Push missing infra artifacts to target
+  ansible.builtin.copy:
+    src: "/tmp/minio-mirror-{{ item.item.name }}"
+    dest: "/tmp/minio-mirror-{{ item.item.name }}"
+    mode: "0644"
+  loop: "{{ minio_infra_stat.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when: item.rc != 0
+
+- name: Upload missing infra artifacts to MinIO
+  ansible.builtin.command:
+    cmd: >-
+      {{ minio_install_dir }}/mc cp /tmp/minio-mirror-{{ item.item.name }}
+      local/{{ item.item.bucket }}/{{ item.item.key }}
+  loop: "{{ minio_infra_stat.results }}"
+  loop_control:
+    label: "{{ item.item.name }} -> {{ item.item.bucket }}/{{ item.item.key }}"
+  register: minio_infra_upload
+  changed_when: "'Total:' in minio_infra_upload.stdout"
+  when: item.rc != 0
+
+- name: Remove staging files from target
+  ansible.builtin.file:
+    path: "/tmp/minio-mirror-{{ item.item.name }}"
+    state: absent
+  loop: "{{ minio_infra_stat.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when: item.rc != 0

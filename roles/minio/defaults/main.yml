@@ -34,3 +34,22 @@ minio_default_buckets:
 # Default is 10 years — effectively "keep forever" but with a safety ceiling.
 # Lower per-host via group_vars/host_vars when a tighter retention is needed.
 minio_noncurrent_expiration_days: 3650
+
+# Infrastructure artifact mirrors.
+#
+# Roles that run on LXC containers in the `outbound-internal` firewall group
+# (RFC1918-only egress) cannot reach external download URLs like cdn.cribl.io
+# or ollama.com. The minio role mirrors these artifacts into the
+# anonymous-read `splunk-addons` bucket so every downstream role can pull
+# from the local network without punching holes in the firewall.
+#
+# Each mirror is downloaded on the Ansible controller (which has unrestricted
+# egress) and uploaded to MinIO only if the bucket object is missing.
+# Existing objects are left alone so manual retention decisions are not
+# clobbered on re-runs.
+minio_infra_mirrors:
+  - name: cribl
+    description: Cribl Edge/Stream tarball (rolling latest)
+    url: https://cdn.cribl.io/dl/latest/cribl-linux-x64.tgz
+    bucket: splunk-addons
+    key: infra/cribl-linux-x64.tgz

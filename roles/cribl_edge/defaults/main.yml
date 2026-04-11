@@ -3,7 +3,16 @@
 
 # Installation
 cribl_edge_version: "latest"
-cribl_edge_tarball_url: "https://cdn.cribl.io/dl/{{ cribl_edge_version }}/cribl-{{ cribl_edge_version }}-linux-x64.tgz"
+# Upstream release URL. Cribl's CDN uses two different filename patterns:
+#   - versioned release: https://cdn.cribl.io/dl/4.12.2/cribl-4.12.2-linux-x64.tgz
+#   - rolling "latest":  https://cdn.cribl.io/dl/latest/cribl-linux-x64.tgz    (no version in filename)
+# Group vars for the `cribl_edge` group override this with a MinIO mirror URL
+# because the cribl-edge containers have the `outbound-internal` firewall and
+# cannot reach cdn.cribl.io directly.
+cribl_edge_tarball_url: >-
+  https://cdn.cribl.io/dl/{{ cribl_edge_version }}/{{
+  'cribl-linux-x64.tgz' if cribl_edge_version == 'latest'
+  else 'cribl-' + cribl_edge_version + '-linux-x64.tgz' }}
 cribl_edge_install_dir: /opt/cribl
 
 # Service user
