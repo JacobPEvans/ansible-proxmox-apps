@@ -102,9 +102,7 @@
         timeout: "{{ technitium_install_api_timeout }}"
       register: technitium_install_password_change
       changed_when: technitium_install_password_change.json.status == "ok"
-      failed_when:
-        - technitium_install_password_change.json is defined
-        - technitium_install_password_change.json.status != "ok"
+      failed_when: technitium_install_password_change.json.status | default('') != "ok"
       no_log: true
 
 - name: Verify login with configured password
@@ -121,9 +119,8 @@
     return_content: true
     timeout: "{{ technitium_install_api_timeout }}"
   register: technitium_install_login
-  failed_when:
-    - technitium_install_login.json is defined
-    - technitium_install_login.json.status != "ok"
+  changed_when: false
+  failed_when: technitium_install_login.json.status | default('') != "ok"
   no_log: true
 
 - name: Create API token
@@ -144,9 +141,7 @@
     timeout: "{{ technitium_install_api_timeout }}"
   register: technitium_install_token_result
   changed_when: technitium_install_token_result.json.status == "ok"
-  failed_when:
-    - technitium_install_token_result.json is defined
-    - technitium_install_token_result.json.status != "ok"
+  failed_when: technitium_install_token_result.json.status | default('') != "ok"
   no_log: true
 
 - name: Display API token for Doppler storage  # noqa: no-handler
