@@ -58,7 +58,31 @@
 # =============================================================================
 # Phase 0b: MinIO Object Storage
 # S3-compatible artifact store for Splunk add-ons and other deployment assets
+#
+# Two plays:
+#   1. Stage binaries on the Ansible controller (no become — runs as the
+#      operator user). Required because the minio host has restricted
+#      outbound and cannot reach dl.min.io itself.
+#   2. Install MinIO on the target container (with become).
+#
+# Splitting into two plays is necessary because Ansible 2.19's task-level
+# `become: false` does NOT reliably override a play-level `become: true`
+# for delegated tasks — sudo is still attempted on the controller.
 # =============================================================================
+
+- name: Stage MinIO binaries on Ansible controller
+  hosts: localhost
+  connection: local
+  become: false
+  gather_facts: false
+  tags:
+    - minio
+    - storage
+  tasks:
+    - name: Stage minio binaries
+      ansible.builtin.import_role:
+        name: minio
+        tasks_from: stage_binaries
 
 - name: Deploy MinIO object storage
   hosts: minio_group

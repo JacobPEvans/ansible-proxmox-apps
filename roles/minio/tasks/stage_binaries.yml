@@ -1,0 +1,32 @@
+---
+# Stage MinIO binaries on the Ansible controller.
+#
+# Runs on localhost (NOT on the minio host) so that the binaries are
+# downloaded from dl.min.io to the controller, then copied via SCP to
+# the target. This supports containers with restricted outbound (e.g.,
+# the outbound-internal firewall group on VMID 107) that intentionally
+# cannot reach dl.min.io.
+#
+# This file is included from a separate `hosts: localhost` play with
+# `become: false`. Splitting it out (rather than relying on
+# `delegate_to: localhost` + task-level `become: false`) is necessary
+# because Ansible 2.19's task-level `become: false` does NOT reliably
+# override a play-level `become: true` for delegated tasks — sudo is
+# still attempted on the controller.
+#
+# `force: true` ensures fresh binaries every run; the dl.min.io URLs
+# point to the rolling "latest" release.
+
+- name: Download minio server binary to controller
+  ansible.builtin.get_url:
+    url: "{{ minio_binary_url }}"
+    dest: "/tmp/minio-server"
+    mode: "0755"
+    force: true
+
+- name: Download minio client binary to controller
+  ansible.builtin.get_url:
+    url: "{{ minio_mc_binary_url }}"
+    dest: "/tmp/minio-mc"
+    mode: "0755"
+    force: true
