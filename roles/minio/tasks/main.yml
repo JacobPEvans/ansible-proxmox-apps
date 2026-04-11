@@ -53,8 +53,13 @@
 # to the rolling "latest" release, so any cached copy in /tmp may be stale.
 #
 # delegate_to + connection: local runs the task directly on the controller
-# via the local connection plugin (no SSH loopback). become: false is
-# required because we don't (and shouldn't) have sudo on the controller.
+# via the local connection plugin (no SSH loopback).
+#
+# ansible_become: false (via vars:) is REQUIRED. Task-level `become: false`
+# alone is insufficient: Ansible 2.19 inherits the play's `become: true` on
+# delegated tasks regardless of task-level become, causing `sudo: a password
+# is required` on the controller. Setting `ansible_become` via task vars
+# explicitly overrides the inherited value.
 - name: Download minio server binary to controller
   ansible.builtin.get_url:
     url: "{{ minio_binary_url }}"
@@ -64,6 +69,8 @@
   delegate_to: localhost
   connection: local
   become: false
+  vars:
+    ansible_become: false
   run_once: true
 
 - name: Download minio client binary to controller
@@ -75,6 +82,8 @@
   delegate_to: localhost
   connection: local
   become: false
+  vars:
+    ansible_become: false
   run_once: true
 
 - name: Copy minio server binary to target
@@ -166,3 +175,38 @@
        | list }}
   register: minio_policy_result
   changed_when: "'is already set' not in minio_policy_result.stdout"
+
+# Phase 9: Lifecycle policy — expire noncurrent versions to bound data volume.
+# Without this, every re-upload retains prior versions forever (versioning is
+# on), which will eventually fill the data volume.
+#
+# Add-if-missing only. If a noncurrent-expiration rule already exists the
+# role leaves it alone, so operators can tighten the retention by hand
+# without Ansible reverting the change on the next run.
+- name: Query existing lifecycle rules on versioned buckets
+  ansible.builtin.command:
+    cmd: "{{ minio_install_dir }}/mc ilm rule ls --json local/{{ item.name }}"
+  loop: >-
+    {{ minio_default_buckets
+       | selectattr('versioning', 'defined')
+       | selectattr('versioning')
+       | list }}
+  loop_control:
+    label: "{{ item.name }}"
+  register: minio_ilm_query
+  changed_when: false
+
+- name: Add noncurrent-expiration rule when none exists
+  ansible.builtin.command:
+    cmd: >-
+      {{ minio_install_dir }}/mc ilm rule add local/{{ item.item.name }}
+      --noncurrent-expire-days {{ minio_noncurrent_expiration_days }}
+  loop: "{{ minio_ilm_query.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  register: minio_ilm_add
+  changed_when: "'Lifecycle configuration rule added' in minio_ilm_add.stdout"
+  when: >-
+    ((item.stdout | from_json).config.Rules | default([])
+     | selectattr('NoncurrentVersionExpiration', 'defined')
+     | list | length) == 0

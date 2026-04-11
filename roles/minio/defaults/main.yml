@@ -27,3 +27,10 @@ minio_default_buckets:
   - name: splunk-addons
     policy: download
     versioning: true
+
+# Lifecycle: expire noncurrent object versions after this many days.
+# Bounds growth of the data volume when artifacts are repeatedly re-uploaded
+# (versioning retains every prior version indefinitely by default).
+# Default is 10 years — effectively "keep forever" but with a safety ceiling.
+# Lower per-host via group_vars/host_vars when a tighter retention is needed.
+minio_noncurrent_expiration_days: 3650
