@@ -1,6 +1,19 @@
 ---
 # Cribl Stream native installation in LXC containers
 
+- name: Install required packages
+  # sudo is required because later tasks use `become_user: cribl` to run
+  # `cribl mode-stream` as the non-root service user. The Proxmox LXC base
+  # image does not ship sudo — without this those tasks fail with
+  # `/bin/sh: 1: sudo: not found`.
+  ansible.builtin.apt:
+    name:
+      - curl
+      - tar
+      - sudo
+    state: present
+    update_cache: true
+
 - name: Create cribl system group
   ansible.builtin.group:
     name: "{{ cribl_stream_group }}"
