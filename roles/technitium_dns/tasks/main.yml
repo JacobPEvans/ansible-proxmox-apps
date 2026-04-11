@@ -16,18 +16,25 @@
     quiet: true
 
 - name: Build A records from inventory
+  # Iterate over groups['all'] explicitly. Iterating `hostvars | dict2items`
+  # in Ansible 2.19 returns HostVarsVars proxy objects whose attribute
+  # `is defined` checks behave differently from plain dicts and silently
+  # skip every host. Using groups + hostvars[host] is the supported pattern.
   ansible.builtin.set_fact:
     technitium_dns_a_records: >-
       {{
         technitium_dns_a_records | default([]) +
-        [{'name': item.value.hostname, 'ip': item.value.container_ip | default(item.value.ansible_host)}]
+        [{
+          'name': hostvars[item].hostname,
+          'ip': hostvars[item].container_ip | default(hostvars[item].ansible_host)
+        }]
       }}
-  loop: "{{ hostvars | dict2items }}"
+  loop: "{{ groups['all'] | default([]) | reject('equalto', 'localhost') | list }}"
   when:
-    - item.value.ansible_host is defined
-    - item.value.hostname is defined
+    - hostvars[item].hostname is defined
+    - (hostvars[item].container_ip is defined) or (hostvars[item].ansible_host is defined)
   loop_control:
-    label: "{{ item.key }}"
+    label: "{{ item }}"
 
 # Technitium authenticates API calls via `?token=...` query parameter,
 # NOT via an X-Api-Token header. The header is silently ignored and

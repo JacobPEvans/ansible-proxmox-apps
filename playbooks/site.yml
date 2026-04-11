@@ -107,6 +107,12 @@
   vars:
     # Derive Technitium DNS host IP from gateway (VMID 103)
     technitium_dns_host: "{{ lookup('env', 'PROXMOX_VE_GATEWAY') | regex_replace('\\.[0-9]+$', '.103') }}"
+    # group_vars/all.yml sets `ansible_become: true` (an inventory variable),
+    # which Ansible applies via the connection layer and which overrides the
+    # play-level `become: false` keyword. The reliable way to disable become
+    # for this localhost-only play (which just hits HTTP APIs and never needs
+    # sudo) is to override the inventory variable directly via play vars.
+    ansible_become: false
 
   roles:
     - role: technitium_dns
