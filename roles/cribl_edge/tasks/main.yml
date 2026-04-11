@@ -121,9 +121,12 @@
   notify: Restart cribl edge
 
 - name: Enable Cribl Edge systemd service
+  # `cribl boot-start enable` installs the unit file with a name derived
+  # from the operating mode. After `cribl mode-edge` the unit is
+  # cribl-edge.service, not cribl.service.
   ansible.builtin.command:
     cmd: "{{ cribl_edge_install_dir }}/bin/cribl boot-start enable -m systemd -u {{ cribl_edge_user }}"
-    creates: /etc/systemd/system/cribl.service
+    creates: "/etc/systemd/system/{{ cribl_edge_service_name }}.service"
 
 - name: Start Cribl Edge service
   ansible.builtin.systemd:

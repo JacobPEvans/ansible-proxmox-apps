@@ -19,8 +19,10 @@ cribl_edge_install_dir: /opt/cribl
 cribl_edge_user: cribl
 cribl_edge_group: cribl
 
-# Systemd service
-cribl_edge_service_name: cribl
+# Systemd service — the unit file is created by `cribl boot-start enable`,
+# which derives the service name from the Cribl operating mode. With
+# `cribl mode-edge`, the unit is installed as `cribl-edge.service`.
+cribl_edge_service_name: cribl-edge
 
 # Syslog ports from terraform constants (no hardcoded values)
 cribl_edge_syslog_ports: >-

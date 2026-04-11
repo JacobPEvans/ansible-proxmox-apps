@@ -1,6 +1,6 @@
 ---
 systemd_restart_policy_services:
-  - cribl
+  - cribl-edge
 
 # Cribl Edge containers have the `outbound-internal` firewall group applied
 # (RFC1918 only), so they cannot reach cdn.cribl.io directly. Serve the
