@@ -218,9 +218,17 @@
 # pulls from MinIO instead. The controller — which has unrestricted egress —
 # stages the download, then `mc cp` uploads it to the bucket.
 #
-# Idempotent: `mc stat` determines whether the object already exists, and
-# the upload is skipped when present. Delete the bucket object manually
-# (or wait for the lifecycle rule) to force a refresh.
+# Idempotency: `mc stat` per-host decides whether the object already exists,
+# and subsequent tasks short-circuit on the same host when it does. Existing
+# objects are left alone so manual retention decisions are not clobbered on
+# re-runs. Delete the bucket object manually (or wait for the lifecycle rule)
+# to force a refresh.
+#
+# Per-host (no run_once): when minio_group grows beyond one host, each host
+# re-checks `mc stat` against its own MinIO instance and independently
+# triggers the controller download it needs. `get_url force: true` is safe
+# under concurrent delegated invocations because the file is rewritten
+# atomically and each host names its own staging path.
 - name: Check which infra artifacts are already mirrored
   ansible.builtin.command:
     cmd: "{{ minio_install_dir }}/mc stat --json local/{{ item.bucket }}/{{ item.key }}"
@@ -232,11 +240,14 @@
   failed_when: false
 
 - name: Stage missing infra artifacts on controller
+  # force: true — these point at rolling "latest" upstream URLs, so
+  # anything cached in /tmp from a prior run is assumed stale. The
+  # controller always re-fetches to guarantee freshness.
   ansible.builtin.get_url:
     url: "{{ item.item.url }}"
-    dest: "/tmp/minio-mirror-{{ item.item.name }}"
+    dest: "/tmp/minio-mirror-{{ inventory_hostname }}-{{ item.item.name }}"
     mode: "0644"
-    force: false
+    force: true
   loop: "{{ minio_infra_stat.results }}"
   loop_control:
     label: "{{ item.item.name }}"
@@ -245,12 +256,11 @@
   become: false
   vars:
     ansible_become: false
-  run_once: true
   when: item.rc != 0
 
 - name: Push missing infra artifacts to target
   ansible.builtin.copy:
-    src: "/tmp/minio-mirror-{{ item.item.name }}"
+    src: "/tmp/minio-mirror-{{ inventory_hostname }}-{{ item.item.name }}"
     dest: "/tmp/minio-mirror-{{ item.item.name }}"
     mode: "0644"
   loop: "{{ minio_infra_stat.results }}"
@@ -277,4 +287,20 @@
   loop: "{{ minio_infra_stat.results }}"
   loop_control:
     label: "{{ item.item.name }}"
+  when: item.rc != 0
+
+- name: Remove staging files from controller
+  # Tarballs can be hundreds of MB (Cribl is ~76 MB). Leaving them in /tmp
+  # on the workstation after upload accumulates disk usage over many runs.
+  ansible.builtin.file:
+    path: "/tmp/minio-mirror-{{ inventory_hostname }}-{{ item.item.name }}"
+    state: absent
+  loop: "{{ minio_infra_stat.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  delegate_to: localhost
+  connection: local
+  become: false
+  vars:
+    ansible_become: false
   when: item.rc != 0
