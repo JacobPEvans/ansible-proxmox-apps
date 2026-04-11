@@ -83,20 +83,34 @@
     (technitium_install_default_login.json.status | default('')) == 'ok'
   block:
     - name: Change admin password
+      # Technitium /api/user/changePassword requires THREE parameters:
+      # token (session), pass (current/old password), newPass (new password).
+      # Sending only token+pass silently rejects with
+      # "Parameter 'newPass' missing." Previously the role used `pass`
+      # alone, treating it as the new value, so the password change
+      # never actually took effect — bootstrap appeared to succeed
+      # while leaving the default admin/admin credentials active.
       ansible.builtin.uri:
         url: "{{ technitium_install_api_url }}/api/user/changePassword"
         method: POST
         body_format: form-urlencoded
         body:
           token: "{{ technitium_install_default_login.json.token }}"
-          pass: "{{ technitium_install_admin_password }}"
+          pass: "{{ technitium_install_default_password }}"
+          newPass: "{{ technitium_install_admin_password }}"
         return_content: true
         timeout: "{{ technitium_install_api_timeout }}"
       register: technitium_install_password_change
       changed_when: technitium_install_password_change.json.status == "ok"
+      failed_when:
+        - technitium_install_password_change.json is defined
+        - technitium_install_password_change.json.status != "ok"
       no_log: true
 
-- name: Login with configured password
+- name: Verify login with configured password
+  # Confirms the password change took effect (or that the password was
+  # already set on a prior run). Failing here means the configured admin
+  # password disagrees with what's actually on the server.
   ansible.builtin.uri:
     url: "{{ technitium_install_api_url }}/api/user/login"
     method: POST
@@ -107,21 +121,32 @@
     return_content: true
     timeout: "{{ technitium_install_api_timeout }}"
   register: technitium_install_login
+  failed_when:
+    - technitium_install_login.json is defined
+    - technitium_install_login.json.status != "ok"
   no_log: true
 
 - name: Create API token
+  # Technitium /api/user/createToken takes user/pass directly (not a
+  # session token) and produces a long-lived token that does not expire.
+  # The previous role passed a session token in `token` along with `user`
+  # but no `pass`, which the server interprets as a malformed login and
+  # rejects with "Parameter 'pass' missing."
   ansible.builtin.uri:
     url: "{{ technitium_install_api_url }}/api/user/createToken"
     method: POST
     body_format: form-urlencoded
     body:
-      token: "{{ technitium_install_login.json.token }}"
       user: "{{ technitium_install_admin_user }}"
+      pass: "{{ technitium_install_admin_password }}"
       tokenName: "{{ technitium_install_token_name }}"
     return_content: true
     timeout: "{{ technitium_install_api_timeout }}"
   register: technitium_install_token_result
   changed_when: technitium_install_token_result.json.status == "ok"
+  failed_when:
+    - technitium_install_token_result.json is defined
+    - technitium_install_token_result.json.status != "ok"
   no_log: true
 
 - name: Display API token for Doppler storage  # noqa: no-handler
