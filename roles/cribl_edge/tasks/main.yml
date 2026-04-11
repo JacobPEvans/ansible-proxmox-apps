@@ -11,10 +11,10 @@
     - /var/tmp/.ansible
 
 - name: Install required packages
-  # sudo is required because later tasks use `become_user: cribl` to run
-  # `cribl mode-edge` as the non-root service user. The Proxmox LXC base
-  # image does not ship sudo — without this the task fails with
-  # `/bin/sh: 1: sudo: not found`.
+  # sudo is required because later tasks use `become_user:
+  # {{ cribl_edge_user }}` to run `cribl mode-edge` as the non-root
+  # service user. The Proxmox LXC base image does not ship sudo —
+  # without this the task fails with `/bin/sh: 1: sudo: not found`.
   ansible.builtin.apt:
     name:
       - curl
@@ -22,6 +22,7 @@
       - sudo
     state: present
     update_cache: true
+    cache_valid_time: 3600
 
 - name: Create cribl system group
   ansible.builtin.group:
