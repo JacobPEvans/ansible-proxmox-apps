@@ -153,13 +153,14 @@
   when: technitium_install_token_result is changed
 
 - name: Verify Technitium DNS is healthy
+  # Technitium authenticates API calls via ?token=... query parameter,
+  # NOT via an X-Api-Token header. The header is silently ignored and
+  # the server responds with "Parameter 'token' missing."
   ansible.builtin.uri:
-    url: "{{ technitium_install_api_url }}/api/zones/list"
+    url: "{{ technitium_install_api_url }}/api/zones/list?token={{ technitium_install_token_result.json.token }}"
     method: GET
-    headers:
-      X-Api-Token: "{{ technitium_install_token_result.json.token }}"
     return_content: true
     timeout: "{{ technitium_install_api_timeout }}"
   register: technitium_install_health
   changed_when: false
-  failed_when: technitium_install_health.json.status != "ok"
+  failed_when: technitium_install_health.json.status | default('') != "ok"

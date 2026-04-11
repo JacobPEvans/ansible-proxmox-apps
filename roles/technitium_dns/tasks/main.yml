@@ -29,16 +29,18 @@
   loop_control:
     label: "{{ item.key }}"
 
+# Technitium authenticates API calls via `?token=...` query parameter,
+# NOT via an X-Api-Token header. The header is silently ignored and
+# the server responds with "Parameter 'token' missing."
 - name: Check if DNS zone exists
   ansible.builtin.uri:
-    url: "{{ technitium_dns_api_url }}/api/zones/list"
+    url: "{{ technitium_dns_api_url }}/api/zones/list?token={{ technitium_dns_api_token }}"
     method: GET
-    headers:
-      X-Api-Token: "{{ technitium_dns_api_token }}"
     return_content: true
     timeout: "{{ technitium_dns_api_timeout }}"
   register: technitium_dns_zones_response
   changed_when: false
+  no_log: true
 
 - name: Parse existing zones
   ansible.builtin.set_fact:
@@ -47,10 +49,8 @@
 
 - name: Create internal DNS zone
   ansible.builtin.uri:
-    url: "{{ technitium_dns_api_url }}/api/zones/create"
+    url: "{{ technitium_dns_api_url }}/api/zones/create?token={{ technitium_dns_api_token }}"
     method: POST
-    headers:
-      X-Api-Token: "{{ technitium_dns_api_token }}"
     body_format: form-urlencoded
     body:
       zone: "{{ technitium_dns_internal_domain }}"
@@ -61,27 +61,26 @@
   register: technitium_dns_zone_create
   changed_when: technitium_dns_zone_create.json.status == "ok"
   when: technitium_dns_internal_domain not in technitium_dns_existing_zones
+  no_log: true
 
 - name: Get existing A records for zone
   ansible.builtin.uri:
     url: >-
-      {{ technitium_dns_api_url }}/api/zones/records/get?domain={{
+      {{ technitium_dns_api_url }}/api/zones/records/get?token={{
+      technitium_dns_api_token }}&domain={{
       technitium_dns_internal_domain | urlencode }}&zone={{
       technitium_dns_internal_domain | urlencode }}
     method: GET
-    headers:
-      X-Api-Token: "{{ technitium_dns_api_token }}"
     return_content: true
     timeout: "{{ technitium_dns_api_timeout }}"
   register: technitium_dns_existing_records
   changed_when: false
+  no_log: true
 
 - name: Create A records for infrastructure hosts
   ansible.builtin.uri:
-    url: "{{ technitium_dns_api_url }}/api/zones/records/add"
+    url: "{{ technitium_dns_api_url }}/api/zones/records/add?token={{ technitium_dns_api_token }}"
     method: POST
-    headers:
-      X-Api-Token: "{{ technitium_dns_api_token }}"
     body_format: form-urlencoded
     body:
       domain: "{{ item.name }}.{{ technitium_dns_internal_domain }}"
@@ -98,15 +97,14 @@
   register: technitium_dns_a_record_result
   changed_when: technitium_dns_a_record_result.json.status == "ok"
   failed_when:
-    - technitium_dns_a_record_result.json.status != "ok"
+    - technitium_dns_a_record_result.json.status | default('') != "ok"
     - "'already exists' not in (technitium_dns_a_record_result.json.errorMessage | default(''))"
+  no_log: true
 
 - name: Create CNAME records for service aliases
   ansible.builtin.uri:
-    url: "{{ technitium_dns_api_url }}/api/zones/records/add"
+    url: "{{ technitium_dns_api_url }}/api/zones/records/add?token={{ technitium_dns_api_token }}"
     method: POST
-    headers:
-      X-Api-Token: "{{ technitium_dns_api_token }}"
     body_format: form-urlencoded
     body:
       domain: "{{ item.name }}.{{ technitium_dns_internal_domain }}"
@@ -123,19 +121,19 @@
   register: technitium_dns_cname_result
   changed_when: technitium_dns_cname_result.json.status == "ok"
   failed_when:
-    - technitium_dns_cname_result.json.status != "ok"
+    - technitium_dns_cname_result.json.status | default('') != "ok"
     - "'already exists' not in (technitium_dns_cname_result.json.errorMessage | default(''))"
+  no_log: true
 
 - name: Verify DNS zone is active
   ansible.builtin.uri:
-    url: "{{ technitium_dns_api_url }}/api/zones/list"
+    url: "{{ technitium_dns_api_url }}/api/zones/list?token={{ technitium_dns_api_token }}"
     method: GET
-    headers:
-      X-Api-Token: "{{ technitium_dns_api_token }}"
     return_content: true
     timeout: "{{ technitium_dns_api_timeout }}"
   register: technitium_dns_final_zones
   changed_when: false
   failed_when: >-
     technitium_dns_internal_domain not in
-    (technitium_dns_final_zones.json.response.zones | map(attribute='name') | list)
+    (technitium_dns_final_zones.json.response.zones | default([]) | map(attribute='name') | list)
+  no_log: true
