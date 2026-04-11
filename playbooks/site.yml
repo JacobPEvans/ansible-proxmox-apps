@@ -107,6 +107,12 @@
   vars:
     # Derive Technitium DNS host IP from gateway (VMID 103)
     technitium_dns_host: "{{ lookup('env', 'PROXMOX_VE_GATEWAY') | regex_replace('\\.[0-9]+$', '.103') }}"
+    # group_vars/all.yml sets ansible_become: true for every host. Play-level
+    # `become: false` does NOT win over group_vars in Ansible's variable
+    # precedence — group_vars > play vars (keywords). Setting
+    # `ansible_become: false` here as a play var explicitly overrides it for
+    # this localhost-only play that just hits HTTP APIs and never needs sudo.
+    ansible_become: false
 
   roles:
     - role: technitium_dns
