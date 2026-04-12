@@ -4,7 +4,7 @@
 
 inputs:
 {% for name, port in cribl_edge_syslog_port_mappings.items() %}
-  syslog:in_syslog_{{ port }}:
+  in_syslog_{{ port }}:
     id: in_syslog_{{ port }}
     type: syslog
     disabled: false
