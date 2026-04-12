@@ -44,10 +44,14 @@ Remap-uburep: file:backends_ubuntu /ubuntu
 #
 # apt-cacher-ng's PassThroughPattern is matched against the full CONNECT
 # target — `host:port`, e.g. `download.docker.com:443`. A pattern that
-# only names the host without `:443$` never matches a real CONNECT
+# only names the host without `:<port>$` never matches a real CONNECT
 # request and apt-cacher-ng returns
 #   HTTP/1.0 403 CONNECT denied (ask the admin to allow HTTPS tunnels)
-# We append `:443$` to every pattern we inject to make the match work.
+#
+# The built-in Docker pattern below includes `:443$` explicitly. The
+# user-supplied `apt_cacher_ng_passthrough_pattern` is rendered verbatim —
+# callers who enable it must include their own `:<port>$` anchor, e.g.
+# `(^|\.)my\.repo\.example\.com:443$`.
 {% set passthrough_patterns = [] %}
 {% if apt_cacher_ng_passthrough_enabled %}
 {% set _ = passthrough_patterns.append(apt_cacher_ng_passthrough_pattern) %}
