@@ -15,8 +15,13 @@ apt_cacher_ng_bind_address: "0.0.0.0"
 # Passthrough HTTPS (for repos that require it)
 # Disabled by default to preserve caching benefits. Enable only for
 # repositories that cannot be cached (e.g., HTTPS with authentication).
+#
+# apt-cacher-ng matches this regex against the CONNECT target — `host:port`,
+# e.g. `registry-1.docker.io:443`. Host-only or URL-style patterns will NOT
+# match real CONNECT requests; each alternation must end in `:<port>$`.
+# Example: `(^|\.)(registry-1\.docker\.io|gcr\.io|quay\.io):443$`
 apt_cacher_ng_passthrough_enabled: false
-apt_cacher_ng_passthrough_pattern: "https?://(registry-1\\.docker\\.io|gcr\\.io|quay\\.io)/.*"
+apt_cacher_ng_passthrough_pattern: "(^|\\.)(registry-1\\.docker\\.io|gcr\\.io|quay\\.io):443$"
 
 # Admin interface
 apt_cacher_ng_admin_enabled: false
