@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.5.0](https://github.com/JacobPEvans/ansible-proxmox-apps/compare/v1.4.3...v1.5.0) (2026-04-12)
+
+
+### Features
+
+* **cspell:** migrate to shared org-wide dictionary hierarchy ([08c71ea](https://github.com/JacobPEvans/ansible-proxmox-apps/commit/08c71eaf8a445228b5a6bcc0f07f776cffabfd5e))
+
+
+### Bug Fixes
+
+* **validate:** check cribl-edge.service not cribl.service ([#181](https://github.com/JacobPEvans/ansible-proxmox-apps/issues/181)) ([9e3d6b7](https://github.com/JacobPEvans/ansible-proxmox-apps/commit/9e3d6b7e992bf8d894e0916d25ab0ddc719071a4))
+
 ## [1.4.3](https://github.com/JacobPEvans/ansible-proxmox-apps/compare/v1.4.2...v1.4.3) (2026-04-12)
 
 
