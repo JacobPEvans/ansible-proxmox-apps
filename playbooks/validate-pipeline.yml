@@ -101,12 +101,15 @@
       ansible.builtin.service_facts:
 
     - name: Assert Cribl Edge service is running
+      # `cribl boot-start enable` after `cribl mode-edge` creates the unit
+      # as `cribl-edge.service`, not `cribl.service`. Must match the role
+      # default `cribl_edge_service_name: cribl-edge` (fixed in PR #175).
       ansible.builtin.assert:
         that:
           - >-
-            ansible_facts.services['cribl.service'] is defined
+            ansible_facts.services['cribl-edge.service'] is defined
           - >-
-            ansible_facts.services['cribl.service'].state == 'running'
+            ansible_facts.services['cribl-edge.service'].state == 'running'
         fail_msg: >-
           Cribl Edge service is not running on {{ inventory_hostname }}
         quiet: true
