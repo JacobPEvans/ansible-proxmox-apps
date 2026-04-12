@@ -25,7 +25,7 @@ repos:
         pass_filenames: false
 
   - repo: https://github.com/streetsidesoftware/cspell-cli
-    rev: v9.6.0
+    rev: v9.8.0
     hooks:
       - id: cspell
         name: Check spelling
