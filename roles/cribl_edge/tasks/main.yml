@@ -76,26 +76,24 @@
   register: cribl_edge_mode_result
   changed_when: "'already' not in cribl_edge_mode_result.stdout"
 
-- name: Ensure config directory exists
+- name: Ensure Edge config directories exist
+  # Cribl Edge worker (LEADER process) loads ALL config (inputs, outputs,
+  # pipelines) from local/edge/, not local/cribl/. The local/edge/ dir is
+  # created by `cribl mode-edge` but we ensure the full tree here.
   ansible.builtin.file:
-    path: "{{ cribl_edge_install_dir }}/local/cribl"
+    path: "{{ item }}"
     owner: "{{ cribl_edge_user }}"
     group: "{{ cribl_edge_group }}"
     mode: "0755"
     state: directory
-
-- name: Ensure pipeline directory exists
-  ansible.builtin.file:
-    path: "{{ cribl_edge_install_dir }}/local/cribl/pipelines/syslog"
-    owner: "{{ cribl_edge_user }}"
-    group: "{{ cribl_edge_group }}"
-    mode: "0755"
-    state: directory
+  loop:
+    - "{{ cribl_edge_install_dir }}/local/edge"
+    - "{{ cribl_edge_install_dir }}/local/edge/pipelines/syslog"
 
 - name: Deploy Cribl Edge outputs configuration
   ansible.builtin.template:
     src: outputs.yml.j2
-    dest: "{{ cribl_edge_install_dir }}/local/cribl/outputs.yml"
+    dest: "{{ cribl_edge_install_dir }}/local/edge/outputs.yml"
     owner: "{{ cribl_edge_user }}"
     group: "{{ cribl_edge_group }}"
     mode: "0600"
@@ -105,7 +103,7 @@
 - name: Deploy Cribl Edge inputs configuration
   ansible.builtin.template:
     src: inputs.yml.j2
-    dest: "{{ cribl_edge_install_dir }}/local/cribl/inputs.yml"
+    dest: "{{ cribl_edge_install_dir }}/local/edge/inputs.yml"
     owner: "{{ cribl_edge_user }}"
     group: "{{ cribl_edge_group }}"
     mode: "0644"
@@ -114,7 +112,7 @@
 - name: Deploy syslog pipeline configuration
   ansible.builtin.template:
     src: pipelines/syslog/conf.yml.j2
-    dest: "{{ cribl_edge_install_dir }}/local/cribl/pipelines/syslog/conf.yml"
+    dest: "{{ cribl_edge_install_dir }}/local/edge/pipelines/syslog/conf.yml"
     owner: "{{ cribl_edge_user }}"
     group: "{{ cribl_edge_group }}"
     mode: "0644"
