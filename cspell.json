@@ -20,7 +20,9 @@
     "equalto",
     "fqcn",
     "geerlingguy",
+    "agentics",
     "githubcli",
+    "githubnext",
     "healthz",
     "homelab",
     "instnwnd",
@@ -72,6 +74,7 @@
   ],
   "ignorePaths": [
     ".git",
+    ".github/aw",
     "node_modules",
     "*.lock",
     "inventory/terraform_inventory.json"
