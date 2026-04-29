@@ -1,0 +1,94 @@
+---
+# Resolve pack target and per-target paths from inventory group membership.
+- name: Determine pack target
+  ansible.builtin.set_fact:
+    cribl_packs_target: >-
+      {{
+        'edge' if 'cribl_edge' in group_names
+        else ('stream' if 'cribl_stream_group' in group_names else '')
+      }}
+
+- name: Skip hosts that are neither Cribl Edge nor Cribl Stream
+  ansible.builtin.meta: end_host
+  when: cribl_packs_target == ''
+
+- name: Set per-target Cribl paths
+  ansible.builtin.set_fact:
+    _cribl_packs_config_root: >-
+      {{
+        cribl_packs_edge_config_root if cribl_packs_target == 'edge'
+        else cribl_packs_stream_config_root
+      }}
+    _cribl_packs_list: >-
+      {{
+        cribl_packs_for_edge if cribl_packs_target == 'edge'
+        else cribl_packs_for_stream
+      }}
+
+- name: Ensure packs directory exists
+  ansible.builtin.file:
+    path: "{{ _cribl_packs_config_root }}/packs"
+    state: directory
+    owner: "{{ cribl_packs_user }}"
+    group: "{{ cribl_packs_group }}"
+    mode: "0755"
+
+# Detect installed pack versions via per-version sentinel files. We list each
+# pack's directory and compare against the desired sentinel name. Drift means
+# the desired version is not currently installed.
+- name: Stat installed-version sentinel for each pack
+  ansible.builtin.stat:
+    path: "{{ _cribl_packs_config_root }}/packs/{{ item.name }}/.{{ item.version }}.installed"
+  loop: "{{ _cribl_packs_list }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: cribl_packs_sentinel_stats
+
+- name: Remove pack directory when desired version is not installed
+  ansible.builtin.file:
+    path: "{{ _cribl_packs_config_root }}/packs/{{ item.item.name }}"
+    state: absent
+  loop: "{{ cribl_packs_sentinel_stats.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when: not item.stat.exists
+
+- name: Recreate pack directory after pruning
+  ansible.builtin.file:
+    path: "{{ _cribl_packs_config_root }}/packs/{{ item.item.name }}"
+    state: directory
+    owner: "{{ cribl_packs_user }}"
+    group: "{{ cribl_packs_group }}"
+    mode: "0755"
+  loop: "{{ cribl_packs_sentinel_stats.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when: not item.stat.exists
+
+- name: Download and unarchive Cribl pack
+  vars:
+    _pack_asset: "{{ item.item.name }}-{{ item.item.version }}.crbl"
+    _pack_release: "https://github.com/{{ item.item.repo }}/releases/download/{{ item.item.version }}"
+  ansible.builtin.unarchive:
+    src: "{{ _pack_release }}/{{ _pack_asset }}"
+    dest: "{{ _cribl_packs_config_root }}/packs/{{ item.item.name }}/"
+    remote_src: true
+    owner: "{{ cribl_packs_user }}"
+    group: "{{ cribl_packs_group }}"
+  loop: "{{ cribl_packs_sentinel_stats.results }}"
+  loop_control:
+    label: "{{ item.item.name }} {{ item.item.version }}"
+  when: not item.stat.exists
+  notify: "{{ 'Restart cribl edge' if cribl_packs_target == 'edge' else 'Restart cribl stream' }}"
+
+- name: Write installed-version sentinel
+  ansible.builtin.copy:
+    dest: "{{ _cribl_packs_config_root }}/packs/{{ item.item.name }}/.{{ item.item.version }}.installed"
+    content: "{{ item.item.version }}\n"
+    owner: "{{ cribl_packs_user }}"
+    group: "{{ cribl_packs_group }}"
+    mode: "0644"
+  loop: "{{ cribl_packs_sentinel_stats.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when: not item.stat.exists

@@ -152,6 +152,25 @@
     - role: cribl_stream
 
 # =============================================================================
+# Phase 2c: Cribl Packs
+# Install .crbl pack assets onto Edge and Stream LXCs after the base
+# Cribl install is up. Runs against the union of both groups; the role
+# detects target via group_names and is a no-op for non-Cribl hosts.
+# =============================================================================
+
+- name: Install Cribl packs
+  hosts: cribl_edge:cribl_stream_group
+  become: true
+  gather_facts: false
+  tags:
+    - cribl_packs
+    - cribl
+    - pipeline
+
+  roles:
+    - role: cribl_packs
+
+# =============================================================================
 # Phase 3: HAProxy Syslog/NetFlow VIP
 # Forwards syslog to Cribl Edge LXCs, IPFIX to Cribl Stream LXCs
 # =============================================================================
