@@ -67,21 +67,34 @@ CI runners MUST NOT share Docker networks with dev/test services.
 | 1517 | Linux | os |
 | 1518 | Windows | os |
 
+### NetFlow Port (from terraform pipeline_constants)
+
+| Port | Source | Splunk Index |
+| --- | --- | --- |
+| 2055 | UniFi IPFIX (UDP) | network |
+
 ### Service Ports (from terraform pipeline_constants)
 
 | Port | Service |
 | --- | --- |
 | 8000 | Splunk Web UI |
-| 8088 | Splunk HEC |
+| 8088 | Splunk HEC (HTTPS) |
 | 8089 | Splunk Management |
 | 8404 | HAProxy Stats |
-| 9000 | Cribl Edge API |
-| 9100 | Cribl Stream API |
+| 9420 | Cribl Edge API |
+| 9000 | Cribl Stream API (also MinIO API on `minio` LXC) |
+| 9001 | MinIO Console |
+| 3142 | apt-cacher-ng |
 | 1025 | Mailpit SMTP |
 | 8025 | Mailpit Web UI |
 | 8080 | ntfy HTTP |
 | 6333 | Qdrant HTTP (from terraform `vector_db_ports`) |
 | 6334 | Qdrant gRPC (from terraform `vector_db_ports`) |
+
+Values are sourced from `terraform-proxmox/locals.tf`
+`pipeline_constants.{service_ports, netflow_ports, vector_db_ports}`.
+Do not hand-edit — fix the constant and refresh
+`inventory/terraform_inventory.json`.
 
 ## Inventory
 

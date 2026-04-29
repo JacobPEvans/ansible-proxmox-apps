@@ -1,0 +1,50 @@
+---
+# Daily E2E pipeline validation (UniFi -> HAProxy -> Cribl -> Splunk).
+#
+# Runs the existing reusable `_e2e-tests.yml` against the live cluster.
+# Triggered by:
+#   - daily cron at 08:30 UTC (early-morning local time)
+#   - manual workflow_dispatch
+#
+# Gated by repo variable `E2E_RUNNERS_ENABLED == 'true'` (same gate the
+# PR-driven path uses in `ci-gate.yml`). When the gate is off, the job
+# no-ops cleanly with a status notice instead of failing.
+#
+# Closes terraform-proxmox#202 (Splunk cluster validation tests).
+
+name: E2E Pipeline Schedule
+
+on:
+  schedule:
+    # Daily at 08:30 UTC -- well clear of cluster maintenance windows.
+    - cron: '30 8 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate-check:
+    name: Check E2E gate
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.gate.outputs.enabled }}
+    steps:
+      - id: gate
+        name: Evaluate E2E_RUNNERS_ENABLED
+        env:
+          E2E_RUNNERS_ENABLED: ${{ vars.E2E_RUNNERS_ENABLED }}
+        run: |
+          if [ "${E2E_RUNNERS_ENABLED}" = "true" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::E2E_RUNNERS_ENABLED is true -- proceeding"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::E2E_RUNNERS_ENABLED is not true -- skipping E2E run"
+          fi
+
+  e2e:
+    name: Run pipeline E2E tests
+    needs: gate-check
+    if: needs.gate-check.outputs.enabled == 'true'
+    uses: ./.github/workflows/_e2e-tests.yml
