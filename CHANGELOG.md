@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.10](https://github.com/JacobPEvans/ansible-proxmox-apps/compare/v1.5.9...v1.5.10) (2026-05-03)
+
+
+### Bug Fixes
+
+* **ci:** remove deprecated app-id secret passthrough ([8b22c0a](https://github.com/JacobPEvans/ansible-proxmox-apps/commit/8b22c0a194fc1497d865006ef5a2932404a9b078))
+
 ## [1.5.9](https://github.com/JacobPEvans/ansible-proxmox-apps/compare/v1.5.8...v1.5.9) (2026-05-03)
 
 
