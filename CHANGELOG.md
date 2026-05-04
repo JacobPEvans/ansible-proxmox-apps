@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.11](https://github.com/JacobPEvans/ansible-proxmox-apps/compare/v1.5.10...v1.5.11) (2026-05-04)
+
+
+### Bug Fixes
+
+* **deps:** refresh gh-aw action SHA pins ([#233](https://github.com/JacobPEvans/ansible-proxmox-apps/issues/233)) ([1e422f7](https://github.com/JacobPEvans/ansible-proxmox-apps/commit/1e422f710e96ea288870ce8826e9890b94c91b28))
+
 ## [1.5.10](https://github.com/JacobPEvans/ansible-proxmox-apps/compare/v1.5.9...v1.5.10) (2026-05-03)
 
 
