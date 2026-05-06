@@ -48,8 +48,8 @@
 # Cribl Edge/Stream LXCs are in the outbound-internal firewall group
 # (RFC1918-only), so they cannot reach github.com directly. The controller
 # fetches the .crbl asset and Ansible's copy/unarchive mechanism transfers
-# it to the target — matching the pattern used by the minio role for Cribl
-# tarballs.
+# it to the target — matching the controller-stage-then-copy pattern used
+# by the artifact-mirror role for Cribl tarballs.
 #
 # ansible_become: false (via vars:) is REQUIRED. Task-level `become: false`
 # alone is insufficient on Ansible 2.19: the play's `become: true` is
