@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/JacobPEvans/ansible-proxmox-apps/compare/v1.5.11...v1.6.0) (2026-05-07)
+
+
+### Features
+
+* **cribl_packs:** deploy orphan Cribl packs and add E2E schedule ([#228](https://github.com/JacobPEvans/ansible-proxmox-apps/issues/228)) ([dc2be6c](https://github.com/JacobPEvans/ansible-proxmox-apps/commit/dc2be6cab5337a7afb08ecde03e28e4898fa2ec6))
+
 ## [1.5.11](https://github.com/JacobPEvans/ansible-proxmox-apps/compare/v1.5.10...v1.5.11) (2026-05-04)
 
 
