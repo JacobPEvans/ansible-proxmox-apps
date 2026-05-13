@@ -12,7 +12,7 @@ services:
       OPENPROJECT_HTTPS: "{{ openproject_docker_https | lower }}"
       OPENPROJECT_DEFAULT__LANGUAGE: "{{ openproject_docker_default_language }}"
       RAILS_ENV: "{{ openproject_docker_rails_env }}"
-      SECRET_KEY_BASE: "{{ openproject_docker_secret_key_base }}"
+      OPENPROJECT_SECRET_KEY_BASE: "{{ openproject_docker_secret_key_base }}"
       WEB_CONCURRENCY: "{{ openproject_docker_web_concurrency }}"
       # Initial admin (only consumed on first bootstrap)
       OPENPROJECT_SEED__ADMIN__USER__MAIL: "{{ openproject_docker_admin_email }}"
