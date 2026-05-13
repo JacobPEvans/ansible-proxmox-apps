@@ -9,9 +9,10 @@ exclude_paths:
   - .venv
   - venv
   # SOPS-encrypted files are opaque ciphertext + metadata; linting is meaningless.
-  # Match the `.sops.yaml` rule (`\.enc\.ya?ml$`) — both .yaml and .yml.
-  - "*.enc.yaml"
-  - "*.enc.yml"
+  # Recursive glob matches the `.sops.yaml` rule (`\.enc\.ya?ml$`)
+  # and catches encrypted files in any subdirectory.
+  - "**/*.enc.yaml"
+  - "**/*.enc.yml"
 
 # File type overrides - tell linter the correct type for files in non-standard locations
 kinds:
