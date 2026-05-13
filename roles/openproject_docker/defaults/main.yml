@@ -1,0 +1,49 @@
+---
+# OpenProject Community Edition (all-in-one Docker image)
+# https://www.openproject.org/docs/installation-and-operations/installation/docker/
+# The AIO image bundles PostgreSQL, memcached, web (Puma), and a background worker.
+
+openproject_docker_image: "openproject/community:15"
+openproject_docker_container_name: openproject
+openproject_docker_data_dir: /opt/openproject
+
+# AIO image listens on 80 internally; bind to host 80 so DNS A record
+# (openproject.{domain}) reaches it directly. No HTTP reverse proxy
+# exists in this repo (haproxy is TCP-only for syslog/netflow).
+openproject_docker_web_port: 80
+
+# FQDN used for cookie scoping and external URL generation.
+# Auto-derived from inventory hostname + PROXMOX_DOMAIN.
+openproject_docker_host_name: "{{ hostname }}.{{ lookup('env', 'PROXMOX_DOMAIN') }}"
+
+# HTTPS off by default — homelab serves plain HTTP over the trusted LAN.
+# Set to "true" when fronted by NPM/HAProxy with TLS termination.
+openproject_docker_https: false
+
+# SECRET_KEY_BASE: Rails session/cookie signing key.
+# MUST be stable across restarts. Generate once with:
+#   openssl rand -hex 64
+# Store in SOPS (secrets.enc.yaml) as OPENPROJECT_SECRET_KEY_BASE.
+openproject_docker_secret_key_base: >-
+  {{ lookup('env', 'OPENPROJECT_SECRET_KEY_BASE')
+     | mandatory('OPENPROJECT_SECRET_KEY_BASE must be set (openssl rand -hex 64; store in SOPS)') }}
+
+# SMTP relay — point at the existing Mailpit container.
+# Mailpit listens on its container_ip:1025 (terraform-proxmox service_ports.mailpit_smtp).
+openproject_docker_smtp_address: "{{ hostvars['mailpit']['container_ip'] | default('') }}"
+openproject_docker_smtp_port: >-
+  {{ hostvars['localhost']['terraform_data']
+     ['constants']['service_ports']['mailpit_smtp']
+     | default(1025) }}
+openproject_docker_smtp_domain: "{{ lookup('env', 'PROXMOX_DOMAIN') }}"
+openproject_docker_mail_from: "openproject@{{ lookup('env', 'PROXMOX_DOMAIN') }}"
+
+# Default seeded admin email (only used on initial container bootstrap)
+openproject_docker_admin_email: "admin@{{ lookup('env', 'PROXMOX_DOMAIN') }}"
+
+# Locale and rails env
+openproject_docker_default_language: en
+openproject_docker_rails_env: production
+
+# Worker count (forked Puma workers). 2 is plenty for a homelab.
+openproject_docker_web_concurrency: 2
