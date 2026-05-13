@@ -142,12 +142,11 @@
     virtualenv: /opt/ansible-venv
     virtualenv_command: python3 -m venv
 
-- name: Set Python interpreter to use venv for subsequent tasks
-  ansible.builtin.set_fact:
-    ansible_python_interpreter: /opt/ansible-venv/bin/python
-
 # =============================================================================
 # Deploy via Docker Compose
+# Note: ansible_python_interpreter is set as a task-level var (not via set_fact)
+# so the venv interpreter does NOT leak to subsequent plays (e.g. Phase 9
+# systemd_restart_policy) that need system Python for apt/dbus.
 # =============================================================================
 
 - name: Check if openproject container is running
@@ -165,6 +164,9 @@
   community.docker.docker_compose_v2:
     project_src: "{{ openproject_docker_data_dir }}"
     state: present
+  no_log: true
+  vars:
+    ansible_python_interpreter: /opt/ansible-venv/bin/python
 
 # =============================================================================
 # Health Check
