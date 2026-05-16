@@ -192,13 +192,15 @@
     # NOTE: Docker VMs (docker-host) are for TESTING/DEV ONLY.
     # Production syslog/netflow pipelines use native Cribl Edge/Stream
     # on LXC containers (cribl_edge, cribl_stream_group).
+    # Exception: idrac-kvm VM runs vendor domistyle/idrac6 containers (no native path).
     - name: Add Docker VMs to inventory (SSH connection — testing/dev only)
       ansible.builtin.add_host:
         name: "{{ item.key }}"
-        groups:
-          - docker_vms
-          - cribl_docker_group
-          - all
+        groups: >-
+          {{
+            ['docker_vms', 'cribl_docker_group', 'all']
+            + (['idrac_kvm_group'] if 'idrac' in (item.value.tags | default([])) else [])
+          }}
         ansible_host: "{{ item.value.ip }}"
         ansible_connection: "{{ item.value.ansible_connection }}"
         ansible_user: debian

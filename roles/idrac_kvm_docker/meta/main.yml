@@ -1,0 +1,26 @@
+---
+galaxy_info:
+  author: JacobPEvans
+  description: Deploy domistyle/idrac6 HTML5 iDRAC KVM viewer as Docker containers (one per iDRAC)
+  license: Apache-2.0
+  min_ansible_version: "2.15"
+
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+        - trixie
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+
+  galaxy_tags:
+    - idrac
+    - kvm
+    - docker
+    - oob
+    - management
+
+dependencies: []
+  # community.docker collection is specified in requirements.yml

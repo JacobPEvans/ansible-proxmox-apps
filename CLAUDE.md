@@ -16,6 +16,10 @@ this repo handles app config only.
 - **GitHub Actions Runners** (`github_runner` role — Docker Compose on docker-host VM)
 - **Qdrant** (`qdrant_docker` role — Docker in LXC container)
 - **LlamaIndex** (`llamaindex` role — Python + Ollama CPU-only embeddings on LXC container)
+- **iDRAC KVM** (`idrac_kvm_docker` role — domistyle/idrac6 HTML5 KVM viewer +
+  host `ipmitool`, Docker on dedicated VM 251). A Mac-only OrbStack exploratory
+  variant lives at `orbstack-kubernetes/docker/idrac-webtop` (webtop +
+  OpenWebStart + self-signed jar wrapper) and is not used in production.
 
 **This repo does NOT own Splunk.** Splunk is managed by `ansible-splunk`.
 
@@ -109,6 +113,7 @@ Port constants come from `terraform_data.constants`
 - `cribl_edge`: Cribl Edge LXC containers (syslog processing)
 - `cribl_stream_group`: Cribl Stream LXC containers (netflow/IPFIX processing)
 - `docker_vms` / `cribl_docker_group`: Docker Swarm hosts (SSH, testing/dev + CI runners)
+- `idrac_kvm_group`: Docker VMs tagged `idrac` (iDRAC KVM viewer VM 251)
 - `mailpit_group`: Containers tagged `smtp` (Mailpit SMTP relay)
 - `ntfy_group`: Containers tagged `push` (ntfy push notifications)
 - `qdrant_group`: Containers tagged `vectordb` (Qdrant vector database)
@@ -137,6 +142,12 @@ Port constants come from `terraform_data.constants`
 | `SOPS_AGE_KEY` | Age private key content for SOPS decryption in runner containers | Doppler |
 | `GITHUB_RUNNER_TOKEN` | (deprecated) Single-repo registration token (1h expiry) | SOPS |
 | `QDRANT_API_KEY` | Qdrant vector database API key | SOPS |
+| `IDRAC_R410_HOST` | R410 iDRAC IP/hostname | Doppler |
+| `IDRAC_R410_USER` | R410 iDRAC username | Doppler |
+| `IDRAC_R410_PASSWORD` | R410 iDRAC password | Doppler |
+| `IDRAC_R710_HOST` | R710 iDRAC IP/hostname | Doppler |
+| `IDRAC_R710_USER` | R710 iDRAC username | Doppler |
+| `IDRAC_R710_PASSWORD` | R710 iDRAC password | Doppler |
 
 ## Secrets Management
 

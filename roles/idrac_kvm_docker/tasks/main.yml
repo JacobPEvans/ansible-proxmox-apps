@@ -1,0 +1,212 @@
+---
+# =============================================================================
+# Preflight: assert all iDRAC credentials are present in the environment
+# =============================================================================
+
+- name: Assert iDRAC credentials are set for each target
+  ansible.builtin.assert:
+    that:
+      - lookup('env', item.env_prefix ~ '_HOST') | length > 0
+      - lookup('env', item.env_prefix ~ '_USER') | length > 0
+      - lookup('env', item.env_prefix ~ '_PASSWORD') | length > 0
+    fail_msg: "{{ item.env_prefix }}_HOST/USER/PASSWORD must all be set (Doppler iac-conf-mgmt/prd)"
+  loop: "{{ idrac_kvm_docker_targets }}"
+  no_log: true
+
+# =============================================================================
+# Docker Installation
+# =============================================================================
+
+- name: Install Docker prerequisites
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+    state: present
+    update_cache: true
+
+- name: Create keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Set Docker repository distribution
+  ansible.builtin.set_fact:
+    idrac_kvm_docker_distro: "{{ ansible_distribution | lower }}"
+
+- name: Add Docker GPG key
+  ansible.builtin.get_url:
+    url: "https://download.docker.com/linux/{{ idrac_kvm_docker_distro }}/gpg"
+    dest: /etc/apt/keyrings/docker.asc
+    mode: "0644"
+    force: false
+
+- name: Add Docker repository
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc]
+      https://download.docker.com/linux/{{ idrac_kvm_docker_distro }}
+      {{ ansible_distribution_release }} stable
+    state: present
+    filename: docker
+
+- name: Install Docker packages
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+    update_cache: true
+
+# fuse-overlayfs is required for Docker on ZFS-backed LXC containers only;
+# VMs use the default overlay2 storage driver natively.
+- name: Install fuse-overlayfs for Docker on ZFS-backed LXC
+  ansible.builtin.apt:
+    name: fuse-overlayfs
+    state: present
+  when: ansible_virtualization_type == 'lxc'
+
+- name: Configure Docker to use fuse-overlayfs storage driver (LXC only)
+  ansible.builtin.copy:
+    dest: /etc/docker/daemon.json
+    content: |
+      {
+        "storage-driver": "fuse-overlayfs"
+      }
+    owner: root
+    group: root
+    mode: "0644"
+  when: ansible_virtualization_type == 'lxc'
+  notify: Restart docker
+
+- name: Ensure Docker service is running
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: true
+
+# =============================================================================
+# Host-side CLI fallback (ipmitool over IPMI LAN)
+# =============================================================================
+
+# ipmitool gives a non-Java path to chassis power, SEL, sensor reads against
+# each iDRAC over IPMI 2.0 LAN. Useful when the HTML5 KVM viewer fails (stale
+# session, firmware quirk) and you only need to power-cycle or read the SEL.
+# Installed on the host VM so it's reachable via SSH; the IPMI target is the
+# iDRAC itself (per-target host/user/password from the role-managed .env).
+- name: Install ipmitool for IPMI-over-LAN CLI fallback (power, SEL, sensors)
+  ansible.builtin.apt:
+    name: ipmitool
+    state: present
+
+# =============================================================================
+# Data directories
+# =============================================================================
+
+- name: Create idrac-kvm data directory
+  ansible.builtin.file:
+    path: "{{ idrac_kvm_docker_data_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+# =============================================================================
+# Compose + credentials
+# =============================================================================
+
+- name: Deploy docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ idrac_kvm_docker_data_dir }}/docker-compose.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart idrac-kvm
+
+- name: Deploy .env with iDRAC credentials (mode 0600)
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ idrac_kvm_docker_data_dir }}/.env"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  notify: Restart idrac-kvm
+
+# =============================================================================
+# Python venv for Ansible Docker modules
+# =============================================================================
+
+- name: Install Python venv and pip for dependencies
+  ansible.builtin.apt:
+    name:
+      - python3-pip
+      - python3-venv
+      - python3-full
+    state: present
+    update_cache: true
+
+- name: Create virtualenv for Ansible Python dependencies
+  ansible.builtin.pip:
+    name:
+      - docker
+    state: present
+    virtualenv: /opt/ansible-venv
+    virtualenv_command: python3 -m venv
+
+# =============================================================================
+# Opt-in cleanup (destructive — disabled by default)
+# =============================================================================
+
+- name: Prune unused Docker images, containers, and networks (opt-in only)
+  community.docker.docker_prune:
+    images: true
+    containers: true
+    networks: true
+    volumes: false
+  when: idrac_kvm_docker_prune_unused | bool
+  vars:
+    ansible_python_interpreter: /opt/ansible-venv/bin/python
+
+# =============================================================================
+# Deploy via Docker Compose
+# =============================================================================
+
+- name: Deploy idrac-kvm containers via docker compose
+  community.docker.docker_compose_v2:
+    project_src: "{{ idrac_kvm_docker_data_dir }}"
+    state: present
+  no_log: true
+  vars:
+    ansible_python_interpreter: /opt/ansible-venv/bin/python
+
+# =============================================================================
+# Health check
+# =============================================================================
+
+- name: Wait for each iDRAC KVM port to be ready
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: "{{ item.host_port }}"
+    timeout: 120
+  loop: "{{ idrac_kvm_docker_targets }}"
+
+- name: Verify each iDRAC KVM HTTP endpoint responds
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ item.host_port }}/"
+    method: GET
+    status_code: 200
+  register: idrac_kvm_docker_health
+  retries: 20
+  delay: 10
+  until: idrac_kvm_docker_health.status == 200
+  changed_when: false
+  loop: "{{ idrac_kvm_docker_targets }}"
