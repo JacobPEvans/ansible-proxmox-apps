@@ -16,7 +16,10 @@ this repo handles app config only.
 - **GitHub Actions Runners** (`github_runner` role — Docker Compose on docker-host VM)
 - **Qdrant** (`qdrant_docker` role — Docker in LXC container)
 - **LlamaIndex** (`llamaindex` role — Python + Ollama CPU-only embeddings on LXC container)
-- **iDRAC KVM** (`idrac_kvm_docker` role — domistyle/idrac6 HTML5 KVM viewer, Docker on dedicated VM 251)
+- **iDRAC KVM** (`idrac_kvm_docker` role — domistyle/idrac6 HTML5 KVM viewer +
+  host `ipmitool`, Docker on dedicated VM 251). A Mac-only OrbStack exploratory
+  variant lives at `orbstack-kubernetes/docker/idrac-webtop` (webtop +
+  OpenWebStart + self-signed jar wrapper) and is not used in production.
 
 **This repo does NOT own Splunk.** Splunk is managed by `ansible-splunk`.
 

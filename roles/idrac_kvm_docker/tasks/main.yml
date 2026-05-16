@@ -93,6 +93,20 @@
     enabled: true
 
 # =============================================================================
+# Host-side CLI fallback (ipmitool over IPMI LAN)
+# =============================================================================
+
+# ipmitool gives a non-Java path to chassis power, SEL, sensor reads against
+# each iDRAC over IPMI 2.0 LAN. Useful when the HTML5 KVM viewer fails (stale
+# session, firmware quirk) and you only need to power-cycle or read the SEL.
+# Installed on the host VM so it's reachable via SSH; the IPMI target is the
+# iDRAC itself (per-target host/user/password from the role-managed .env).
+- name: Install ipmitool for IPMI-over-LAN CLI fallback (power, SEL, sensors)
+  ansible.builtin.apt:
+    name: ipmitool
+    state: present
+
+# =============================================================================
 # Data directories
 # =============================================================================
 
