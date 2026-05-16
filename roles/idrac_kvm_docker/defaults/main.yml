@@ -1,0 +1,17 @@
+---
+idrac_kvm_docker_image: "domistyle/idrac6"
+idrac_kvm_docker_data_dir: /opt/idrac-kvm
+idrac_kvm_docker_bind_address: "0.0.0.0"
+idrac_kvm_docker_tz: "UTC"
+idrac_kvm_docker_prune_unused: false
+
+# One entry per physical iDRAC. Credentials come from env vars at playbook
+# runtime (Doppler) — never committed. env_prefix drives IDRAC_<PREFIX>_HOST,
+# IDRAC_<PREFIX>_USER, IDRAC_<PREFIX>_PASSWORD lookups in env.j2.
+idrac_kvm_docker_targets:
+  - name: r410
+    host_port: 5800
+    env_prefix: IDRAC_R410
+  - name: r710
+    host_port: 5801
+    env_prefix: IDRAC_R710

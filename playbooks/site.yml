@@ -289,6 +289,24 @@
       when: github_runner_admin_token is defined or github_runner_token is defined
 
 # =============================================================================
+# Phase 7b: iDRAC KVM HTML5 Viewer
+# domistyle/idrac6 containers (R410 + R710) on dedicated VM 251.
+# Credentials come from Doppler IDRAC_R*_HOST/USER/PASSWORD env vars.
+# =============================================================================
+
+- name: Deploy iDRAC KVM containers
+  hosts: idrac_kvm_group
+  become: true
+  gather_facts: true
+  tags:
+    - idrac_kvm_docker
+    - idrac
+    - oob
+    - management
+  roles:
+    - role: idrac_kvm_docker
+
+# =============================================================================
 # Phase 8: LlamaIndex RAG Engine
 # CPU-only embeddings via Ollama + LlamaIndex orchestration
 # =============================================================================
