@@ -18,8 +18,11 @@
   gather_facts: false
 
   vars:
-    # Mirror the role defaults (cribl_docker_stack/defaults/main.yml)
-    cribl_docker_stack_image: "cribl/cribl:4.10.1"
+    # Mirror the role defaults (cribl_docker_stack/defaults/main.yml).
+    # Role default is `cribl/cribl:latest`; this fixture tracks the same tag
+    # so the test never silently freezes on an old version (was 4.10.1, eight
+    # minor versions stale; Cribl is now at 4.18.x).
+    cribl_docker_stack_image: "cribl/cribl:latest"
     cribl_docker_stack_edge_replicas: 2
     cribl_docker_stack_edge_cpu_limit: "1"
     cribl_docker_stack_edge_memory_limit: "1024M"
